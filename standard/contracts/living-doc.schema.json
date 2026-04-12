@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://archeia.dev/schemas/living-doc.schema.json",
+  "title": "Living Document",
+  "description": "Base schema for Archeia living documents — one file per concept, edited in place, history in git.",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Human-readable title of the document."
+    },
+    "owner": {
+      "type": "string",
+      "description": "The domain owner that writes this document (e.g., 'product-skills', 'codebase-skills')."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the last content update."
+    },
+    "skill": {
+      "type": "string",
+      "description": "Optional: the skill that most recently wrote this file (for generated/regenerated docs)."
+    },
+    "skill_version": {
+      "type": "string",
+      "description": "Optional: the skill version, for traceability of regenerated content."
+    }
+  },
+  "required": ["title", "owner"],
+  "additionalProperties": true,
+  "archeia": {
+    "shape": "living",
+    "operations": ["evolve"],
+    "history": "git",
+    "pruning": "never"
+  }
+}

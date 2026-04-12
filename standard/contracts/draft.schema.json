@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://archeia.dev/schemas/draft.schema.json",
+  "title": "Business Draft",
+  "description": "Frontmatter contract for business/drafts/*.md — the business → product contract. Drafts are transient artifacts that either advance into a living document (vision.md or product.md) or are discarded.",
+  "allOf": [
+    { "$ref": "transient-artifact.schema.json" }
+  ],
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Working title of the draft."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "review", "advanced", "discarded"],
+      "description": "Draft lifecycle: draft (future, being written) → review (future, under consideration) → advanced (past, merged into a living doc) OR discarded (past, rejected)."
+    },
+    "discarded_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Set when status transitions to 'discarded'."
+    },
+    "advanced_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Set when status transitions to 'advanced'."
+    },
+    "advanced_into": {
+      "type": ["string", "null"],
+      "description": "Relative path to the living document this draft was merged into (e.g., 'business/vision/vision.md' or 'product/product.md')."
+    }
+  },
+  "required": ["title", "created", "status"],
+  "additionalProperties": true,
+  "archeia": {
+    "shape": "transient",
+    "domain": "business",
+    "subdir": "drafts",
+    "contract": "business -> product",
+    "terminal_timestamp_field": "discarded_at OR advanced_at",
+    "body_sections_recommended": [
+      "Premise",
+      "Target user",
+      "Value proposition",
+      "Scope",
+      "Alternatives considered"
+    ]
+  }
+}

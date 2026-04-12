@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://archeia.dev/schemas/transient-artifact.schema.json",
+  "title": "Transient Artifact",
+  "description": "Base schema for Archeia transient artifacts — tasks, drafts, plans, and running experiments that flow through lifecycle states and are pruned after a bounded retention window.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable identifier for this artifact across its lifecycle."
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable title."
+    },
+    "created": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of artifact creation."
+    },
+    "author": {
+      "type": "string",
+      "description": "Who (human or agent) created the artifact."
+    },
+    "status": {
+      "type": "string",
+      "description": "Distribution-defined status value. Every status value must map to exactly one temporal category (future, present, past) via the distribution's lifecycles.yaml or equivalent."
+    },
+    "started": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the artifact advanced from a future-mapped status to a present-mapped status."
+    },
+    "terminal_timestamp": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the artifact reached a past-mapped status. The field name in the actual artifact is distribution-defined (e.g., 'completed', 'cancelled_at', 'concluded', 'discarded_at') but the semantic role is this: it starts the retention clock."
+    }
+  },
+  "required": ["id", "title", "created", "status"],
+  "additionalProperties": true,
+  "archeia": {
+    "shape": "transient",
+    "operations": ["advance", "complete", "prune", "evolve"],
+    "history": "on-disk during retention, git after",
+    "pruning": "retention-window, distribution-defined",
+    "temporal_derivation": "status -> temporal via distribution lifecycles.yaml"
+  }
+}

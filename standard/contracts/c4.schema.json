@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://archeia.dev/schemas/c4.schema.json",
+  "title": "C4 Model Structured Data",
+  "description": "Contract for codebase/architecture/{system,containers,components,dataflow,entities,statemachine}.json — the codebase → product contract. These files carry C4 model data in a structured form that product skills can read for feasibility review during draft review. Each file describes one level of the C4 zoom.",
+  "type": "object",
+  "properties": {
+    "level": {
+      "type": "string",
+      "enum": ["system", "container", "component", "dataflow", "entity", "statemachine"],
+      "description": "Which level of the C4 (or adjacent) zoom this file describes."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this file was produced."
+    },
+    "skill": {
+      "type": "string",
+      "description": "The skill that produced this file (e.g., 'archeia:write-tech-docs')."
+    },
+    "skill_version": {
+      "type": "string",
+      "description": "Skill version for traceability of regenerated content."
+    },
+    "elements": {
+      "type": "array",
+      "description": "The set of elements at this C4 level. For system.json, these are external actors and the system boundary. For containers.json, services/databases/queues. For components.json, internal modules. For dataflow.json, flows. For entities.json, ORM/schema entities. For statemachine.json, state machines.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable identifier for this element, referenced by other elements' relationships."
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable name."
+          },
+          "description": {
+            "type": "string",
+            "description": "One-sentence description grounded in the codebase."
+          },
+          "technology": {
+            "type": ["string", "null"],
+            "description": "Technology or framework this element uses (e.g., 'PostgreSQL', 'Redis', 'React')."
+          },
+          "evidence": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "File paths in the source tree that were cited as evidence for this element's existence and description."
+          },
+          "relationships": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "target": {
+                  "type": "string",
+                  "description": "ID of the target element."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Nature of the relationship (e.g., 'reads from', 'publishes to', 'invokes')."
+                },
+                "technology": {
+                  "type": ["string", "null"],
+                  "description": "Transport or protocol (e.g., 'HTTP/JSON', 'gRPC', 'SQL')."
+                }
+              },
+              "required": ["target", "description"]
+            }
+          }
+        },
+        "required": ["id", "name", "description"]
+      }
+    }
+  },
+  "required": ["level", "elements"],
+  "additionalProperties": true,
+  "archeia": {
+    "shape": "living",
+    "domain": "codebase",
+    "subdir": "architecture",
+    "contract": "codebase -> product",
+    "evidence_principle": "Every element's 'evidence' array must cite at least one file path in the source tree. Elements without evidence must be flagged or omitted — no fabrication."
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://archeia.dev/schemas/product.schema.json",
+  "title": "Product Specification",
+  "description": "Frontmatter and section contract for product/product.md — the product → execution contract. product.md is a living document. Its body must contain three structured sections (Features, Constraints, Priorities) that execution skills parse to generate tasks.",
+  "allOf": [
+    { "$ref": "living-doc.schema.json" }
+  ],
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Product name or project title."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["locked"],
+      "description": "product.md is always locked when it exists. Draft product specs live in business/drafts/ until they advance into this file."
+    },
+    "owner": {
+      "type": "string",
+      "const": "product-skills",
+      "description": "Owned by product skills."
+    },
+    "locked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when this version was locked."
+    },
+    "source_draft": {
+      "type": ["string", "null"],
+      "description": "Relative path to the business draft that produced the most recent lock, if any."
+    }
+  },
+  "required": ["title", "owner", "status", "locked_at"],
+  "additionalProperties": true,
+  "archeia": {
+    "shape": "living",
+    "domain": "product",
+    "path": "product/product.md",
+    "contract": "product -> execution",
+    "required_body_sections": [
+      {
+        "heading": "Features",
+        "description": "Each feature has a name, a description, and a list of acceptance criteria. Every feature should have a stable identifier (slug or ordinal) that tasks can reference."
+      },
+      {
+        "heading": "Constraints",
+        "description": "Technical and business constraints that scope the work. One per line or bulleted."
+      },
+      {
+        "heading": "Priorities",
+        "description": "Ordered list or MoSCoW classification (Must / Should / Could / Won't)."
+      }
+    ]
+  }
+}
