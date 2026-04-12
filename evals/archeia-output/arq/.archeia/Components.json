@@ -1,0 +1,138 @@
+{
+  "containers": [
+    {
+      "id": "arq-worker",
+      "name": "Worker Process",
+      "components": [
+        {
+          "id": "arq-worker-worker",
+          "name": "worker",
+          "type": "module",
+          "description": "Core Worker class: job polling loop, coroutine execution, health-check, and cron scheduling.",
+          "source_path": "arq/worker.py",
+          "evidence": ["arq/worker.py"]
+        },
+        {
+          "id": "arq-worker-jobs",
+          "name": "jobs",
+          "type": "module",
+          "description": "Job data structures (JobDef, JobResult, JobStatus enum), serialisation and deserialisation helpers.",
+          "source_path": "arq/jobs.py",
+          "evidence": ["arq/jobs.py"]
+        },
+        {
+          "id": "arq-worker-cron",
+          "name": "cron",
+          "type": "module",
+          "description": "CronJob definition and next_cron datetime calculator for scheduled jobs.",
+          "source_path": "arq/cron.py",
+          "evidence": ["arq/cron.py"]
+        },
+        {
+          "id": "arq-worker-constants",
+          "name": "constants",
+          "type": "config",
+          "description": "Redis key prefixes and default configuration values shared across modules.",
+          "source_path": "arq/constants.py",
+          "evidence": ["arq/constants.py"]
+        },
+        {
+          "id": "arq-worker-utils",
+          "name": "utils",
+          "type": "library",
+          "description": "Time conversion helpers (to_ms, ms_to_datetime), import_string, truncate, and poll async generator.",
+          "source_path": "arq/utils.py",
+          "evidence": ["arq/utils.py"]
+        }
+      ]
+    },
+    {
+      "id": "arq-client",
+      "name": "Application / Client",
+      "components": [
+        {
+          "id": "arq-client-connections",
+          "name": "connections",
+          "type": "module",
+          "description": "ArqRedis (Redis subclass with job enqueue API), RedisSettings dataclass, create_pool factory, and Sentinel support.",
+          "source_path": "arq/connections.py",
+          "evidence": ["arq/connections.py"]
+        },
+        {
+          "id": "arq-client-cli",
+          "name": "cli",
+          "type": "handler",
+          "description": "Click CLI entrypoint; delegates to worker.run_worker and worker.check_health. Optional file-watch mode via watchfiles.",
+          "source_path": "arq/cli.py",
+          "evidence": ["arq/cli.py"]
+        }
+      ]
+    }
+  ],
+  "external_systems": [
+    {
+      "id": "redis",
+      "name": "Redis",
+      "description": "Primary data store for queues and results.",
+      "evidence": ["arq/connections.py"]
+    }
+  ],
+  "relationships": [
+    {
+      "source": "arq-worker-worker",
+      "target": "arq-worker-jobs",
+      "description": "Deserialises job payloads and writes JobResult on completion.",
+      "evidence": ["arq/worker.py"]
+    },
+    {
+      "source": "arq-worker-worker",
+      "target": "arq-worker-cron",
+      "description": "Uses CronJob and next_cron to schedule timed function executions.",
+      "evidence": ["arq/worker.py"]
+    },
+    {
+      "source": "arq-worker-worker",
+      "target": "arq-worker-constants",
+      "description": "References Redis key prefixes for queue, in-progress, and result keys.",
+      "evidence": ["arq/worker.py"]
+    },
+    {
+      "source": "arq-worker-worker",
+      "target": "arq-worker-utils",
+      "description": "Uses poll generator for job polling loop and time helpers.",
+      "evidence": ["arq/worker.py"]
+    },
+    {
+      "source": "arq-client-connections",
+      "target": "arq-worker-jobs",
+      "description": "Imports JobDef and serialisation helpers for job enqueue.",
+      "evidence": ["arq/connections.py"]
+    },
+    {
+      "source": "arq-client-connections",
+      "target": "arq-worker-constants",
+      "description": "Uses key prefixes for queue and result keys.",
+      "evidence": ["arq/connections.py"]
+    },
+    {
+      "source": "arq-client-cli",
+      "target": "arq-worker-worker",
+      "description": "Calls run_worker, create_worker, and check_health from cli entrypoint.",
+      "evidence": ["arq/cli.py"]
+    },
+    {
+      "source": "arq-client-connections",
+      "target": "redis",
+      "description": "Sends ZADD (enqueue) and GET (result fetch) commands.",
+      "protocol": "Redis",
+      "evidence": ["arq/connections.py"]
+    },
+    {
+      "source": "arq-worker-worker",
+      "target": "redis",
+      "description": "Polls ZRANGEBYSCORE, atomically claims via WATCH/MULTI, writes results via SET.",
+      "protocol": "Redis",
+      "evidence": ["arq/worker.py"]
+    }
+  ]
+}

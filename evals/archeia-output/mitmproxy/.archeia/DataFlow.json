@@ -1,0 +1,105 @@
+{
+  "level": 3,
+  "title": "Data Flow",
+  "depends_on": "Containers.json",
+  "flows": [
+    {
+      "id": "http-intercept",
+      "name": "HTTP/HTTPS Request Interception",
+      "description": "Client sends HTTP/HTTPS request through the proxy; proxy intercepts, triggers addon hooks, and forwards to upstream",
+      "primary": true,
+      "participants": [
+        { "id": "client-application", "name": "Client Application", "type": "external_system" },
+        { "id": "proxy-core-server", "name": "Proxy Server", "type": "component" },
+        { "id": "proxy-core-layers", "name": "Protocol Layers", "type": "component" },
+        { "id": "proxy-core-addonmanager", "name": "AddonManager", "type": "component" },
+        { "id": "proxy-core-addons", "name": "Built-in Addons", "type": "component" },
+        { "id": "target-server", "name": "Target HTTP Server", "type": "external_system" }
+      ],
+      "steps": [
+        {
+          "order": 1,
+          "source": "client-application",
+          "target": "proxy-core-server",
+          "message": "TCP connect + HTTP/HTTPS request",
+          "type": "sync",
+          "protocol": "HTTPS",
+          "evidence": ["mitmproxy/proxy/server.py"]
+        },
+        {
+          "order": 2,
+          "source": "proxy-core-server",
+          "target": "proxy-core-layers",
+          "message": "ConnectionMadeEvent + DataReceiveEvent",
+          "type": "sync",
+          "protocol": "function call",
+          "evidence": ["mitmproxy/proxy/server.py"]
+        },
+        {
+          "order": 3,
+          "source": "proxy-core-layers",
+          "target": "proxy-core-addonmanager",
+          "message": "trigger_event(RequestHook(flow))",
+          "type": "sync",
+          "protocol": "function call",
+          "evidence": ["mitmproxy/addonmanager.py", "mitmproxy/proxy/layers/"]
+        },
+        {
+          "order": 4,
+          "source": "proxy-core-addonmanager",
+          "target": "proxy-core-addons",
+          "message": "addon.request(flow)",
+          "type": "sync",
+          "protocol": "function call",
+          "evidence": ["mitmproxy/addonmanager.py", "mitmproxy/addons/"]
+        },
+        {
+          "order": 5,
+          "source": "proxy-core-addons",
+          "target": "proxy-core-addonmanager",
+          "message": "flow modified or intercepted",
+          "type": "response",
+          "protocol": "function call",
+          "evidence": ["mitmproxy/addonmanager.py"]
+        },
+        {
+          "order": 6,
+          "source": "proxy-core-layers",
+          "target": "target-server",
+          "message": "Forwarded HTTP/HTTPS request",
+          "type": "sync",
+          "protocol": "HTTPS",
+          "evidence": ["mitmproxy/proxy/server.py"]
+        },
+        {
+          "order": 7,
+          "source": "target-server",
+          "target": "proxy-core-layers",
+          "message": "HTTP response",
+          "type": "response",
+          "protocol": "HTTPS",
+          "evidence": ["mitmproxy/proxy/server.py"]
+        },
+        {
+          "order": 8,
+          "source": "proxy-core-layers",
+          "target": "proxy-core-addonmanager",
+          "message": "trigger_event(ResponseHook(flow))",
+          "type": "sync",
+          "protocol": "function call",
+          "evidence": ["mitmproxy/addonmanager.py"]
+        },
+        {
+          "order": 9,
+          "source": "proxy-core-server",
+          "target": "client-application",
+          "message": "Forwarded HTTP response",
+          "type": "response",
+          "protocol": "HTTPS",
+          "evidence": ["mitmproxy/proxy/server.py"]
+        }
+      ],
+      "evidence": ["mitmproxy/proxy/server.py", "mitmproxy/master.py", "mitmproxy/addonmanager.py"]
+    }
+  ]
+}

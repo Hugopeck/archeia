@@ -1,0 +1,187 @@
+{
+  "containers": [
+    {
+      "id": "api-server",
+      "name": "API Server",
+      "components": [
+        {
+          "id": "api-graphql",
+          "name": "GraphQL Schema",
+          "type": "module",
+          "description": "All GraphQL type definitions and resolver implementations organized by domain (feeds, posts, users, squads, comments, notifications, etc.).",
+          "technology": "TypeScript / Mercurius / graphql",
+          "evidence": ["src/schema/", "src/graphql.ts"]
+        },
+        {
+          "id": "api-entity",
+          "name": "Entity Layer",
+          "type": "repository",
+          "description": "TypeORM entity classes for all domain objects; used by resolvers and workers to query and persist data.",
+          "technology": "TypeScript / TypeORM",
+          "evidence": ["src/entity/index.ts", "src/data-source.ts"]
+        },
+        {
+          "id": "api-routes",
+          "name": "REST Routes",
+          "type": "controller",
+          "description": "Fastify REST route handlers for RSS feeds, devcards, webhooks (Paddle, Stripe), boot endpoint, user management, and public API.",
+          "technology": "TypeScript / Fastify",
+          "evidence": ["src/routes/index.ts"]
+        },
+        {
+          "id": "api-auth",
+          "name": "Auth Middleware",
+          "type": "middleware",
+          "description": "JWT verification and session context injection for every incoming request.",
+          "technology": "TypeScript / jsonwebtoken",
+          "evidence": ["src/auth.ts"]
+        },
+        {
+          "id": "api-common",
+          "name": "Common Utilities",
+          "type": "library",
+          "description": "Shared helpers for notifications, mailing, content preferences, feed generation, Pub/Sub messaging, and domain utilities.",
+          "technology": "TypeScript",
+          "evidence": ["src/common/index.ts"]
+        },
+        {
+          "id": "api-integrations",
+          "name": "Integration Clients",
+          "type": "service",
+          "description": "Typed client wrappers for internal microservices: bragi (content), freyja (AI/media), snotra (search), mimir (recommendations), lofn (messaging), skadi (feed scoring), feed, linear, anthropic, automation.",
+          "technology": "TypeScript / ConnectRPC / gRPC",
+          "evidence": ["src/integrations/index.ts"]
+        },
+        {
+          "id": "api-graphorm",
+          "name": "GraphORM",
+          "type": "library",
+          "description": "Internal bridge layer that translates GraphQL query field selections into optimized TypeORM queries, avoiding N+1 fetches.",
+          "technology": "TypeScript / TypeORM",
+          "evidence": ["src/graphorm/index.ts"]
+        }
+      ]
+    },
+    {
+      "id": "background-worker",
+      "name": "Background Worker",
+      "components": [
+        {
+          "id": "worker-handlers",
+          "name": "Worker Handlers",
+          "type": "handler",
+          "description": "Individual Pub/Sub message handlers for domain events: reputation changes, CDC replication, notification dispatch, digest emails, image cleanup, user sync.",
+          "technology": "TypeScript",
+          "evidence": ["src/workers/index.ts"]
+        },
+        {
+          "id": "worker-notifications",
+          "name": "Notification Workers",
+          "type": "handler",
+          "description": "Specialized handlers for in-app, email, and push notification delivery triggered by user interaction events.",
+          "technology": "TypeScript",
+          "evidence": ["src/workers/notifications/index.ts"]
+        }
+      ]
+    },
+    {
+      "id": "cron-runner",
+      "name": "Cron Runner",
+      "components": [
+        {
+          "id": "cron-jobs",
+          "name": "Cron Jobs",
+          "type": "handler",
+          "description": "Named periodic job handlers for maintenance tasks (digest sending, streak updates, data cleanup).",
+          "technology": "TypeScript",
+          "evidence": ["src/cron/index.ts"]
+        }
+      ]
+    }
+  ],
+  "external_systems": [
+    {
+      "id": "postgresql",
+      "name": "PostgreSQL",
+      "description": "Primary relational database.",
+      "evidence": ["src/data-source.ts"]
+    },
+    {
+      "id": "redis",
+      "name": "Redis",
+      "description": "Cache and real-time transport.",
+      "evidence": ["src/redis.ts"]
+    },
+    {
+      "id": "google-pubsub",
+      "name": "Google Cloud Pub/Sub",
+      "description": "Async event bus.",
+      "evidence": ["src/background.ts"]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "graphql-to-entity",
+      "source": "api-graphql",
+      "target": "api-entity",
+      "description": "Resolvers query and mutate domain entities via TypeORM",
+      "evidence": ["src/schema/", "src/entity/"]
+    },
+    {
+      "id": "graphql-to-graphorm",
+      "source": "api-graphql",
+      "target": "api-graphorm",
+      "description": "Uses GraphORM to build optimized TypeORM queries from GQL field selections",
+      "evidence": ["src/graphorm/index.ts"]
+    },
+    {
+      "id": "graphql-to-integrations",
+      "source": "api-graphql",
+      "target": "api-integrations",
+      "description": "Calls internal microservice clients for recommendations, search, and content",
+      "evidence": ["src/integrations/"]
+    },
+    {
+      "id": "graphql-to-common",
+      "source": "api-graphql",
+      "target": "api-common",
+      "description": "Uses shared notification helpers and domain utilities",
+      "evidence": ["src/common/"]
+    },
+    {
+      "id": "routes-to-entity",
+      "source": "api-routes",
+      "target": "api-entity",
+      "description": "REST handlers read domain entities for RSS and devcards",
+      "evidence": ["src/routes/"]
+    },
+    {
+      "id": "entity-to-postgresql",
+      "source": "api-entity",
+      "target": "postgresql",
+      "description": "TypeORM executes SQL queries against master and read-replica",
+      "evidence": ["src/data-source.ts"]
+    },
+    {
+      "id": "auth-to-graphql",
+      "source": "api-auth",
+      "target": "api-graphql",
+      "description": "Injects user context before resolvers execute",
+      "evidence": ["src/auth.ts", "src/Context.ts"]
+    },
+    {
+      "id": "worker-handlers-to-entity",
+      "source": "worker-handlers",
+      "target": "api-entity",
+      "description": "Workers share entity definitions to query the same database",
+      "evidence": ["src/workers/index.ts"]
+    },
+    {
+      "id": "worker-handlers-to-pubsub",
+      "source": "worker-handlers",
+      "target": "google-pubsub",
+      "description": "Subscribes to domain event topics",
+      "evidence": ["src/background.ts"]
+    }
+  ]
+}

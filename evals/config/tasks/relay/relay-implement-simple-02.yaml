@@ -1,0 +1,29 @@
+{
+  "id": "relay-implement-simple-02",
+  "repo_id": "relay",
+  "category": "implement_simple",
+  "prompt": "Read the codebase and add a startup guard so a wrapped CLI command with no executable name fails fast with a clear error instead of reaching process spawn. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should reject empty executable commands in the startup/spawn path, surface a clear error, preserve valid quoted command parsing, and add focused tests.\n\nMust mention / touch:\n- src/helpers.rs\n- src/spawner.rs\n- tests/\n\nCommon failure modes:\n- Letting an empty executable reach process spawn\n- Breaking valid quoted command parsing while tightening startup validation",
+  "acceptance_criteria": [
+    "Fails fast when the wrapped CLI command does not resolve to an executable name.",
+    "Surfaces the error through the normal startup/spawn path.",
+    "Preserves valid quoted and inline CLI command parsing.",
+    "Includes focused regression coverage."
+  ],
+  "expected_modules_read": [
+    "src/helpers.rs",
+    "src/spawner.rs",
+    "tests/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "simple",
+    "output_type": "code_change",
+    "primary_surface": "empty-cli-command-guard",
+    "doc_sensitivity": "medium",
+    "verification_scope": "repo_default"
+  }
+}

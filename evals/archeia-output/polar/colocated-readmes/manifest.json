@@ -1,0 +1,70 @@
+[
+  {
+    "source": "clients/packages/i18n/README.md",
+    "target": "clients/packages/i18n/README.md"
+  },
+  {
+    "source": "clients/packages/orbit/README.md",
+    "target": "clients/packages/orbit/README.md"
+  },
+  {
+    "source": "dev/README.md",
+    "target": "dev/README.md"
+  },
+  {
+    "source": "server/README.md",
+    "target": "server/README.md"
+  },
+  {
+    "source": "server/polar/README.md",
+    "target": "server/polar/README.md"
+  },
+  {
+    "source": "server/polar/benefit/README.md",
+    "target": "server/polar/benefit/README.md"
+  },
+  {
+    "source": "server/polar/customer_portal/README.md",
+    "target": "server/polar/customer_portal/README.md"
+  },
+  {
+    "source": "server/polar/integrations/README.md",
+    "target": "server/polar/integrations/README.md"
+  },
+  {
+    "source": "server/polar/kit/README.md",
+    "target": "server/polar/kit/README.md"
+  },
+  {
+    "source": "server/polar/models/README.md",
+    "target": "server/polar/models/README.md"
+  },
+  {
+    "source": "server/polar/oauth2/README.md",
+    "target": "server/polar/oauth2/README.md"
+  },
+  {
+    "source": "server/polar/observability/README.md",
+    "target": "server/polar/observability/README.md"
+  },
+  {
+    "source": "server/polar/transaction/README.md",
+    "target": "server/polar/transaction/README.md"
+  },
+  {
+    "source": "server/polar/worker/README.md",
+    "target": "server/polar/worker/README.md"
+  },
+  {
+    "source": "server/scripts/README.md",
+    "target": "server/scripts/README.md"
+  },
+  {
+    "source": "server/tests/README.md",
+    "target": "server/tests/README.md"
+  },
+  {
+    "source": "server/tinybird/README.md",
+    "target": "server/tinybird/README.md"
+  }
+]

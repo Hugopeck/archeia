@@ -1,0 +1,67 @@
+{
+  "captured_at": "2026-04-09T23:48:18+00:00",
+  "captured_head": "9752461a184940e947cefadc886cba2010cd87fc",
+  "colocated_agents": [
+    "__tests__/agents.md",
+    "__tests__/claude.md",
+    "src/entity/agents.md",
+    "src/entity/claude.md",
+    "src/routes/agents.md",
+    "src/routes/claude.md"
+  ],
+  "colocated_readmes": [
+    "__tests__/README.md",
+    "bin/README.md",
+    "src/README.md",
+    "src/common/README.md",
+    "src/entity/README.md",
+    "src/integrations/README.md",
+    "src/routes/README.md",
+    "src/schema/README.md",
+    "src/workers/README.md"
+  ],
+  "copied_archeia_paths": [
+    ".archeia/Architecture.md",
+    ".archeia/Components.json",
+    ".archeia/Containers.json",
+    ".archeia/DataFlow.json",
+    ".archeia/Entities.json",
+    ".archeia/Guide.md",
+    ".archeia/Standards.md",
+    ".archeia/System.json",
+    ".archeia/diagrams"
+  ],
+  "copied_root_docs": [
+    "AGENTS.md",
+    "CLAUDE.md"
+  ],
+  "pinned_commit": "9752461a184940e947cefadc886cba2010cd87fc",
+  "pipeline_order": [
+    "archeia-scan-repo",
+    "archeia-scan-git",
+    "archeia-write-tech-docs",
+    "archeia-write-readmes",
+    "archeia-write-agents-docs",
+    "archeia-draw-diagrams"
+  ],
+  "repo_id": "daily-api",
+  "skipped_outputs": [
+    ".archeia/StateMachine.json"
+  ],
+  "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/daily-api",
+  "source_repo": "dailydotdev/daily-api",
+  "validation": {
+    "command": [
+      "bash",
+      "/Users/hugopeck/conductor/workspaces/archeia/athens/skills/archeia-write-tech-docs/scripts/validate-evidence.sh",
+      "/tmp/archeia-phase3/daily-api",
+      "/tmp/archeia-phase3/daily-api/.archeia",
+      "--include-root-docs"
+    ],
+    "exit_code": 0,
+    "status": "ok",
+    "stderr": "mode=python\n",
+    "stdout": "{\n  \"mode\": \"python\",\n  \"repo_root\": \"/private/tmp/archeia-phase3/daily-api\",\n  \"output_dir\": \"/private/tmp/archeia-phase3/daily-api/.archeia\",\n  \"checked_files\": [\n    \".archeia/Architecture.md\",\n    \".archeia/GitReport.md\",\n    \".archeia/Guide.md\",\n    \".archeia/ScanReport.md\",\n    \".archeia/Standards.md\",\n    \".archeia/Components.json\",\n    \".archeia/Containers.json\",\n    \".archeia/DataFlow.json\",\n    \".archeia/Entities.json\",\n    \".archeia/System.json\",\n    \"AGENTS.md\",\n    \"CLAUDE.md\"\n  ],\n  \"valid_paths\": [\n    \"src/index.ts\",\n    \"src/background.ts\",\n    \"src/cron.ts\",\n    \"README.md\",\n    \"package.json\",\n    \"src/temporal/notifications/index.ts\",\n    \"src/entity/index.ts\",\n    \"src/workers/index.ts\",\n    \"src/routes/index.ts\",\n    \"src/data-source.ts\",\n    \"src/redis.ts\",\n    \"src/entity/user/index.ts\",\n    \"src/entity/posts/index.ts\",\n    \".nvmrc\",\n    \"docker-compose.yml\",\n    \".env\",\n    \"jest.config.js\",\n    \"clickhouse/migrations\",\n    \"bin/runClickhouseMigrations.ts\",\n    \".eslintrc.js\",\n    \"tsconfig.json\",\n    \".prettierrc\",\n    \".circleci/config.yml\",\n    \".github/workflows\",\n    \"src/schema\",\n    \"src/graphql.ts\",\n    \"src/auth.ts\",\n    \"src/common/index.ts\",\n    \"src/integrations/index.ts\",\n    \"src/graphorm/index.ts\",\n    \"src/workers/notifications/index.ts\",\n    \"src/cron/index.ts\",\n    \"src/entity\",\n    \"src/integrations\",\n    \"src/common\",\n    \"src/routes\",\n    \"src/Context.ts\",\n    \"src/temporal/worker.ts\",\n    \"clickhouse/migrations/1756316678212_post_analytics.up.sql\",\n    \"src/cio.ts\",\n    \"src/onesignal.ts\",\n    \"src/temporal/client.ts\",\n    \"src/routes/public/index.ts\",\n    \"src/entity/user/User.ts\",\n    \"src/entity/posts/Post.ts\",\n    \"src/entity/Source.ts\",\n    \"src/entity/Comment.ts\",\n    \"src/entity/Feed.ts\",\n    \"src/entity/SourceMember.ts\",\n    \"src/entity/Bookmark.ts\",\n    \"src/entity/user/UserStreak.ts\",\n    \"src/entity/View.ts\",\n    \"src/growthbook.ts\",\n    \"src/paddle.ts\"\n  ],\n  \"invalid_paths\": [],\n  \"malformed_evidence\": [],\n  \"stats\": {\n    \"checked_files\": 12,\n    \"valid_paths\": 54,\n    \"invalid_paths\": 0,\n    \"malformed_evidence\": 0\n  }\n}\n"
+  },
+  "worktree": "/tmp/archeia-phase3/daily-api"
+}

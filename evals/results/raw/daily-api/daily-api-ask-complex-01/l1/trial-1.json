@@ -1,0 +1,199 @@
+{
+  "agent_run": {
+    "command": [
+      "claude",
+      "--model",
+      "haiku",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--permission-mode",
+      "auto",
+      "--append-system-prompt",
+      "CRITICAL RULE: You MUST use your tools to read files in this repository before answering. Do NOT answer from memory or training data. Start by exploring the project structure with Bash(ls) or Glob, then read the specific files needed to answer the question. Every claim you make must cite a specific file path you actually read in this session. If you answer without reading files first, your response will be scored as zero.",
+      "-p",
+      "Read the codebase and explain how a new post moves through daily-api until it becomes eligible to appear in a personalized feed. Base your answer only on code you actually read."
+    ],
+    "exit_code": 0,
+    "finished_at": "2026-04-10T04:05:48+00:00",
+    "started_at": "2026-04-10T03:54:52+00:00",
+    "status": "completed",
+    "stderr": "",
+    "stdout": "Based on my analysis of the codebase, here's how a new post moves through daily-api until it becomes eligible for personalized feeds:\n\n## Post Creation & Initial State\n\n**For Squad/User-Generated Posts (Freeform, Polls, Shares):**\n- Posts are created with `visible: true` and `showOnFeed: true` by default (src/common/post.ts:369-376)\n- The post undergoes **Vordr checks** (src/common/vordr.ts) before insertion:\n  - If user reputation < 10 \u2192 `banned: true`, `showOnFeed: false`\n  - If content contains spam keywords \u2192 `banned: true`, `showOnFeed: false`\n  - If title contains emojis or banned keywords \u2192 `banned: true`, `showOnFeed: false`\n  - If IP is on vordr subnet \u2192 `banned: true`, `showOnFeed: false`\n  - If user has negative trust score \u2192 `banned: true`, `showOnFeed: false`\n\n**For Article Posts (external links from crawlers):**\n- Created via private RPC endpoint with `visible: false`, `showOnFeed: false` (src/routes/private/rpc.ts:85-86)\n- The visibility is initially false because the article content hasn't been scraped yet\n\n## Visibility & Feed Eligibility\n\n**Critical Transition - Post Becomes Visible:**\n\nAn article post's `visible` flag is set to `true` if and only if it has a `title` (src/entity/posts/utils.ts:355):\n```typescript\nconst isVisible = !!title;\n```\n\nWhen an article is created, `notifyContentRequested` publishes an event (src/common/pubsub.ts:341) that presumably triggers an external scraping service (like Yggdrasil) to:\n1. Fetch the article content\n2. Extract title, description, and image\n3. Update the post via the RPC endpoint with the scraped data\n\nOnce title is available, the post is updated to `visible: true`.\n\n## Feed Eligibility Filtering\n\nWhen a post becomes visible (`visible: true`), the CDC (Change Data Capture) worker publishes an `api.v1.post-visible` event (src/workers/cdc/primary.ts:802-804), which triggers notification workers and makes the post eligible for feeds.\n\n**Feed filters applied at query time** (src/common/feedGenerator.ts:428-490 - `applyFeedWhere`):\n1. Post must not be `deleted` (deleted = false)\n2. Post must pass `showOnFeed` check (`showOnFeed` = true)  \n3. Post must not be `banned` (banned = false)\n4. Post must be correct type (article, freeform, etc.)\n5. Post must not be `private` (private = false) - unless allowPrivatePosts enabled\n6. Post must not be hidden by the user (UserPost.hidden = false)\n7. Squad posts must have `publicThreshold = true` if from private/squad sources\n8. Must pass blocked/filtered user checks for personalized feeds\n\n## Complete Timeline\n\n1. **T0**: Post created (`visible: true/false` depends on type)\n2. **T0**: Vordr checks applied (may set `banned: true`, `showOnFeed: false`)\n3. **T0 (articles only)**: `notifyContentRequested` event published\n4. **T1 (articles)**: External scraper fetches content and updates post with title\n5. **T1**: CDC detects change, if `visible: false \u2192 true`, publishes `api.v1.post-visible` event\n6. **T1+**: Post becomes available in feed queries that check:\n   - `visible = true`\n   - `showOnFeed = true`\n   - `banned = false`\n   - `deleted = false`\n   - User has access (not private, not blocked, etc.)\n\nThe key gatekeepers are: **visibility (`visible`), feed eligibility (`showOnFeed`), ban status (`banned`), and content moderation (Vordr)**.",
+    "transcript_path": "/tmp/archeia-phase4/daily-api-l1-daily-api-ask-complex-01-trial1/.archeia-eval/conversation.json"
+  },
+  "code_quality": {
+    "lint": {
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "cwd": "/tmp/archeia-phase4/daily-api-l1-daily-api-ask-complex-01-trial1",
+      "exit_code": 1,
+      "finished_at": "2026-04-10T04:06:07+00:00",
+      "started_at": "2026-04-10T04:05:55+00:00",
+      "stderr": "sh: eslint: command not found\n",
+      "stdout": "\n> daily-api@ lint /private/tmp/archeia-phase4/daily-api-l1-daily-api-ask-complex-01-trial1\n> eslint . --ext .js,.ts --max-warnings 0\n\n\u2009ELIFECYCLE\u2009 Command failed.\n\u2009WARN\u2009  Local package.json exists, but node_modules missing, did you mean to install?\n"
+    },
+    "lint_baseline": {
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "cwd": "/tmp/archeia-phase4/daily-api-l1-daily-api-ask-complex-01-trial1",
+      "exit_code": 1,
+      "finished_at": "2026-04-10T03:54:52+00:00",
+      "started_at": "2026-04-10T03:54:52+00:00",
+      "stderr": "sh: eslint: command not found\n",
+      "stdout": "\n> daily-api@ lint /private/tmp/archeia-phase4/daily-api-l1-daily-api-ask-complex-01-trial1\n> eslint . --ext .js,.ts --max-warnings 0\n\n\u2009ELIFECYCLE\u2009 Command failed.\n\u2009WARN\u2009  Local package.json exists, but node_modules missing, did you mean to install?\n"
+    },
+    "lint_baseline_findings": 5,
+    "lint_delta": 0,
+    "lint_findings": 5,
+    "tests": null
+  },
+  "condition_application": {
+    "archeia_output": "evals/archeia-output/daily-api",
+    "condition_id": "l1",
+    "copied_paths": [
+      ".archeia",
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "kept_existing_docs": false,
+    "removed_paths": [
+      "AGENTS.md"
+    ],
+    "repo_id": "daily-api",
+    "worktree": "/tmp/archeia-phase4/daily-api-l1-daily-api-ask-complex-01-trial1"
+  },
+  "condition_commit": {
+    "command": [
+      "git",
+      "commit",
+      "-m",
+      "Apply evaluation condition"
+    ],
+    "cwd": "/tmp/archeia-phase4/daily-api-l1-daily-api-ask-complex-01-trial1",
+    "exit_code": 0,
+    "finished_at": "2026-04-10T03:54:52+00:00",
+    "started_at": "2026-04-10T03:54:52+00:00",
+    "stderr": "",
+    "stdout": "[detached HEAD e4e8f49] Apply evaluation condition\n 16 files changed, 1570 insertions(+)\n create mode 100644 .archeia/Architecture.md\n create mode 100644 .archeia/Components.json\n create mode 100644 .archeia/Containers.json\n create mode 100644 .archeia/DataFlow.json\n create mode 100644 .archeia/Entities.json\n create mode 100644 .archeia/Guide.md\n create mode 100644 .archeia/Standards.md\n create mode 100644 .archeia/System.json\n create mode 100644 .archeia/diagrams/components-api-server.md\n create mode 100644 .archeia/diagrams/components-background-worker.md\n create mode 100644 .archeia/diagrams/components-cron-runner.md\n create mode 100644 .archeia/diagrams/containers.md\n create mode 100644 .archeia/diagrams/context.md\n create mode 100644 .archeia/diagrams/erd.md\n create mode 100644 .archeia/diagrams/sequence-background-event.md\n create mode 100644 .archeia/diagrams/sequence-primary.md\n"
+  },
+  "condition_id": "l1",
+  "diff": "",
+  "finished_at": "2026-04-10T04:07:06+00:00",
+  "judge": {
+    "command": [
+      "claude",
+      "--output-format",
+      "json",
+      "-p",
+      "You are judging an Archeia evaluation run.\n\nTask category: ask_complex\nTask id: daily-api-ask-complex-01\n\nTask prompt:\nRead the codebase and explain how a new post moves through daily-api until it becomes eligible to appear in a personalized feed. Base your answer only on code you actually read.\n\nGround truth / reference:\nExpected outcome:\n- Must identify the relevant route or ingestion entry surfaces, persistence/entity layers, ranking or selection-related code, and the modules that assemble personalized feed data. Expected grounding includes routes, entity models, graph/query helpers, and feed-related supporting services.\n\nMust mention / touch:\n- src/routes/\n- src/entity/\n- src/graphorm/\n- src/dataLoaderService.ts\n- __tests__/\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo\n\nAcceptance criteria:\n[\n  \"Explains ingestion/persistence and feed-selection flow in order.\",\n  \"Uses real module names from daily-api.\",\n  \"Connects route, entity, and feed-building layers.\",\n  \"Avoids inventing external indexing systems that are not evidenced.\"\n]\n\nAgent response:\nBased on my analysis of the codebase, here's how a new post moves through daily-api until it becomes eligible for personalized feeds:\n\n## Post Creation & Initial State\n\n**For Squad/User-Generated Posts (Freeform, Polls, Shares):**\n- Posts are created with `visible: true` and `showOnFeed: true` by default (src/common/post.ts:369-376)\n- The post undergoes **Vordr checks** (src/common/vordr.ts) before insertion:\n  - If user reputation < 10 \u2192 `banned: true`, `showOnFeed: false`\n  - If content contains spam keywords \u2192 `banned: true`, `showOnFeed: false`\n  - If title contains emojis or banned keywords \u2192 `banned: true`, `showOnFeed: false`\n  - If IP is on vordr subnet \u2192 `banned: true`, `showOnFeed: false`\n  - If user has negative trust score \u2192 `banned: true`, `showOnFeed: false`\n\n**For Article Posts (external links from crawlers):**\n- Created via private RPC endpoint with `visible: false`, `showOnFeed: false` (src/routes/private/rpc.ts:85-86)\n- The visibility is initially false because the article content hasn't been scraped yet\n\n## Visibility & Feed Eligibility\n\n**Critical Transition - Post Becomes Visible:**\n\nAn article post's `visible` flag is set to `true` if and only if it has a `title` (src/entity/posts/utils.ts:355):\n```typescript\nconst isVisible = !!title;\n```\n\nWhen an article is created, `notifyContentRequested` publishes an event (src/common/pubsub.ts:341) that presumably triggers an external scraping service (like Yggdrasil) to:\n1. Fetch the article content\n2. Extract title, description, and image\n3. Update the post via the RPC endpoint with the scraped data\n\nOnce title is available, the post is updated to `visible: true`.\n\n## Feed Eligibility Filtering\n\nWhen a post becomes visible (`visible: true`), the CDC (Change Data Capture) worker publishes an `api.v1.post-visible` event (src/workers/cdc/primary.ts:802-804), which triggers notification workers and makes the post eligible for feeds.\n\n**Feed filters applied at query time** (src/common/feedGenerator.ts:428-490 - `applyFeedWhere`):\n1. Post must not be `deleted` (deleted = false)\n2. Post must pass `showOnFeed` check (`showOnFeed` = true)  \n3. Post must not be `banned` (banned = false)\n4. Post must be correct type (article, freeform, etc.)\n5. Post must not be `private` (private = false) - unless allowPrivatePosts enabled\n6. Post must not be hidden by the user (UserPost.hidden = false)\n7. Squad posts must have `publicThreshold = true` if from private/squad sources\n8. Must pass blocked/filtered user checks for personalized feeds\n\n## Complete Timeline\n\n1. **T0**: Post created (`visible: true/false` depends on type)\n2. **T0**: Vordr checks applied (may set `banned: true`, `showOnFeed: false`)\n3. **T0 (articles only)**: `notifyContentRequested` event published\n4. **T1 (articles)**: External scraper fetches content and updates post with title\n5. **T1**: CDC detects change, if `visible: false \u2192 true`, publishes `api.v1.post-visible` event\n6. **T1+**: Post becomes available in feed queries that check:\n   - `visible = true`\n   - `showOnFeed = true`\n   - `banned = false`\n   - `deleted = false`\n   - User has access (not private, not blocked, etc.)\n\nThe key gatekeepers are: **visibility (`visible`), feed eligibility (`showOnFeed`), ban status (`banned`), and content moderation (Vordr)**.\n\nGit diff:\n\n\nCode-quality signals:\n{\n  \"lint\": {\n    \"command\": [\n      \"pnpm\",\n      \"lint\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/daily-api-l1-daily-api-ask-complex-01-trial1\",\n    \"exit_code\": 1,\n    \"finished_at\": \"2026-04-10T04:06:07+00:00\",\n    \"started_at\": \"2026-04-10T04:05:55+00:00\",\n    \"stderr\": \"sh: eslint: command not found\\n\",\n    \"stdout\": \"\\n> daily-api@ lint /private/tmp/archeia-phase4/daily-api-l1-daily-api-ask-complex-01-trial1\\n> eslint . --ext .js,.ts --max-warnings 0\\n\\n\\u2009ELIFECYCLE\\u2009 Command failed.\\n\\u2009WARN\\u2009  Local package.json exists, but node_modules missing, did you mean to install?\\n\"\n  },\n  \"lint_baseline\": {\n    \"command\": [\n      \"pnpm\",\n      \"lint\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/daily-api-l1-daily-api-ask-complex-01-trial1\",\n    \"exit_code\": 1,\n    \"finished_at\": \"2026-04-10T03:54:52+00:00\",\n    \"started_at\": \"2026-04-10T03:54:52+00:00\",\n    \"stderr\": \"sh: eslint: command not found\\n\",\n    \"stdout\": \"\\n> daily-api@ lint /private/tmp/archeia-phase4/daily-api-l1-daily-api-ask-complex-01-trial1\\n> eslint . --ext .js,.ts --max-warnings 0\\n\\n\\u2009ELIFECYCLE\\u2009 Command failed.\\n\\u2009WARN\\u2009  Local package.json exists, but node_modules missing, did you mean to install?\\n\"\n  },\n  \"lint_baseline_findings\": 5,\n  \"lint_delta\": 0,\n  \"lint_findings\": 5,\n  \"tests\": null\n}\n\nEfficiency signals:\n{\n  \"action_calls\": 0,\n  \"exploration_calls\": 20,\n  \"exploration_to_action_ratio\": null,\n  \"finished_at\": \"2026-04-10T04:05:29.881000+00:00\",\n  \"input_tokens\": 482,\n  \"output_tokens\": 10945,\n  \"started_at\": \"2026-04-10T03:55:02.165000+00:00\",\n  \"time_to_completion_seconds\": 627.716,\n  \"time_to_first_edit_seconds\": null,\n  \"tool_call_count\": 59,\n  \"tool_counts\": {\n    \"bash\": 39,\n    \"read\": 20\n  },\n  \"total_tokens\": 11427\n}\n\nScore the run from 0-100 using four equally weighted 0-25 dimensions:\n1. Correctness: factual accuracy against ground truth.\n2. Completeness: covers all relevant systems and caveats.\n3. Evidence alignment: cites or reflects the repo-grounded flow.\n4. Communication quality: organized, concise, and directly useful.\n\nReturn JSON only with this schema:\n{\n  \"total_score\": 0,\n  \"dimension_scores\": {\n    \"correctness\": 0,\n    \"completeness\": 0,\n    \"convention_fit\": 0,\n    \"verification_or_communication\": 0\n  },\n  \"summary\": \"short paragraph\",\n  \"strengths\": [\"...\"],\n  \"weaknesses\": [\"...\"],\n  \"confidence\": \"low|medium|high\"\n}"
+    ],
+    "confidence": "high",
+    "dimension_scores": {
+      "completeness": 12,
+      "convention_fit": 16,
+      "correctness": 19,
+      "verification_or_communication": 15
+    },
+    "finished_at": "2026-04-10T04:07:06+00:00",
+    "started_at": "2026-04-10T04:06:07+00:00",
+    "status": "completed",
+    "strengths": [
+      "Accurate description of post creation paths (squad vs article) with real file references and line numbers",
+      "Good coverage of Vordr moderation checks as a gatekeeper",
+      "Clear explanation of the visible/showOnFeed/banned flag transitions",
+      "Well-organized timeline format that traces the lifecycle end-to-end",
+      "Properly hedges speculation about external systems (Yggdrasil) with 'presumably'"
+    ],
+    "summary": "The response provides a well-structured and mostly accurate account of post creation, Vordr moderation, visibility transitions, and feed-time filtering, grounded in real file paths with line numbers. However, it misses two major layers explicitly required by the ground truth: src/graphorm/ (the GraphQL/query resolution layer that actually assembles feed responses) and src/dataLoaderService.ts (the batched data-loading service central to personalized feed assembly). The __tests__/ directory is also unmentioned. The description stops at feedGenerator filtering without explaining how personalized feed data is actually resolved and served through the GraphORM and data-loader infrastructure, leaving a significant gap between 'eligible in the database' and 'appears in a user's feed response.'",
+    "total_score": 62,
+    "weaknesses": [
+      "Completely omits src/graphorm/ \u2014 the GraphQL ORM layer that resolves feed queries, a required layer per ground truth",
+      "Completely omits src/dataLoaderService.ts \u2014 the batched data-loading service critical for personalized feed assembly",
+      "Does not mention __tests__/ or how the flow is validated",
+      "Stops at database-level filtering (feedGenerator) without explaining how the personalized feed is actually assembled and served to clients",
+      "Limited coverage of src/routes/ beyond the private RPC endpoint \u2014 doesn't explore the feed-serving routes"
+    ]
+  },
+  "metrics": {
+    "action_calls": 0,
+    "exploration_calls": 20,
+    "exploration_to_action_ratio": null,
+    "finished_at": "2026-04-10T04:05:29.881000+00:00",
+    "input_tokens": 482,
+    "output_tokens": 10945,
+    "started_at": "2026-04-10T03:55:02.165000+00:00",
+    "time_to_completion_seconds": 627.716,
+    "time_to_first_edit_seconds": null,
+    "tool_call_count": 59,
+    "tool_counts": {
+      "bash": 39,
+      "read": 20
+    },
+    "total_tokens": 11427
+  },
+  "repo": {
+    "archeia_output_path": "evals/archeia-output/daily-api",
+    "baseline_docs": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "branch": "main",
+    "commands": {
+      "lint": "pnpm lint",
+      "test": null
+    },
+    "commit": "9752461a184940e947cefadc886cba2010cd87fc",
+    "complexity": "medium",
+    "id": "daily-api",
+    "language": "ts",
+    "loc": 301000,
+    "notes": [
+      "Large TypeScript API with tests.",
+      "Good fit for convention-following implementation tasks."
+    ],
+    "repo": "dailydotdev/daily-api",
+    "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/daily-api",
+    "tests_available": true
+  },
+  "repo_id": "daily-api",
+  "result_path": "/Users/hugopeck/conductor/workspaces/archeia/phoenix/evals/results/raw/daily-api/daily-api-ask-complex-01/l1/trial-1.json",
+  "started_at": "2026-04-10T03:54:51+00:00",
+  "status": "completed",
+  "task": {
+    "acceptance_criteria": [
+      "Explains ingestion/persistence and feed-selection flow in order.",
+      "Uses real module names from daily-api.",
+      "Connects route, entity, and feed-building layers.",
+      "Avoids inventing external indexing systems that are not evidenced."
+    ],
+    "category": "ask_complex",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "expected_modules_read": [
+      "src/routes/",
+      "src/entity/",
+      "src/graphorm/",
+      "src/dataLoaderService.ts",
+      "__tests__/"
+    ],
+    "ground_truth": "Expected outcome:\n- Must identify the relevant route or ingestion entry surfaces, persistence/entity layers, ranking or selection-related code, and the modules that assemble personalized feed data. Expected grounding includes routes, entity models, graph/query helpers, and feed-related supporting services.\n\nMust mention / touch:\n- src/routes/\n- src/entity/\n- src/graphorm/\n- src/dataLoaderService.ts\n- __tests__/\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo",
+    "id": "daily-api-ask-complex-01",
+    "metadata": {
+      "difficulty": "complex",
+      "doc_sensitivity": "high",
+      "output_type": "explanation",
+      "primary_surface": "feed-lifecycle",
+      "verification_scope": "repo_default"
+    },
+    "prompt": "Read the codebase and explain how a new post moves through daily-api until it becomes eligible to appear in a personalized feed. Base your answer only on code you actually read.",
+    "repo_id": "daily-api"
+  },
+  "trial": 1
+}

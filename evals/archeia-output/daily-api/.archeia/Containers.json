@@ -1,0 +1,199 @@
+{
+  "system_boundary": {
+    "id": "daily-api",
+    "name": "Daily API",
+    "description": "Backend service providing the daily.dev developer news feed, GraphQL API, background event processing, and community engagement layer."
+  },
+  "containers": [
+    {
+      "id": "api-server",
+      "name": "API Server",
+      "type": "api",
+      "description": "Fastify HTTP server hosting the Mercurius GraphQL endpoint, REST routes (RSS, webhooks, devcards, boot), and the /v1 compatibility layer.",
+      "technology": "Node.js 22 / TypeScript / Fastify 5 / Mercurius GraphQL",
+      "evidence": ["src/index.ts", "src/routes/index.ts", "src/graphql.ts"]
+    },
+    {
+      "id": "background-worker",
+      "name": "Background Worker",
+      "type": "worker",
+      "description": "Google Pub/Sub subscriber process that handles domain events — reputation updates, notifications, CDC replication, digest emails, and content image processing.",
+      "technology": "Node.js 22 / TypeScript / Google Cloud Pub/Sub",
+      "evidence": ["src/background.ts", "src/workers/index.ts"]
+    },
+    {
+      "id": "cron-runner",
+      "name": "Cron Runner",
+      "type": "worker",
+      "description": "Single-shot process that runs a named cron handler; deployed as Kubernetes CronJob.",
+      "technology": "Node.js 22 / TypeScript",
+      "evidence": ["src/cron.ts", "src/cron/index.ts", "package.json"]
+    },
+    {
+      "id": "temporal-worker",
+      "name": "Temporal Worker",
+      "type": "worker",
+      "description": "Temporal workflow worker that executes notification delivery workflows and activities.",
+      "technology": "Node.js 22 / TypeScript / Temporal SDK 1.14",
+      "evidence": ["src/temporal/notifications/index.ts", "src/temporal/worker.ts"]
+    }
+  ],
+  "external_systems": [
+    {
+      "id": "postgresql",
+      "name": "PostgreSQL",
+      "description": "Primary relational database with master/replica replication for all domain entities.",
+      "technology": "PostgreSQL 18",
+      "evidence": ["src/data-source.ts", "docker-compose.yml"]
+    },
+    {
+      "id": "redis",
+      "name": "Redis",
+      "description": "Cache, Pub/Sub relay, rate limiting, and real-time subscription transport.",
+      "technology": "Redis Stack 7.2",
+      "evidence": ["src/redis.ts", "docker-compose.yml"]
+    },
+    {
+      "id": "google-pubsub",
+      "name": "Google Cloud Pub/Sub",
+      "description": "Async event bus used to dispatch background worker jobs from the API.",
+      "technology": "Google Cloud Pub/Sub",
+      "evidence": ["src/background.ts", "package.json"]
+    },
+    {
+      "id": "clickhouse",
+      "name": "ClickHouse",
+      "description": "Columnar database for post analytics events and user profile analytics.",
+      "technology": "ClickHouse",
+      "evidence": ["clickhouse/migrations/1756316678212_post_analytics.up.sql", "package.json"]
+    },
+    {
+      "id": "temporal",
+      "name": "Temporal",
+      "description": "Durable workflow orchestration for notification delivery workflows.",
+      "technology": "Temporal 1.14",
+      "evidence": ["src/temporal/notifications/index.ts", "package.json"]
+    },
+    {
+      "id": "customer-io",
+      "name": "Customer.io",
+      "description": "Transactional and marketing email delivery for user events.",
+      "technology": "Customer.io",
+      "evidence": ["src/cio.ts", "package.json"]
+    },
+    {
+      "id": "onesignal",
+      "name": "OneSignal",
+      "description": "Mobile and web push notification delivery.",
+      "technology": "OneSignal",
+      "evidence": ["src/onesignal.ts", "package.json"]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "api-to-postgresql",
+      "source": "api-server",
+      "target": "postgresql",
+      "description": "Reads and writes domain entities via TypeORM",
+      "evidence": ["src/data-source.ts"]
+    },
+    {
+      "id": "api-to-redis",
+      "source": "api-server",
+      "target": "redis",
+      "description": "Caches resolver results and relays GraphQL subscriptions",
+      "evidence": ["src/redis.ts"]
+    },
+    {
+      "id": "api-to-pubsub",
+      "source": "api-server",
+      "target": "google-pubsub",
+      "description": "Publishes domain events to trigger background workers",
+      "evidence": ["src/background.ts"]
+    },
+    {
+      "id": "api-to-clickhouse",
+      "source": "api-server",
+      "target": "clickhouse",
+      "description": "Writes post view and analytics events",
+      "evidence": ["package.json"]
+    },
+    {
+      "id": "api-to-temporal",
+      "source": "api-server",
+      "target": "temporal",
+      "description": "Schedules notification workflows",
+      "evidence": ["src/temporal/client.ts"]
+    },
+    {
+      "id": "worker-to-pubsub",
+      "source": "background-worker",
+      "target": "google-pubsub",
+      "description": "Subscribes to domain event topics",
+      "evidence": ["src/background.ts"]
+    },
+    {
+      "id": "worker-to-postgresql",
+      "source": "background-worker",
+      "target": "postgresql",
+      "description": "Reads and writes domain data during event processing",
+      "evidence": ["src/background.ts"]
+    },
+    {
+      "id": "worker-to-redis",
+      "source": "background-worker",
+      "target": "redis",
+      "description": "Updates cached counters and triggers real-time events",
+      "evidence": ["src/redis.ts"]
+    },
+    {
+      "id": "worker-to-cio",
+      "source": "background-worker",
+      "target": "customer-io",
+      "description": "Syncs user lifecycle events for emails",
+      "evidence": ["src/cio.ts"]
+    },
+    {
+      "id": "worker-to-onesignal",
+      "source": "background-worker",
+      "target": "onesignal",
+      "description": "Delivers push notifications on user events",
+      "evidence": ["src/onesignal.ts"]
+    },
+    {
+      "id": "cron-to-postgresql",
+      "source": "cron-runner",
+      "target": "postgresql",
+      "description": "Reads and updates data for scheduled maintenance tasks",
+      "evidence": ["src/cron.ts"]
+    },
+    {
+      "id": "temporal-worker-to-temporal",
+      "source": "temporal-worker",
+      "target": "temporal",
+      "description": "Polls for and executes workflow tasks",
+      "evidence": ["src/temporal/notifications/index.ts"]
+    },
+    {
+      "id": "temporal-worker-to-postgresql",
+      "source": "temporal-worker",
+      "target": "postgresql",
+      "description": "Executes notification activities that read user and notification data",
+      "evidence": ["src/temporal/notifications/index.ts"]
+    }
+  ],
+  "people_container_mappings": [
+    {
+      "person_id": "authenticated-user",
+      "container_id": "api-server",
+      "description": "Sends GraphQL queries and mutations over HTTPS",
+      "evidence": ["src/index.ts"]
+    },
+    {
+      "person_id": "anonymous-user",
+      "container_id": "api-server",
+      "description": "Reads public feed content over HTTPS",
+      "evidence": ["src/routes/public/index.ts"]
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "system": {
+    "id": "arq",
+    "name": "arq",
+    "description": "Python asyncio job queue library backed by Redis for distributed background task execution.",
+    "technology": "Python 3.9+, asyncio",
+    "evidence": ["pyproject.toml", "arq/__init__.py", "README.md"]
+  },
+  "people": [
+    {
+      "id": "developer",
+      "name": "Library Consumer",
+      "description": "Python developer who imports arq to enqueue jobs or run a worker process.",
+      "evidence": ["README.md", "arq/connections.py", "arq/worker.py"]
+    },
+    {
+      "id": "ops",
+      "name": "Operator",
+      "description": "Person or CI system that invokes the arq CLI to start and monitor worker processes.",
+      "evidence": ["arq/cli.py", ".github/workflows/ci.yml"]
+    }
+  ],
+  "external_systems": [
+    {
+      "id": "redis",
+      "name": "Redis",
+      "description": "Primary data store; holds job queues (sorted sets), in-progress markers, and job results with TTL.",
+      "technology": "Redis 5/6/7",
+      "evidence": ["pyproject.toml", "tests/conftest.py", "arq/connections.py"]
+    },
+    {
+      "id": "pypi",
+      "name": "PyPI",
+      "description": "Package registry where arq is published; release is triggered via GitHub Actions on tag push.",
+      "technology": "PyPI / twine",
+      "evidence": [".github/workflows/ci.yml"]
+    },
+    {
+      "id": "netlify",
+      "name": "Netlify",
+      "description": "Hosts the arq documentation site; docs are published via Makefile publish-docs target on release.",
+      "technology": "Netlify",
+      "evidence": [".github/workflows/ci.yml", "Makefile"]
+    }
+  ],
+  "relationships": [
+    {
+      "source": "developer",
+      "target": "arq",
+      "description": "Imports arq to enqueue jobs and configure workers in application code.",
+      "evidence": ["arq/connections.py", "arq/worker.py"]
+    },
+    {
+      "source": "ops",
+      "target": "arq",
+      "description": "Runs arq CLI to start worker processes and check worker health.",
+      "evidence": ["arq/cli.py"]
+    },
+    {
+      "source": "arq",
+      "target": "redis",
+      "description": "Reads and writes job data using Redis sorted sets, hashes, and key-TTL patterns.",
+      "evidence": ["arq/connections.py", "arq/worker.py"]
+    },
+    {
+      "source": "arq",
+      "target": "pypi",
+      "description": "Published to PyPI on version tag via GitHub Actions release job.",
+      "evidence": [".github/workflows/ci.yml"]
+    },
+    {
+      "source": "arq",
+      "target": "netlify",
+      "description": "Documentation site deployed to Netlify via make publish-docs.",
+      "evidence": [".github/workflows/ci.yml", "Makefile"]
+    }
+  ]
+}

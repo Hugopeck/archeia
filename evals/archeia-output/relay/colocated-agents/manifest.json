@@ -1,0 +1,26 @@
+[
+  {
+    "source": "packages/sdk/agents.md",
+    "target": "packages/sdk/agents.md"
+  },
+  {
+    "source": "packages/sdk/claude.md",
+    "target": "packages/sdk/claude.md"
+  },
+  {
+    "source": "src/agents.md",
+    "target": "src/agents.md"
+  },
+  {
+    "source": "src/claude.md",
+    "target": "src/claude.md"
+  },
+  {
+    "source": "tests/benchmarks/agents.md",
+    "target": "tests/benchmarks/agents.md"
+  },
+  {
+    "source": "tests/benchmarks/claude.md",
+    "target": "tests/benchmarks/claude.md"
+  }
+]

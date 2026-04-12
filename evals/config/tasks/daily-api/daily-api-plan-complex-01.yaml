@@ -1,0 +1,30 @@
+{
+  "id": "daily-api-plan-complex-01",
+  "repo_id": "daily-api",
+  "category": "plan_complex",
+  "prompt": "Read the codebase and design a referral system that spans user-facing routes, persistence, notifications, and analytics surfaces. Ground your plan in the actual modules and patterns you find.",
+  "ground_truth": "Expected outcome:\n- The plan should map the affected entities, API surfaces, side effects, and test strategy. It should identify how the feature threads through daily-api's existing patterns rather than proposing a parallel subsystem.\n\nMust mention / touch:\n- src/entity/\n- src/routes/\n- src/notifications/\n- src/telemetry/\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path",
+  "acceptance_criteria": [
+    "Identifies the right route, entity, notification, and analytics surfaces.",
+    "Includes sequencing and contracts between affected areas.",
+    "Provides a realistic testing strategy.",
+    "Fits existing project conventions."
+  ],
+  "expected_modules_read": [
+    "src/entity/",
+    "src/routes/",
+    "src/notifications/",
+    "src/telemetry/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "plan",
+    "primary_surface": "referral-system",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

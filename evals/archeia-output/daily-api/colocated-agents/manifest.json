@@ -1,0 +1,26 @@
+[
+  {
+    "source": "__tests__/agents.md",
+    "target": "__tests__/agents.md"
+  },
+  {
+    "source": "__tests__/claude.md",
+    "target": "__tests__/claude.md"
+  },
+  {
+    "source": "src/entity/agents.md",
+    "target": "src/entity/agents.md"
+  },
+  {
+    "source": "src/entity/claude.md",
+    "target": "src/entity/claude.md"
+  },
+  {
+    "source": "src/routes/agents.md",
+    "target": "src/routes/agents.md"
+  },
+  {
+    "source": "src/routes/claude.md",
+    "target": "src/routes/claude.md"
+  }
+]

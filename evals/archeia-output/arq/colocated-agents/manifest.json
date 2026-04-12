@@ -1,0 +1,18 @@
+[
+  {
+    "source": "arq/agents.md",
+    "target": "arq/agents.md"
+  },
+  {
+    "source": "arq/claude.md",
+    "target": "arq/claude.md"
+  },
+  {
+    "source": "tests/agents.md",
+    "target": "tests/agents.md"
+  },
+  {
+    "source": "tests/claude.md",
+    "target": "tests/claude.md"
+  }
+]

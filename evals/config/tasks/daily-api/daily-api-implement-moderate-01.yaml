@@ -1,0 +1,30 @@
+{
+  "id": "daily-api-implement-moderate-01",
+  "repo_id": "daily-api",
+  "category": "implement_moderate",
+  "prompt": "Read the codebase and add an optional description field to bookmark lists and expose it through the existing bookmark-list API responses. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should add one narrow bookmark-list field at the entity layer, thread it through the owning schema and route responses, and add targeted tests. It should follow current bookmark-list patterns rather than creating parallel response shapes.\n\nMust mention / touch:\n- src/entity/BookmarkList.ts\n- src/schema/bookmarks.ts\n- src/routes/public/bookmarks.ts\n- __tests__/\n\nCommon failure modes:\n- Adding the field without exposing it consistently through existing bookmark-list responses\n- Expanding the change into unrelated bookmark features",
+  "acceptance_criteria": [
+    "Adds one focused field to bookmark lists at the right model layer.",
+    "Propagates the field through existing bookmark-list response paths.",
+    "Follows current bookmark-list schema and route conventions.",
+    "Includes targeted regression coverage."
+  ],
+  "expected_modules_read": [
+    "src/entity/BookmarkList.ts",
+    "src/schema/bookmarks.ts",
+    "src/routes/public/bookmarks.ts",
+    "__tests__/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "moderate",
+    "output_type": "code_change",
+    "primary_surface": "bookmark-list-description",
+    "doc_sensitivity": "medium",
+    "verification_scope": "repo_default"
+  }
+}

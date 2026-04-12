@@ -1,0 +1,29 @@
+{
+  "id": "arq-implement-complex-01",
+  "repo_id": "arq",
+  "category": "implement_complex",
+  "prompt": "Read the codebase and make aborted jobs distinguishable from ordinary failures when inspecting stored job results after worker cleanup. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should thread an explicit aborted outcome through worker cleanup and stored job result inspection, while keeping existing retry and failure behavior otherwise intact. It should add a regression test for the abort path.\n\nMust mention / touch:\n- arq/jobs.py\n- arq/worker.py\n- tests/test_worker.py\n\nCommon failure modes:\n- Collapsing aborted jobs back into generic failures\n- Skipping regression coverage for result inspection after aborts",
+  "acceptance_criteria": [
+    "Makes aborted jobs distinguishable from ordinary failures in result inspection.",
+    "Threads the aborted outcome through worker cleanup and stored results.",
+    "Adds a regression test for the abort/result interaction.",
+    "Avoids unrelated retry or worker API changes."
+  ],
+  "expected_modules_read": [
+    "arq/jobs.py",
+    "arq/worker.py",
+    "tests/test_worker.py"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "code_change",
+    "primary_surface": "aborted-result-status",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "mitmproxy-implement-moderate-01",
+  "repo_id": "mitmproxy",
+  "category": "implement_moderate",
+  "prompt": "Read the codebase and add a runtime option that makes flow-filter matching case-sensitive without relying on an environment variable. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should add one small option following existing option patterns, thread it into flow-filter compilation, preserve the current default behavior, and add focused tests for both default and case-sensitive matching.\n\nMust mention / touch:\n- mitmproxy/options.py\n- mitmproxy/flowfilter.py\n- test/mitmproxy/addons/test_view.py\n- test/mitmproxy/addons/test_intercept.py\n\nCommon failure modes:\n- Replacing the current default behavior instead of making case sensitivity configurable\n- Adding an ad hoc code path outside the normal option plumbing",
+  "acceptance_criteria": [
+    "Adds a runtime option via established mitmproxy option patterns.",
+    "Threads the option into flow-filter matching behavior.",
+    "Keeps the current default matching behavior unchanged.",
+    "Includes focused tests for configurable case sensitivity."
+  ],
+  "expected_modules_read": [
+    "mitmproxy/options.py",
+    "mitmproxy/flowfilter.py",
+    "test/mitmproxy/addons/test_view.py",
+    "test/mitmproxy/addons/test_intercept.py"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "moderate",
+    "output_type": "code_change",
+    "primary_surface": "filter-case-sensitivity-option",
+    "doc_sensitivity": "medium",
+    "verification_scope": "repo_default"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "skill_name": "archeia-write-readmes",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just ran archeia-scan-repo on our Django backend (futuur-api). The scan report is at .archeia/codebase/scan-report.md and shows about 20 directories that need READMEs. We also have .archeia/codebase/architecture/architecture.md from a previous archeia-write-tech-docs run. Generate colocated READMEs for all the directories that need them. This is a prediction market platform — the core domain is around markets, wagers, positions, and order matching. Make sure the READMEs actually explain what each module does in domain terms, not just generic Django boilerplate.",
+      "expected_output": "45-50 README.md files created/updated across the repo. Each should have: a domain-specific title and purpose (not 'Contains the X package'), a mermaid diagram showing data flow or relationships (not a plain text tree), key concepts unique to that module (not generic Django patterns repeated everywhere), and usage that explains what integrations do (not just 'imports appear in X'). Existing READMEs like api/README.md should have template sections added below the original content without deleting anything.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Run archeia-write-readmes on this Python project. The scan report exists at .archeia/codebase/scan-report.md. It's a task management CLI tool — the core domain is around projects, tasks, decomposition, and agent workflows. Focus on making the READMEs useful for someone onboarding to the codebase for the first time.",
+      "expected_output": "READMEs created for directories identified in the scan report. Each should have mermaid diagrams showing how modules relate to each other, domain-specific key concepts (not generic Python patterns), and usage sections explaining actual integration points. The output should be concise (under 40 lines excluding mermaid) and link to .archeia/ docs rather than duplicating setup instructions.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Generate READMEs for this repo. Scan report is at .archeia/codebase/scan-report.md. Some directories already have READMEs — make sure you don't delete the existing content, just add the missing sections. This is a skills/documentation platform so the READMEs should explain what each skill does and how the pieces fit together.",
+      "expected_output": "READMEs created or updated per the scan report. For directories with existing READMEs, new sections should appear below the original prose. For new READMEs, all four template sections should be present with mermaid diagrams. No root README should be generated.",
+      "files": []
+    }
+  ]
+}

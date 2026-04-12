@@ -1,0 +1,66 @@
+{
+  "captured_at": "2026-04-09T23:49:08+00:00",
+  "captured_head": "2a7bb7ba05a9a1c14b4fd7674d5356bc665a4182",
+  "colocated_agents": [
+    "mitmproxy/contrib/agents.md",
+    "mitmproxy/contrib/claude.md",
+    "mitmproxy/proxy/agents.md",
+    "mitmproxy/proxy/claude.md",
+    "mitmproxy/utils/agents.md",
+    "mitmproxy/utils/claude.md"
+  ],
+  "colocated_readmes": [
+    "mitmproxy/README.md",
+    "mitmproxy/addons/README.md",
+    "mitmproxy/contentviews/README.md",
+    "mitmproxy/net/README.md",
+    "mitmproxy/proxy/README.md",
+    "mitmproxy/tools/README.md",
+    "mitmproxy/utils/README.md",
+    "test/mitmproxy/README.md"
+  ],
+  "copied_archeia_paths": [
+    ".archeia/Architecture.md",
+    ".archeia/Components.json",
+    ".archeia/Containers.json",
+    ".archeia/DataFlow.json",
+    ".archeia/Guide.md",
+    ".archeia/Standards.md",
+    ".archeia/System.json",
+    ".archeia/diagrams"
+  ],
+  "copied_root_docs": [
+    "AGENTS.md",
+    "CLAUDE.md"
+  ],
+  "pinned_commit": "2a7bb7ba05a9a1c14b4fd7674d5356bc665a4182",
+  "pipeline_order": [
+    "archeia-scan-repo",
+    "archeia-scan-git",
+    "archeia-write-tech-docs",
+    "archeia-write-readmes",
+    "archeia-write-agents-docs",
+    "archeia-draw-diagrams"
+  ],
+  "repo_id": "mitmproxy",
+  "skipped_outputs": [
+    ".archeia/Entities.json",
+    ".archeia/StateMachine.json"
+  ],
+  "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/mitmproxy",
+  "source_repo": "mitmproxy/mitmproxy",
+  "validation": {
+    "command": [
+      "bash",
+      "/Users/hugopeck/conductor/workspaces/archeia/athens/skills/archeia-write-tech-docs/scripts/validate-evidence.sh",
+      "/tmp/archeia-phase3/mitmproxy",
+      "/tmp/archeia-phase3/mitmproxy/.archeia",
+      "--include-root-docs"
+    ],
+    "exit_code": 0,
+    "status": "ok",
+    "stderr": "mode=python\n",
+    "stdout": "{\n  \"mode\": \"python\",\n  \"repo_root\": \"/private/tmp/archeia-phase3/mitmproxy\",\n  \"output_dir\": \"/private/tmp/archeia-phase3/mitmproxy/.archeia\",\n  \"checked_files\": [\n    \".archeia/Architecture.md\",\n    \".archeia/GitReport.md\",\n    \".archeia/Guide.md\",\n    \".archeia/ScanReport.md\",\n    \".archeia/Standards.md\",\n    \".archeia/Components.json\",\n    \".archeia/Containers.json\",\n    \".archeia/DataFlow.json\",\n    \".archeia/System.json\",\n    \"AGENTS.md\",\n    \"CLAUDE.md\"\n  ],\n  \"valid_paths\": [\n    \"pyproject.toml\",\n    \"README.md\",\n    \"mitmproxy/tools/main.py\",\n    \"mitmproxy/proxy/server.py\",\n    \"release/docker/Dockerfile\",\n    \"mitmproxy/master.py\",\n    \"mitmproxy/addonmanager.py\",\n    \"mitmproxy/tools/web/app.py\",\n    \"CONTRIBUTING.md\",\n    \"uv.lock\",\n    \"release/README.md\",\n    \".github/workflows/main.yml\",\n    \"mitmproxy/hooks.py\",\n    \".python-version\",\n    \"web/package.json\",\n    \"examples/README.md\",\n    \"mitmproxy/io\",\n    \"web/README.md\",\n    \"web/tsconfig.json\",\n    \"mitmproxy/py.typed\",\n    \"test/mitmproxy\",\n    \"mitmproxy/options.py\",\n    \"mitmproxy/optmanager.py\",\n    \"mitmproxy/proxy/layers\",\n    \"mitmproxy/proxy/layer.py\",\n    \"mitmproxy/addons\",\n    \"mitmproxy/tools/web/webaddons.py\",\n    \"mitmproxy/tools/console\",\n    \"mitmproxy/tools/dump.py\",\n    \"mitmproxy/tools/web/master.py\",\n    \"web/vite.config.ts\",\n    \"web/src\",\n    \"mitmproxy/proxy/mode_specs.py\"\n  ],\n  \"invalid_paths\": [],\n  \"malformed_evidence\": [],\n  \"stats\": {\n    \"checked_files\": 11,\n    \"valid_paths\": 33,\n    \"invalid_paths\": 0,\n    \"malformed_evidence\": 0\n  }\n}\n"
+  },
+  "worktree": "/tmp/archeia-phase3/mitmproxy"
+}

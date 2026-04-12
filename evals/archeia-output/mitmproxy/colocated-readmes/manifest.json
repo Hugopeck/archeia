@@ -1,0 +1,34 @@
+[
+  {
+    "source": "mitmproxy/README.md",
+    "target": "mitmproxy/README.md"
+  },
+  {
+    "source": "mitmproxy/addons/README.md",
+    "target": "mitmproxy/addons/README.md"
+  },
+  {
+    "source": "mitmproxy/contentviews/README.md",
+    "target": "mitmproxy/contentviews/README.md"
+  },
+  {
+    "source": "mitmproxy/net/README.md",
+    "target": "mitmproxy/net/README.md"
+  },
+  {
+    "source": "mitmproxy/proxy/README.md",
+    "target": "mitmproxy/proxy/README.md"
+  },
+  {
+    "source": "mitmproxy/tools/README.md",
+    "target": "mitmproxy/tools/README.md"
+  },
+  {
+    "source": "mitmproxy/utils/README.md",
+    "target": "mitmproxy/utils/README.md"
+  },
+  {
+    "source": "test/mitmproxy/README.md",
+    "target": "test/mitmproxy/README.md"
+  }
+]

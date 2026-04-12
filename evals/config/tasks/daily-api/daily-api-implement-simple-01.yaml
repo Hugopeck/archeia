@@ -1,0 +1,30 @@
+{
+  "id": "daily-api-implement-simple-01",
+  "repo_id": "daily-api",
+  "category": "implement_simple",
+  "prompt": "Read the codebase and make public feed-style endpoints reject limit values of zero or less with a clean client error instead of silently coercing them. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should tighten shared public pagination parsing so non-positive limit values return a clear client error, while valid requests keep their current behavior. It should add focused route coverage.\n\nMust mention / touch:\n- src/routes/public/common.ts\n- src/routes/public/feeds.ts\n- src/routes/public/posts.ts\n- __tests__/\n\nCommon failure modes:\n- Continuing to clamp invalid limits instead of rejecting them\n- Breaking existing valid pagination behavior across public endpoints",
+  "acceptance_criteria": [
+    "Rejects non-positive limit values with a clean client error.",
+    "Applies through the shared public pagination path used by feed-style endpoints.",
+    "Preserves existing behavior for valid pagination inputs.",
+    "Includes focused regression coverage."
+  ],
+  "expected_modules_read": [
+    "src/routes/public/common.ts",
+    "src/routes/public/feeds.ts",
+    "src/routes/public/posts.ts",
+    "__tests__/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "simple",
+    "output_type": "code_change",
+    "primary_surface": "public-limit-validation",
+    "doc_sensitivity": "medium",
+    "verification_scope": "repo_default"
+  }
+}

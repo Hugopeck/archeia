@@ -1,0 +1,176 @@
+{
+  "agent_run": {
+    "command": [
+      "claude",
+      "--model",
+      "haiku",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--permission-mode",
+      "auto",
+      "--append-system-prompt",
+      "CRITICAL RULE: You MUST use your tools to read files in this repository before answering. Do NOT answer from memory or training data. Start by exploring the project structure with Bash(ls) or Glob, then read the specific files needed to answer the question. Every claim you make must cite a specific file path you actually read in this session. If you answer without reading files first, your response will be scored as zero.",
+      "-p",
+      "Read the codebase and design webhook retry with exponential backoff and observability for failed outbound deliveries in Polar. Ground your plan in the actual modules and patterns you find."
+    ],
+    "exit_code": 0,
+    "finished_at": "2026-04-10T01:48:13+00:00",
+    "started_at": "2026-04-10T01:40:51+00:00",
+    "status": "completed",
+    "stderr": "",
+    "stdout": "Here's the design, grounded in the actual code:\n\n---\n\n## Current state\n\n`tasks.py:186` already does exponential backoff via `compute_backoff(delivery_count, factor=WORKER_MIN_BACKOFF_MILLISECONDS)` \u2014 that part works. What's missing is **visibility into it**:\n\n- No Prometheus metrics specific to webhooks (only generic worker metrics in `observability/metrics.py`)\n- `WebhookDelivery` doesn't store which attempt number it was \u2014 requires a COUNT query every time (`repository.py:161`)\n- No failure categorization: timeout, SSL error, 4xx, 5xx all look identical in the DB\n- `WebhookEvent` has no `next_attempt_at`, so there's no way to see \"when will this retry?\"\n- The backoff `factor` is borrowed from `WORKER_MIN_BACKOFF_MILLISECONDS` rather than a webhook-specific setting\n\n---\n\n## What changes (8 files)\n\n### Schema additions \u2014 1 migration\n\n**`webhook_deliveries`**: `attempt_number INTEGER NOT NULL DEFAULT 1` and `failure_reason VARCHAR(32)` (values: `timeout`, `connection_error`, `ssl_error`, `http_4xx`, `http_5xx`, `http_3xx`)\n\n**`webhook_events`**: `next_attempt_at TIMESTAMPTZ`\n\n### Metrics \u2014 `server/polar/observability/metrics.py`\n\nFour new metrics following the existing `TASK_*` pattern (no high-cardinality labels):\n- `polar_webhook_delivery_attempts_total{status}` \u2014 Counter per attempt\n- `polar_webhook_delivery_duration_seconds` \u2014 Histogram (HTTP round-trip)\n- `polar_webhook_event_final_status_total{status}` \u2014 Counter on terminal state (success/failed/skipped)\n- `polar_webhook_endpoint_disabled_total` \u2014 Counter\n\n### Task changes \u2014 `server/polar/webhook/tasks.py`\n\n- Move `delivery_count` query **before** the HTTP request so `attempt_number = delivery_count + 1` stamps the delivery row upfront\n- Wrap the HTTP call in `time.monotonic()` to feed the latency histogram\n- `_classify_failure(e)` helper maps exception type + HTTP status to `failure_reason`\n- Set `event.next_attempt_at = utc_now() + timedelta(ms=delay)` in the retry branch; clear to `None` on terminal states\n- Emit metrics at each success/failure/skipped path\n- Upgrade the failure log from `info` \u2192 `warning` with `attempt_number`, `failure_reason`, `next_attempt_at`, `permanent` fields\n- Replace `factor=settings.WORKER_MIN_BACKOFF_MILLISECONDS` with `factor=settings.WEBHOOK_MIN_BACKOFF_MS` (new 2 s default)\n\n### Service \u2014 `server/polar/webhook/service.py`\n\n`on_event_failed:line 347` \u2014 emit `WEBHOOK_ENDPOINT_DISABLED.inc()` after disabling an endpoint.\n\n### Schemas \u2014 `server/polar/webhook/schemas.py`\n\nExpose `attempt_number`, `failure_reason` on `WebhookDelivery`; `next_attempt_at` on `WebhookEvent`.\n\n---\n\n## Backoff schedule (behaviour unchanged, now explicit)\n\n| Attempt | Approx delay |\n|---------|-------------|\n| 1 | 1\u20132 s |\n| 2 | 2\u20134 s |\n| 3 | 4\u20138 s |\n| 6 | 32\u201364 s |\n| 9 | ~8.5 min |\n| 10 | ~15 min (cap) |\n\nTotal \u2248 30\u201335 min before permanent failure. No behaviour change \u2014 just config-decoupled and observable.",
+    "transcript_path": "/tmp/archeia-phase4/polar-l0-polar-plan-complex-01-trial1/.archeia-eval/conversation.json"
+  },
+  "code_quality": {
+    "lint": null,
+    "lint_baseline": null,
+    "lint_baseline_findings": null,
+    "lint_delta": null,
+    "lint_findings": null,
+    "tests": null
+  },
+  "condition_application": {
+    "archeia_output": "evals/archeia-output/polar",
+    "condition_id": "l0",
+    "copied_paths": [],
+    "kept_existing_docs": true,
+    "removed_paths": [],
+    "repo_id": "polar",
+    "worktree": "/tmp/archeia-phase4/polar-l0-polar-plan-complex-01-trial1"
+  },
+  "condition_commit": {
+    "command": [
+      "git",
+      "commit",
+      "-m",
+      "Apply evaluation condition"
+    ],
+    "cwd": "/tmp/archeia-phase4/polar-l0-polar-plan-complex-01-trial1",
+    "exit_code": 1,
+    "finished_at": "2026-04-10T01:40:51+00:00",
+    "started_at": "2026-04-10T01:40:51+00:00",
+    "stderr": "",
+    "stdout": "Not currently on any branch.\nnothing to commit, working tree clean\n"
+  },
+  "condition_id": "l0",
+  "diff": "",
+  "finished_at": "2026-04-10T01:48:40+00:00",
+  "judge": {
+    "command": [
+      "claude",
+      "--output-format",
+      "json",
+      "-p",
+      "You are judging an Archeia evaluation run.\n\nTask category: plan_complex\nTask id: polar-plan-complex-01\n\nTask prompt:\nRead the codebase and design webhook retry with exponential backoff and observability for failed outbound deliveries in Polar. Ground your plan in the actual modules and patterns you find.\n\nGround truth / reference:\nExpected outcome:\n- The plan should identify where outbound events are generated, how retry state should be represented, where scheduling belongs, and what observability hooks already exist or should be added. It should fit Polar's backend and worker boundaries.\n\nMust mention / touch:\n- server/polar/external_event/\n- server/polar/eventstream/\n- server/polar/event/\n- server/polar/kit/\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path\n\nAcceptance criteria:\n[\n  \"Maps retry state, scheduling, and observability to real Polar modules.\",\n  \"Respects current backend and worker boundaries.\",\n  \"Includes failure-mode handling and tests.\",\n  \"Avoids designing an entirely separate delivery system.\"\n]\n\nAgent response:\nHere's the design, grounded in the actual code:\n\n---\n\n## Current state\n\n`tasks.py:186` already does exponential backoff via `compute_backoff(delivery_count, factor=WORKER_MIN_BACKOFF_MILLISECONDS)` \u2014 that part works. What's missing is **visibility into it**:\n\n- No Prometheus metrics specific to webhooks (only generic worker metrics in `observability/metrics.py`)\n- `WebhookDelivery` doesn't store which attempt number it was \u2014 requires a COUNT query every time (`repository.py:161`)\n- No failure categorization: timeout, SSL error, 4xx, 5xx all look identical in the DB\n- `WebhookEvent` has no `next_attempt_at`, so there's no way to see \"when will this retry?\"\n- The backoff `factor` is borrowed from `WORKER_MIN_BACKOFF_MILLISECONDS` rather than a webhook-specific setting\n\n---\n\n## What changes (8 files)\n\n### Schema additions \u2014 1 migration\n\n**`webhook_deliveries`**: `attempt_number INTEGER NOT NULL DEFAULT 1` and `failure_reason VARCHAR(32)` (values: `timeout`, `connection_error`, `ssl_error`, `http_4xx`, `http_5xx`, `http_3xx`)\n\n**`webhook_events`**: `next_attempt_at TIMESTAMPTZ`\n\n### Metrics \u2014 `server/polar/observability/metrics.py`\n\nFour new metrics following the existing `TASK_*` pattern (no high-cardinality labels):\n- `polar_webhook_delivery_attempts_total{status}` \u2014 Counter per attempt\n- `polar_webhook_delivery_duration_seconds` \u2014 Histogram (HTTP round-trip)\n- `polar_webhook_event_final_status_total{status}` \u2014 Counter on terminal state (success/failed/skipped)\n- `polar_webhook_endpoint_disabled_total` \u2014 Counter\n\n### Task changes \u2014 `server/polar/webhook/tasks.py`\n\n- Move `delivery_count` query **before** the HTTP request so `attempt_number = delivery_count + 1` stamps the delivery row upfront\n- Wrap the HTTP call in `time.monotonic()` to feed the latency histogram\n- `_classify_failure(e)` helper maps exception type + HTTP status to `failure_reason`\n- Set `event.next_attempt_at = utc_now() + timedelta(ms=delay)` in the retry branch; clear to `None` on terminal states\n- Emit metrics at each success/failure/skipped path\n- Upgrade the failure log from `info` \u2192 `warning` with `attempt_number`, `failure_reason`, `next_attempt_at`, `permanent` fields\n- Replace `factor=settings.WORKER_MIN_BACKOFF_MILLISECONDS` with `factor=settings.WEBHOOK_MIN_BACKOFF_MS` (new 2 s default)\n\n### Service \u2014 `server/polar/webhook/service.py`\n\n`on_event_failed:line 347` \u2014 emit `WEBHOOK_ENDPOINT_DISABLED.inc()` after disabling an endpoint.\n\n### Schemas \u2014 `server/polar/webhook/schemas.py`\n\nExpose `attempt_number`, `failure_reason` on `WebhookDelivery`; `next_attempt_at` on `WebhookEvent`.\n\n---\n\n## Backoff schedule (behaviour unchanged, now explicit)\n\n| Attempt | Approx delay |\n|---------|-------------|\n| 1 | 1\u20132 s |\n| 2 | 2\u20134 s |\n| 3 | 4\u20138 s |\n| 6 | 32\u201364 s |\n| 9 | ~8.5 min |\n| 10 | ~15 min (cap) |\n\nTotal \u2248 30\u201335 min before permanent failure. No behaviour change \u2014 just config-decoupled and observable.\n\nGit diff:\n\n\nCode-quality signals:\n{\n  \"lint\": null,\n  \"lint_baseline\": null,\n  \"lint_baseline_findings\": null,\n  \"lint_delta\": null,\n  \"lint_findings\": null,\n  \"tests\": null\n}\n\nEfficiency signals:\n{\n  \"action_calls\": 1,\n  \"exploration_calls\": 35,\n  \"exploration_to_action_ratio\": 35.0,\n  \"finished_at\": \"2026-04-10T01:47:55.586000+00:00\",\n  \"input_tokens\": 151,\n  \"output_tokens\": 12203,\n  \"started_at\": \"2026-04-10T01:40:58.204000+00:00\",\n  \"time_to_completion_seconds\": 417.382,\n  \"time_to_first_edit_seconds\": null,\n  \"tool_call_count\": 50,\n  \"tool_counts\": {\n    \"agent\": 1,\n    \"bash\": 11,\n    \"enterplanmode\": 1,\n    \"exitplanmode\": 1,\n    \"glob\": 6,\n    \"grep\": 5,\n    \"read\": 24,\n    \"write\": 1\n  },\n  \"total_tokens\": 44569\n}\n\nScore the run from 0-100 using four equally weighted 0-25 dimensions:\n1. Correctness: technically sound approach.\n2. Completeness: affected modules, sequencing, and risks covered.\n3. Convention fit: follows the repo's apparent patterns.\n4. Actionability: specific enough to implement.\n\nReturn JSON only with this schema:\n{\n  \"total_score\": 0,\n  \"dimension_scores\": {\n    \"correctness\": 0,\n    \"completeness\": 0,\n    \"convention_fit\": 0,\n    \"verification_or_communication\": 0\n  },\n  \"summary\": \"short paragraph\",\n  \"strengths\": [\"...\"],\n  \"weaknesses\": [\"...\"],\n  \"confidence\": \"low|medium|high\"\n}"
+    ],
+    "confidence": "high",
+    "dimension_scores": {
+      "completeness": 10,
+      "convention_fit": 14,
+      "correctness": 18,
+      "verification_or_communication": 13
+    },
+    "finished_at": "2026-04-10T01:48:40+00:00",
+    "started_at": "2026-04-10T01:48:13+00:00",
+    "status": "completed",
+    "strengths": [
+      "Correctly identifies existing compute_backoff and builds on it rather than replacing it",
+      "Concrete schema changes with specific column names and types",
+      "Well-defined Prometheus metrics following existing naming conventions",
+      "Failure classification taxonomy (timeout, ssl_error, http_4xx, etc.) is practical",
+      "Backoff schedule table makes the behaviour transparent"
+    ],
+    "summary": "The plan correctly identifies the existing exponential backoff in tasks.py and proposes sensible enhancements (attempt tracking, failure classification, Prometheus metrics, next_attempt_at). However, it misses all four modules the ground truth requires: server/polar/external_event/, server/polar/eventstream/, server/polar/event/, and server/polar/kit/. This is a major gap\u2014those modules represent the broader event generation and shared-kit boundaries that any webhook retry design must account for. The plan also lacks a test strategy entirely despite the acceptance criteria requiring it. Where it does touch code (webhook/, observability/), the suggestions are concrete and convention-aligned.",
+    "total_score": 55,
+    "weaknesses": [
+      "Misses all four required modules: external_event/, eventstream/, event/, and kit/",
+      "No test plan despite acceptance criteria explicitly requiring tests",
+      "Does not trace where outbound events originate or how they flow through the event pipeline",
+      "No discussion of how kit/ utilities (e.g., shared retry or scheduling primitives) should be leveraged",
+      "Scoped too narrowly to the webhook/ package without mapping the full delivery path"
+    ]
+  },
+  "metrics": {
+    "action_calls": 1,
+    "exploration_calls": 35,
+    "exploration_to_action_ratio": 35.0,
+    "finished_at": "2026-04-10T01:47:55.586000+00:00",
+    "input_tokens": 151,
+    "output_tokens": 12203,
+    "started_at": "2026-04-10T01:40:58.204000+00:00",
+    "time_to_completion_seconds": 417.382,
+    "time_to_first_edit_seconds": null,
+    "tool_call_count": 50,
+    "tool_counts": {
+      "agent": 1,
+      "bash": 11,
+      "enterplanmode": 1,
+      "exitplanmode": 1,
+      "glob": 6,
+      "grep": 5,
+      "read": 24,
+      "write": 1
+    },
+    "total_tokens": 44569
+  },
+  "repo": {
+    "archeia_output_path": "evals/archeia-output/polar",
+    "baseline_docs": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "branch": "main",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "commit": "98df9bae772c3cb5b315ed8877c4ec83b05953dd",
+    "complexity": "complex",
+    "id": "polar",
+    "language": "py-ts",
+    "loc": 529000,
+    "notes": [
+      "Largest and most complex evaluation repo.",
+      "Best suited for cross-module plan and implement tasks."
+    ],
+    "repo": "polarsource/polar",
+    "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/polar",
+    "tests_available": false
+  },
+  "repo_id": "polar",
+  "result_path": "/Users/hugopeck/conductor/workspaces/archeia/athens/evals/results/raw/polar/polar-plan-complex-01/l0/trial-1.json",
+  "started_at": "2026-04-10T01:40:50+00:00",
+  "status": "completed",
+  "task": {
+    "acceptance_criteria": [
+      "Maps retry state, scheduling, and observability to real Polar modules.",
+      "Respects current backend and worker boundaries.",
+      "Includes failure-mode handling and tests.",
+      "Avoids designing an entirely separate delivery system."
+    ],
+    "category": "plan_complex",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "expected_modules_read": [
+      "server/polar/external_event/",
+      "server/polar/eventstream/",
+      "server/polar/event/",
+      "server/polar/kit/"
+    ],
+    "ground_truth": "Expected outcome:\n- The plan should identify where outbound events are generated, how retry state should be represented, where scheduling belongs, and what observability hooks already exist or should be added. It should fit Polar's backend and worker boundaries.\n\nMust mention / touch:\n- server/polar/external_event/\n- server/polar/eventstream/\n- server/polar/event/\n- server/polar/kit/\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path",
+    "id": "polar-plan-complex-01",
+    "metadata": {
+      "difficulty": "complex",
+      "doc_sensitivity": "high",
+      "output_type": "plan",
+      "primary_surface": "webhook-retry",
+      "verification_scope": "repo_default"
+    },
+    "prompt": "Read the codebase and design webhook retry with exponential backoff and observability for failed outbound deliveries in Polar. Ground your plan in the actual modules and patterns you find.",
+    "repo_id": "polar"
+  },
+  "trial": 1
+}

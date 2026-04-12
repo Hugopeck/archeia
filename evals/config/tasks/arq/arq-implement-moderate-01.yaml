@@ -1,0 +1,29 @@
+{
+  "id": "arq-implement-moderate-01",
+  "repo_id": "arq",
+  "category": "implement_moderate",
+  "prompt": "Read the codebase and add a new CLI flag that exposes an existing worker behavior through arq's command-line interface. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should extend the click-based CLI consistently, thread the new flag into worker setup or runtime behavior, and update CLI-focused tests. It should not bypass existing option plumbing.\n\nMust mention / touch:\n- arq/cli.py\n- arq/worker.py\n- tests/test_cli.py\n\nCommon failure modes:\n- Changing behavior outside the intended scope\n- Skipping regression coverage or verification for the touched path",
+  "acceptance_criteria": [
+    "Adds the flag via established CLI patterns.",
+    "Threads it into the relevant worker behavior cleanly.",
+    "Includes CLI-focused regression coverage.",
+    "Avoids unrelated worker refactors."
+  ],
+  "expected_modules_read": [
+    "arq/cli.py",
+    "arq/worker.py",
+    "tests/test_cli.py"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "moderate",
+    "output_type": "code_change",
+    "primary_surface": "cli-flag",
+    "doc_sensitivity": "medium",
+    "verification_scope": "repo_default"
+  }
+}

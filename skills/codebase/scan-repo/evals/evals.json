@@ -1,0 +1,29 @@
+{
+  "skill_name": "archeia-scan-repo",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Scan this repo and give me a quick overview of its size and structure.",
+      "expected_output": "A .archeia/codebase/scan-report.md file with LOC counts, token estimates, directory tree, module list, README coverage, dependency counts, test footprint, git vitals, and signals. Should be purely quantitative — no architectural narrative.",
+      "files": [],
+      "test_repo": "/Users/hugopeck/conductor/workspaces/archeia/san-antonio",
+      "assertions": []
+    },
+    {
+      "id": 2,
+      "prompt": "I need to understand how big this codebase is before we start documenting it. Can you scan it?",
+      "expected_output": "A .archeia/codebase/scan-report.md for the track repo. Should detect it as a multi-file project, count LOC, estimate tokens, and identify modules. The report should help plan documentation effort.",
+      "files": [],
+      "test_repo": "/Users/hugopeck/conductor/workspaces/track/porto",
+      "assertions": []
+    },
+    {
+      "id": 3,
+      "prompt": "Run a scan report on this repository so I can see what we're dealing with.",
+      "expected_output": "A .archeia/codebase/scan-report.md for the track-app repo. Should produce all sections with real measurements. Framework and language should be correctly identified in the summary line.",
+      "files": [],
+      "test_repo": "/Users/hugopeck/conductor/workspaces/track-app/krakow",
+      "assertions": []
+    }
+  ]
+}

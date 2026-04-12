@@ -1,0 +1,77 @@
+{
+  "level": 3,
+  "title": "Data Flow",
+  "depends_on": "Containers.json",
+  "flows": [
+    {
+      "id": "create-task",
+      "name": "Create Task",
+      "description": "User creates a new task via the web application",
+      "primary": true,
+      "participants": [
+        { "id": "end-user", "name": "End User", "type": "person" },
+        { "id": "api-server", "name": "API Server", "type": "container" },
+        { "id": "api-services", "name": "Task Service", "type": "component" },
+        { "id": "postgresql", "name": "PostgreSQL", "type": "external_system" },
+        { "id": "background-worker", "name": "Background Worker", "type": "container" }
+      ],
+      "steps": [
+        {
+          "order": 1,
+          "source": "end-user",
+          "target": "api-server",
+          "message": "POST /tasks {title, description}",
+          "type": "sync",
+          "protocol": "HTTPS",
+          "evidence": ["src/routes/tasks.ts"]
+        },
+        {
+          "order": 2,
+          "source": "api-server",
+          "target": "api-services",
+          "message": "createTask(data)",
+          "type": "sync",
+          "protocol": "function call",
+          "evidence": ["src/routes/tasks.ts"]
+        },
+        {
+          "order": 3,
+          "source": "api-services",
+          "target": "postgresql",
+          "message": "INSERT task",
+          "type": "sync",
+          "protocol": "SQL",
+          "evidence": ["src/services/taskService.ts"]
+        },
+        {
+          "order": 4,
+          "source": "api-services",
+          "target": "api-server",
+          "message": "task record",
+          "type": "response",
+          "protocol": "function call",
+          "evidence": ["src/services/taskService.ts"]
+        },
+        {
+          "order": 5,
+          "source": "api-server",
+          "target": "end-user",
+          "message": "201 Created",
+          "type": "response",
+          "protocol": "HTTPS",
+          "evidence": ["src/routes/tasks.ts"]
+        },
+        {
+          "order": 6,
+          "source": "api-server",
+          "target": "background-worker",
+          "message": "enqueue notification job",
+          "type": "async",
+          "protocol": "Redis/BullMQ",
+          "evidence": ["src/services/notifications.ts"]
+        }
+      ],
+      "evidence": ["src/routes/tasks.ts", "src/services/taskService.ts"]
+    }
+  ]
+}

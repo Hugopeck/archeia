@@ -1,0 +1,206 @@
+{
+  "agent_run": {
+    "command": [
+      "claude",
+      "--model",
+      "haiku",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--permission-mode",
+      "auto",
+      "--append-system-prompt",
+      "CRITICAL RULE: You MUST use your tools to read files in this repository before answering. Do NOT answer from memory or training data. Start by exploring the project structure with Bash(ls) or Glob, then read the specific files needed to answer the question. Every claim you make must cite a specific file path you actually read in this session. If you answer without reading files first, your response will be scored as zero.",
+      "-p",
+      "Read the codebase and reject channel configuration values that collapse to an empty subscription list after parsing instead of starting the broker with no usable channels. Base your changes only on patterns you find in the code."
+    ],
+    "exit_code": 0,
+    "finished_at": "2026-04-10T05:17:33+00:00",
+    "started_at": "2026-04-10T05:09:12+00:00",
+    "status": "completed",
+    "stderr": "",
+    "stdout": "I need permission to modify main.rs. Here's what I'm going to do based on the code patterns I found:\n\n## Changes needed:\n\n**1. Add validation function in main.rs** (after `channels_from_csv` at line 5068):\n```rust\nfn validate_and_parse_channels(raw: &str) -> Result<Vec<String>> {\n    let parsed = channels_from_csv(raw);\n    if parsed.is_empty() {\n        anyhow::bail!(\"channel configuration is empty or contains only whitespace\");\n    }\n    Ok(parsed)\n}\n```\n\n**2. Update wrap.rs line 394** - replace:\n```rust\nlet channel_list = channels_from_csv(&channels);\n```\nwith:\n```rust\nlet channel_list = validate_and_parse_channels(&channels)?;\n```\n\n**3. Update main.rs line 1398** - replace:\n```rust\nchannels: channels_from_csv(&cmd.channels),\n```\nwith:\n```rust\nchannels: validate_and_parse_channels(&cmd.channels)?,\n```\n\nThis follows the existing error handling pattern in the codebase (like line 1385 with `anyhow::bail!()`), and mirrors the validation logic already present in `default_spawn_channels()` which checks if parsed channels are empty.",
+    "transcript_path": "/tmp/archeia-phase4/relay-l0-relay-implement-simple-01-trial1/.archeia-eval/conversation.json"
+  },
+  "code_quality": {
+    "lint": {
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "cwd": "/tmp/archeia-phase4/relay-l0-relay-implement-simple-01-trial1",
+      "exit_code": 127,
+      "finished_at": "2026-04-10T05:27:47+00:00",
+      "started_at": "2026-04-10T05:27:34+00:00",
+      "stderr": "sh: eslint: command not found\n",
+      "stdout": "\n> agent-relay@3.1.19 lint\n> eslint src --ext .ts\n\n"
+    },
+    "lint_baseline": {
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "cwd": "/tmp/archeia-phase4/relay-l0-relay-implement-simple-01-trial1",
+      "exit_code": 127,
+      "finished_at": "2026-04-10T05:09:12+00:00",
+      "started_at": "2026-04-10T05:09:11+00:00",
+      "stderr": "sh: eslint: command not found\n",
+      "stdout": "\n> agent-relay@3.1.19 lint\n> eslint src --ext .ts\n\n"
+    },
+    "lint_baseline_findings": 3,
+    "lint_delta": 0,
+    "lint_findings": 3,
+    "tests": {
+      "command": [
+        "npm",
+        "test"
+      ],
+      "cwd": "/tmp/archeia-phase4/relay-l0-relay-implement-simple-01-trial1",
+      "exit_code": -1,
+      "finished_at": "2026-04-10T05:27:34+00:00",
+      "started_at": "2026-04-10T05:17:34+00:00",
+      "stderr": "    Blocking waiting for file lock on package cache\n   Compiling libc v0.2.180\n   Compiling proc-macro2 v1.0.106\n   Compiling quote v1.0.44\n   Compiling unicode-ident v1.0.23\n   Compiling cfg-if v1.0.4\n   Compiling log v0.4.29\n   Compiling smallvec v1.15.1\n   Compiling bytes v1.11.1\n   Compiling itoa v1.0.17\n   Compiling pin-project-lite v0.2.16\n   Compiling once_cell v1.21.3\n   Compiling futures-core v0.3.31\n   Compiling parking_lot_core v0.9.12\n   Compiling memchr v2.8.0\n   Compiling stable_deref_trait v1.2.1\n   Compiling scopeguard v1.2.0\n   Compiling version_check v0.9.5\n   Compiling lock_api v0.4.14\n   Compiling typenum v1.19.0\n   Compiling find-msvc-tools v0.1.9\n   Compiling generic-array v0.14.7\n   Compiling shlex v1.3.0\n   Compiling zerocopy v0.8.39\n   Compiling pin-utils v0.1.0\n   Compiling cc v1.2.55\n   Compiling futures-sink v0.3.31\n   Compiling http v1.4.0\n   Compiling httparse v1.10.1\n   Compiling syn v2.0.114\n   Compiling tracing-core v0.1.36\n   Compiling bitflags v2.10.0\n   Compiling errno v0.3.14\n   Compiling mio v1.1.1\n   Compiling signal-hook-registry v1.4.8\n   Compiling socket2 v0.6.2\n   Compiling parking_lot v0.12.5\n   Compiling getrandom v0.2.17\n   Compiling ring v0.17.14\n   Compiling zeroize v1.8.2\n   Compiling futures-io v0.3.31\n   Compiling serde_core v1.0.228\n   Compiling rustls-pki-types v1.14.0\n   Compiling futures-task v0.3.31\n   Compiling getrandom v0.3.4\n   Compiling slab v0.4.12\n   Compiling block-buffer v0.10.4\n   Compiling crypto-common v0.1.7\n   Compiling http-body v1.0.1\n   Compiling writeable v0.6.2\n   Compiling litemap v0.8.1\n   Compiling untrusted v0.9.0\n   Compiling autocfg v1.5.0\n   Compiling digest v0.10.7\n   Compiling cpufeatures v0.2.17\n   Compiling tower-service v0.3.3\n   Compiling icu_normalizer_data v2.1.1\n   Compiling percent-encoding v2.3.2\n   Compiling core-foundation-sys v0.8.7\n   Compiling icu_properties_data v2.1.2\n   Compiling rustls v0.23.36\n   Compiling thiserror v1.0.69\n   Compiling serde v1.0.228\n   Compiling try-lock v0.2.5\n   Compiling subtle v2.6.1\n   Compiling want v0.3.1\n   Compiling sha1 v0.10.6\n   Compiling futures-channel v0.3.31\n   Compiling sync_wrapper v1.0.2\n   Compiling utf-8 v0.7.6\n   Compiling data-encoding v2.10.0\n   Compiling thiserror v2.0.18\n   Compiling tower-layer v0.3.3\n   Compiling atomic-waker v1.1.2\n   Compiling zmij v1.0.20\n   Compiling httpdate v1.0.3\n   Compiling form_urlencoded v1.2.2\n   Compiling rand_core v0.9.5\n   Compiling rand_core v0.6.4\n   Compiling base64 v0.22.1\n   Compiling serde_json v1.0.149\n   Compiling ipnet v2.11.0\n   Compiling core-foundation v0.10.1\n   Compiling security-framework-sys v2.15.0\n   Compiling memoffset v0.6.5\n   Compiling http-body-util v0.1.3\n   Compiling aho-corasick v1.1.4\n   Compiling utf8parse v0.2.2\n   Compiling utf8_iter v1.0.4\n   Compiling signal-hook v0.3.18\n   Compiling regex-syntax v0.8.9\n   Compiling ryu v1.0.23\n   Compiling anstyle-parse v0.2.7\n   Compiling security-framework v3.5.1\n   Compiling num-traits v0.2.19\n   Compiling webpki-roots v1.0.6\n   Compiling serial-core v0.4.0\n   Compiling termios v0.2.2\n   Compiling ioctl-rs v0.1.6\n   Compiling anyhow v1.0.101\n   Compiling rustix v0.38.44\n",
+      "stdout": "\n> agent-relay@3.1.19 pretest\n> npm run build\n\n\n> agent-relay@3.1.19 build\n> npm run clean && npm run build:rust && turbo run build --filter='./packages/*' && tsc\n\n\n> agent-relay@3.1.19 clean\n> rm -rf dist && find packages -maxdepth 2 -name dist -type d -exec rm -rf {} + 2>/dev/null || true\n\n\n> agent-relay@3.1.19 build:rust\n> if command -v ~/.cargo/bin/cargo >/dev/null 2>&1; then ~/.cargo/bin/cargo build --release --bin agent-relay-broker && mkdir -p packages/sdk/bin && cp target/release/agent-relay-broker packages/sdk/bin/agent-relay-broker.new && mv -f packages/sdk/bin/agent-relay-broker.new packages/sdk/bin/agent-relay-broker && echo '\u2713 broker binary (agent-relay-broker) built and copied to packages/sdk/bin/'; else echo '\u26a0 Rust not installed, using prebuilt binaries from bin/'; fi\n\n",
+      "timed_out": true,
+      "timeout_seconds": 600
+    }
+  },
+  "condition_application": {
+    "archeia_output": "evals/archeia-output/relay",
+    "condition_id": "l0",
+    "copied_paths": [],
+    "kept_existing_docs": true,
+    "removed_paths": [],
+    "repo_id": "relay",
+    "worktree": "/tmp/archeia-phase4/relay-l0-relay-implement-simple-01-trial1"
+  },
+  "condition_commit": {
+    "command": [
+      "git",
+      "commit",
+      "-m",
+      "Apply evaluation condition"
+    ],
+    "cwd": "/tmp/archeia-phase4/relay-l0-relay-implement-simple-01-trial1",
+    "exit_code": 1,
+    "finished_at": "2026-04-10T05:09:11+00:00",
+    "started_at": "2026-04-10T05:09:11+00:00",
+    "stderr": "",
+    "stdout": "Not currently on any branch.\nnothing to commit, working tree clean\n"
+  },
+  "condition_id": "l0",
+  "diff": "",
+  "finished_at": "2026-04-10T05:29:09+00:00",
+  "judge": {
+    "command": [
+      "claude",
+      "--output-format",
+      "json",
+      "-p",
+      "You are judging an Archeia evaluation run.\n\nTask category: implement_simple\nTask id: relay-implement-simple-01\n\nTask prompt:\nRead the codebase and reject channel configuration values that collapse to an empty subscription list after parsing instead of starting the broker with no usable channels. Base your changes only on patterns you find in the code.\n\nGround truth / reference:\nExpected outcome:\n- The implementation should validate parsed channel configuration, reject all-empty results after trimming, preserve valid comma-separated input, and add focused tests.\n\nMust mention / touch:\n- src/config.rs\n- tests/\n\nCommon failure modes:\n- Accepting an empty effective channel list after parsing\n- Duplicating channel parsing logic instead of validating the existing path\n\nAcceptance criteria:\n[\n  \"Rejects channel configuration that parses down to an empty list.\",\n  \"Preserves current behavior for valid channel strings.\",\n  \"Keeps validation in the existing channel parsing/config path.\",\n  \"Includes focused regression coverage.\"\n]\n\nAgent response:\nI need permission to modify main.rs. Here's what I'm going to do based on the code patterns I found:\n\n## Changes needed:\n\n**1. Add validation function in main.rs** (after `channels_from_csv` at line 5068):\n```rust\nfn validate_and_parse_channels(raw: &str) -> Result<Vec<String>> {\n    let parsed = channels_from_csv(raw);\n    if parsed.is_empty() {\n        anyhow::bail!(\"channel configuration is empty or contains only whitespace\");\n    }\n    Ok(parsed)\n}\n```\n\n**2. Update wrap.rs line 394** - replace:\n```rust\nlet channel_list = channels_from_csv(&channels);\n```\nwith:\n```rust\nlet channel_list = validate_and_parse_channels(&channels)?;\n```\n\n**3. Update main.rs line 1398** - replace:\n```rust\nchannels: channels_from_csv(&cmd.channels),\n```\nwith:\n```rust\nchannels: validate_and_parse_channels(&cmd.channels)?,\n```\n\nThis follows the existing error handling pattern in the codebase (like line 1385 with `anyhow::bail!()`), and mirrors the validation logic already present in `default_spawn_channels()` which checks if parsed channels are empty.\n\nGit diff:\n\n\nCode-quality signals:\n{\n  \"lint\": {\n    \"command\": [\n      \"npm\",\n      \"run\",\n      \"lint\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/relay-l0-relay-implement-simple-01-trial1\",\n    \"exit_code\": 127,\n    \"finished_at\": \"2026-04-10T05:27:47+00:00\",\n    \"started_at\": \"2026-04-10T05:27:34+00:00\",\n    \"stderr\": \"sh: eslint: command not found\\n\",\n    \"stdout\": \"\\n> agent-relay@3.1.19 lint\\n> eslint src --ext .ts\\n\\n\"\n  },\n  \"lint_baseline\": {\n    \"command\": [\n      \"npm\",\n      \"run\",\n      \"lint\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/relay-l0-relay-implement-simple-01-trial1\",\n    \"exit_code\": 127,\n    \"finished_at\": \"2026-04-10T05:09:12+00:00\",\n    \"started_at\": \"2026-04-10T05:09:11+00:00\",\n    \"stderr\": \"sh: eslint: command not found\\n\",\n    \"stdout\": \"\\n> agent-relay@3.1.19 lint\\n> eslint src --ext .ts\\n\\n\"\n  },\n  \"lint_baseline_findings\": 3,\n  \"lint_delta\": 0,\n  \"lint_findings\": 3,\n  \"tests\": {\n    \"command\": [\n      \"npm\",\n      \"test\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/relay-l0-relay-implement-simple-01-trial1\",\n    \"exit_code\": -1,\n    \"finished_at\": \"2026-04-10T05:27:34+00:00\",\n    \"started_at\": \"2026-04-10T05:17:34+00:00\",\n    \"stderr\": \"    Blocking waiting for file lock on package cache\\n   Compiling libc v0.2.180\\n   Compiling proc-macro2 v1.0.106\\n   Compiling quote v1.0.44\\n   Compiling unicode-ident v1.0.23\\n   Compiling cfg-if v1.0.4\\n   Compiling log v0.4.29\\n   Compiling smallvec v1.15.1\\n   Compiling bytes v1.11.1\\n   Compiling itoa v1.0.17\\n   Compiling pin-project-lite v0.2.16\\n   Compiling once_cell v1.21.3\\n   Compiling futures-core v0.3.31\\n   Compiling parking_lot_core v0.9.12\\n   Compiling memchr v2.8.0\\n   Compiling stable_deref_trait v1.2.1\\n   Compiling scopeguard v1.2.0\\n   Compiling version_check v0.9.5\\n   Compiling lock_api v0.4.14\\n   Compiling typenum v1.19.0\\n   Compiling find-msvc-tools v0.1.9\\n   Compiling generic-array v0.14.7\\n   Compiling shlex v1.3.0\\n   Compiling zerocopy v0.8.39\\n   Compiling pin-utils v0.1.0\\n   Compiling cc v1.2.55\\n   Compiling futures-sink v0.3.31\\n   Compiling http v1.4.0\\n   Compiling httparse v1.10.1\\n   Compiling syn v2.0.114\\n   Compiling tracing-core v0.1.36\\n   Compiling bitflags v2.10.0\\n   Compiling errno v0.3.14\\n   Compiling mio v1.1.1\\n   Compiling signal-hook-registry v1.4.8\\n   Compiling socket2 v0.6.2\\n   Compiling parking_lot v0.12.5\\n   Compiling getrandom v0.2.17\\n   Compiling ring v0.17.14\\n   Compiling zeroize v1.8.2\\n   Compiling futures-io v0.3.31\\n   Compiling serde_core v1.0.228\\n   Compiling rustls-pki-types v1.14.0\\n   Compiling futures-task v0.3.31\\n   Compiling getrandom v0.3.4\\n   Compiling slab v0.4.12\\n   Compiling block-buffer v0.10.4\\n   Compiling crypto-common v0.1.7\\n   Compiling http-body v1.0.1\\n   Compiling writeable v0.6.2\\n   Compiling litemap v0.8.1\\n   Compiling untrusted v0.9.0\\n   Compiling autocfg v1.5.0\\n   Compiling digest v0.10.7\\n   Compiling cpufeatures v0.2.17\\n   Compiling tower-service v0.3.3\\n   Compiling icu_normalizer_data v2.1.1\\n   Compiling percent-encoding v2.3.2\\n   Compiling core-foundation-sys v0.8.7\\n   Compiling icu_properties_data v2.1.2\\n   Compiling rustls v0.23.36\\n   Compiling thiserror v1.0.69\\n   Compiling serde v1.0.228\\n   Compiling try-lock v0.2.5\\n   Compiling subtle v2.6.1\\n   Compiling want v0.3.1\\n   Compiling sha1 v0.10.6\\n   Compiling futures-channel v0.3.31\\n   Compiling sync_wrapper v1.0.2\\n   Compiling utf-8 v0.7.6\\n   Compiling data-encoding v2.10.0\\n   Compiling thiserror v2.0.18\\n   Compiling tower-layer v0.3.3\\n   Compiling atomic-waker v1.1.2\\n   Compiling zmij v1.0.20\\n   Compiling httpdate v1.0.3\\n   Compiling form_urlencoded v1.2.2\\n   Compiling rand_core v0.9.5\\n   Compiling rand_core v0.6.4\\n   Compiling base64 v0.22.1\\n   Compiling serde_json v1.0.149\\n   Compiling ipnet v2.11.0\\n   Compiling core-foundation v0.10.1\\n   Compiling security-framework-sys v2.15.0\\n   Compiling memoffset v0.6.5\\n   Compiling http-body-util v0.1.3\\n   Compiling aho-corasick v1.1.4\\n   Compiling utf8parse v0.2.2\\n   Compiling utf8_iter v1.0.4\\n   Compiling signal-hook v0.3.18\\n   Compiling regex-syntax v0.8.9\\n   Compiling ryu v1.0.23\\n   Compiling anstyle-parse v0.2.7\\n   Compiling security-framework v3.5.1\\n   Compiling num-traits v0.2.19\\n   Compiling webpki-roots v1.0.6\\n   Compiling serial-core v0.4.0\\n   Compiling termios v0.2.2\\n   Compiling ioctl-rs v0.1.6\\n   Compiling anyhow v1.0.101\\n   Compiling rustix v0.38.44\\n\",\n    \"stdout\": \"\\n> agent-relay@3.1.19 pretest\\n> npm run build\\n\\n\\n> agent-relay@3.1.19 build\\n> npm run clean && npm run build:rust && turbo run build --filter='./packages/*' && tsc\\n\\n\\n> agent-relay@3.1.19 clean\\n> rm -rf dist && find packages -maxdepth 2 -name dist -type d -exec rm -rf {} + 2>/dev/null || true\\n\\n\\n> agent-relay@3.1.19 build:rust\\n> if command -v ~/.cargo/bin/cargo >/dev/null 2>&1; then ~/.cargo/bin/cargo build --release --bin agent-relay-broker && mkdir -p packages/sdk/bin && cp target/release/agent-relay-broker packages/sdk/bin/agent-relay-broker.new && mv -f packages/sdk/bin/agent-relay-broker.new packages/sdk/bin/agent-relay-broker && echo '\\u2713 broker binary (agent-relay-broker) built and copied to packages/sdk/bin/'; else echo '\\u26a0 Rust not installed, using prebuilt binaries from bin/'; fi\\n\\n\",\n    \"timed_out\": true,\n    \"timeout_seconds\": 600\n  }\n}\n\nEfficiency signals:\n{\n  \"action_calls\": 4,\n  \"exploration_calls\": 15,\n  \"exploration_to_action_ratio\": 3.75,\n  \"finished_at\": \"2026-04-10T05:17:26.018000+00:00\",\n  \"input_tokens\": 266,\n  \"output_tokens\": 6734,\n  \"started_at\": \"2026-04-10T05:09:57.975000+00:00\",\n  \"time_to_completion_seconds\": 448.043,\n  \"time_to_first_edit_seconds\": null,\n  \"tool_call_count\": 34,\n  \"tool_counts\": {\n    \"bash\": 15,\n    \"edit\": 4,\n    \"grep\": 3,\n    \"read\": 12\n  },\n  \"total_tokens\": 7000\n}\n\nScore the run from 0-100 using four equally weighted 0-25 dimensions:\n1. Correctness: change solves the task.\n2. Completeness: includes all required code-path updates.\n3. Convention fit: matches project structure and patterns.\n4. Verification: test/lint outcomes support the change.\n\nReturn JSON only with this schema:\n{\n  \"total_score\": 0,\n  \"dimension_scores\": {\n    \"correctness\": 0,\n    \"completeness\": 0,\n    \"convention_fit\": 0,\n    \"verification_or_communication\": 0\n  },\n  \"summary\": \"short paragraph\",\n  \"strengths\": [\"...\"],\n  \"weaknesses\": [\"...\"],\n  \"confidence\": \"low|medium|high\"\n}"
+    ],
+    "confidence": "high",
+    "dimension_scores": {
+      "completeness": 1,
+      "convention_fit": 1,
+      "correctness": 3,
+      "verification_or_communication": 0
+    },
+    "finished_at": "2026-04-10T05:29:09+00:00",
+    "started_at": "2026-04-10T05:27:47+00:00",
+    "status": "completed",
+    "strengths": [
+      "Identified the correct validation point (after `channels_from_csv` parsing)",
+      "Recognized the existing `anyhow::bail!` error pattern in the codebase",
+      "Reasonable exploration-to-action ratio suggesting genuine code understanding"
+    ],
+    "summary": "The agent explored the codebase and proposed a reasonable validation approach (wrapping `channels_from_csv` to reject empty results), but the git diff is empty \u2014 no changes were actually committed to the working tree despite 4 edit tool calls. The task explicitly requires changes to `src/config.rs` and `tests/`, yet the agent targeted `main.rs` and `wrap.rs`. No tests were written, violating the 'focused regression coverage' acceptance criterion. The test suite timed out during compilation, providing no verification. The agent essentially delivered a plan rather than an implementation.",
+    "total_score": 5,
+    "weaknesses": [
+      "Empty git diff \u2014 no actual code changes were applied despite edit attempts",
+      "Targeted main.rs/wrap.rs instead of the required src/config.rs",
+      "No tests written, failing the 'focused regression coverage' criterion",
+      "Delivered a description of changes rather than implemented changes",
+      "Tests timed out, providing zero verification signal"
+    ]
+  },
+  "metrics": {
+    "action_calls": 4,
+    "exploration_calls": 15,
+    "exploration_to_action_ratio": 3.75,
+    "finished_at": "2026-04-10T05:17:26.018000+00:00",
+    "input_tokens": 266,
+    "output_tokens": 6734,
+    "started_at": "2026-04-10T05:09:57.975000+00:00",
+    "time_to_completion_seconds": 448.043,
+    "time_to_first_edit_seconds": null,
+    "tool_call_count": 34,
+    "tool_counts": {
+      "bash": 15,
+      "edit": 4,
+      "grep": 3,
+      "read": 12
+    },
+    "total_tokens": 7000
+  },
+  "repo": {
+    "archeia_output_path": "evals/archeia-output/relay",
+    "baseline_docs": [
+      "AGENTS.md",
+      "CLAUDE.md",
+      "ARCHITECTURE.md"
+    ],
+    "branch": "main",
+    "commands": {
+      "lint": "npm run lint",
+      "test": "npm test"
+    },
+    "commit": "231c45da22fee641ef05c2cd03332ca38eeebc7e",
+    "complexity": "medium",
+    "id": "relay",
+    "language": "multi",
+    "loc": 69000,
+    "notes": [
+      "Supports the special relay baseline condition.",
+      "Allows Archeia-vs-hand-written-docs comparisons."
+    ],
+    "repo": "AgentWorkforce/relay",
+    "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/relay",
+    "tests_available": true
+  },
+  "repo_id": "relay",
+  "result_path": "/Users/hugopeck/conductor/workspaces/archeia/phoenix/evals/results/raw/relay/relay-implement-simple-01/l0/trial-1.json",
+  "started_at": "2026-04-10T05:09:05+00:00",
+  "status": "completed",
+  "task": {
+    "acceptance_criteria": [
+      "Rejects channel configuration that parses down to an empty list.",
+      "Preserves current behavior for valid channel strings.",
+      "Keeps validation in the existing channel parsing/config path.",
+      "Includes focused regression coverage."
+    ],
+    "category": "implement_simple",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "expected_modules_read": [
+      "src/config.rs",
+      "tests/"
+    ],
+    "ground_truth": "Expected outcome:\n- The implementation should validate parsed channel configuration, reject all-empty results after trimming, preserve valid comma-separated input, and add focused tests.\n\nMust mention / touch:\n- src/config.rs\n- tests/\n\nCommon failure modes:\n- Accepting an empty effective channel list after parsing\n- Duplicating channel parsing logic instead of validating the existing path",
+    "id": "relay-implement-simple-01",
+    "metadata": {
+      "difficulty": "simple",
+      "doc_sensitivity": "medium",
+      "output_type": "code_change",
+      "primary_surface": "empty-channel-config",
+      "verification_scope": "repo_default"
+    },
+    "prompt": "Read the codebase and reject channel configuration values that collapse to an empty subscription list after parsing instead of starting the broker with no usable channels. Base your changes only on patterns you find in the code.",
+    "repo_id": "relay"
+  },
+  "trial": 1
+}

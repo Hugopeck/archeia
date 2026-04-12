@@ -1,0 +1,208 @@
+{
+  "agent_run": {
+    "command": [
+      "claude",
+      "--model",
+      "haiku",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--permission-mode",
+      "auto",
+      "--append-system-prompt",
+      "CRITICAL RULE: You MUST use your tools to read files in this repository before answering. Do NOT answer from memory or training data. Start by exploring the project structure with Bash(ls) or Glob, then read the specific files needed to answer the question. Every claim you make must cite a specific file path you actually read in this session. If you answer without reading files first, your response will be scored as zero.",
+      "-p",
+      "Read the codebase and explain how relay spawns and manages a PTY-backed session, from CLI entrypoint through session supervision. Base your answer only on code you actually read."
+    ],
+    "exit_code": 0,
+    "finished_at": "2026-04-10T05:16:47+00:00",
+    "started_at": "2026-04-10T05:09:12+00:00",
+    "status": "completed",
+    "stderr": "",
+    "stdout": "Now I have a complete picture. Let me provide a comprehensive explanation of how relay spawns and manages PTY-backed sessions.\n\n## PTY-Backed Session Spawning & Management Flow\n\n### 1. **CLI Entrypoint** (`src/cli/commands/agent-management.ts:449-550`)\n\nThe `spawn` command accepts:\n- `<name>` - agent name\n- `<cli>` - CLI to use (claude, codex, etc.)\n- `[task]` - task description (or stdin)\n- Options like `--model`, `--team`, `--continue-from`, `--shadow-of`\n\nThe command:\n1. Ensures a task description exists (from arg or stdin)\n2. Creates an `AgentManagementClient` via `createAutostartClient()` which auto-starts the broker if needed\n3. Calls `client.spawnPty()` with spawn parameters\n\n### 2. **HTTP API Request** (`src/listen_api.rs:307-405`)\n\nThe `spawnPty()` client method POSTs to `/api/spawn`:\n- Parses JSON request body (name, cli, model, task, channels, etc.)\n- Creates a oneshot channel for the reply\n- Sends a `ListenApiRequest::Spawn` message on the broker's `tx` channel\n- Waits for the response\n\n### 3. **Broker Event Loop Handling** (`src/main.rs:1610-1810`)\n\nWhen the broker receives `ListenApiRequest::Spawn`:\n\n**Pre-registration:**\n- Calls `retry_agent_registration()` to pre-register the agent with relaycast\n- If successful, gets a `worker_relay_key` token for MCP server bootstrap\n- If it fails fatally, replies with error\n\n**Continuity Context (--continue-from):**\n- If `continue_from` is specified, reads the continuity file from previous session\n- Injects context: previous task, session summary, recent message history\n- Formats as a continuity block prepended to the current task\n\n**Agent Spawning:**\n- Calls `workers.spawn()` with the `AgentSpec`\n- Stores agent in persisted state\n- Tracks PID and created timestamp\n- Increments spawn count and emits telemetry\n\n### 4. **WorkerRegistry::spawn()** (`src/main.rs:717-934`)\n\nThis method:\n\n1. **Checks for duplicate:** Rejects if agent name already exists\n\n2. **Constructs command:**\n   - Determines runtime type (PTY vs Headless)\n   - For PTY: `agent-relay-broker pty --agent-name <name> <cli>`\n   - Parses CLI name and extracts inline args (e.g., \"codex:full\" \u2192 \"codex\" + [\"--full\"])\n\n3. **Auto-adds bypass flags:**\n   - Claude: `--dangerously-skip-permissions`\n   - Codex: `--dangerously-bypass-approvals-and-sandbox`\n   - Gemini: `--yolo`\n   - Only if not already provided by user\n\n4. **Configures MCP:**\n   - Calls `configure_relaycast_mcp_with_token()` (snippets.rs) for CLI-specific MCP injection\n   - Skips if `skip_relay_prompt` is true (saves tokens for minor tasks)\n   - Claude uses `--mcp-config '{json}'` flag\n   - Codex uses multiple `--config key=value` flags\n   - Opencode writes `opencode.json` + `--agent relaycast`\n\n5. **Spawns process:**\n   - Sets stdio to piped (stdin, stdout, stderr)\n   - Sets environment variables: `RELAY_AGENT_NAME`, `RELAY_API_KEY`, `RELAY_AGENT_TYPE`, `RELAY_AGENT_TOKEN` (if pre-registered)\n   - Disables Claude Code features: `CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false`, `DISABLE_AUTOUPDATER=1`\n   - Sets `cwd` if specified\n\n6. **Spawns reader tasks:**\n   - `spawn_worker_reader()` for stdout (logged)\n   - `spawn_worker_reader()` for stderr (logged)\n   - Both write to `.agent-relay/worker-logs/<name>.log`\n\n7. **Creates WorkerHandle:**\n   - Stores: spec, parent, workspace_id, child process, stdin pipe, spawned_at timestamp\n\n8. **Sends init_worker frame:**\n   - Sends JSON frame via stdin: `{\"msg_type\":\"init_worker\",\"payload\":{\"agent\":spec}}`\n   - Worker reads this on startup\n\n### 5. **PTY Command Execution** (`src/main.rs:PtyCommand` \u2192 `run_pty_worker`)\n\nThe spawned `agent-relay-broker pty` subprocess:\n\n1. **Creates PTY session** (`src/pty.rs:67-132`):\n   - Uses `portable_pty::native_pty_system()` to create master/slave PTY\n   - Spawns the CLI command (e.g., `claude`) on the slave side\n   - Spins up a blocking thread to read PTY output\n\n2. **Starts worker protocol** (`src/pty_worker.rs:133+`):\n   - Sets up stdin/stdout channels with the broker\n   - Waits for `init_worker` frame from broker\n   - Sets `RELAY_AGENT_NAME` and agent identity from env vars or init payload\n   - Handles three main signals:\n     - `init_worker` - initialize and emit `worker_ready` once CLI is ready\n     - `deliver_relay` - inject relay message into PTY\n     - `shutdown_worker` - graceful shutdown with 2s grace period\n\n3. **Monitors CLI readiness:**\n   - Detects CLI prompt patterns (\">\", \"$\", \">>>\", \"codex>\")\n   - For Codex: waits for \"booting mcp server: relaycast\" before considering ready\n   - Times out after 25s (`STARTUP_READY_TIMEOUT`)\n   - Emits `worker_ready` when ready or timeout\n\n4. **Handles message injection:**\n   - Relay messages arrive as `deliver_relay` frames\n   - Formats with `<system-reminder>` wrapper to guide agent to use MCP tools\n   - Injects via PTY write\n   - Detects echo back to confirm injection\n\n5. **Monitors child process** (`src/pty.rs:162-277`):\n   - Uses three mechanisms: `try_wait()`, `kill(pid, 0)`, and fallback counter\n   - Works around macOS PTY quirk where PID may not be available\n   - After 6 consecutive checks with no PID, assumes child exited\n   - Has 120s no-output timeout as final safety net\n\n### 6. **Session Supervision** (`src/supervisor.rs`)\n\nWhen a worker process exits, the broker:\n\n1. **Calls `supervisor.on_exit()`:**\n   - Checks if agent is supervised (not manually released)\n   - Increments `consecutive_failures` counter\n   - Tracks `last_exit` timestamp\n\n2. **Makes restart decision:**\n   - Default policy: max 5 restarts, 2s cooldown, max 3 consecutive failures\n   - Returns `RestartDecision::Restart { delay }` or `RestartDecision::PermanentlyDead`\n\n3. **Schedules restart:**\n   - After cooldown expires, `supervisor.pending_restarts()` returns the agent\n   - Broker respawns it with `workers.spawn()` again\n   - Calls `on_restarted()` to reset failure counter\n\n### 7. **Release Mechanism** (`src/main.rs:988-1015`)\n\nWhen user releases an agent via `release <name>`:\n\n1. Sends `shutdown_worker` frame: `{\"msg_type\":\"shutdown_worker\",\"grace_ms\":2000}`\n2. Waits up to 2s for graceful shutdown\n3. Removes from supervisor (unregisters for restart)\n4. Terminates child process (SIGTERM \u2192 SIGKILL)\n5. Saves continuity context to `~/.agent-relay/continuity/<name>.json`\n\n---\n\n**Key Design Patterns:**\n\n- **Protocol envelope format:** All frames are JSON-encoded: `{v, msg_type, request_id, payload}`\n- **Non-blocking I/O:** All operations use tokio async/await; workers read/write via pipes\n- **PTY transparency:** Relay messages injected directly into PTY; agent sees as terminal input\n- **MCP bootstrap:** Pre-registered agents get `RELAY_AGENT_TOKEN` injected for immediate MCP connectivity\n- **Session leadership:** Workers use `setsid()` to become session leaders (Unix), enabling reattachment\n- **Crash recovery:** Pending deliveries and state persisted; agents auto-restart with configurable policy",
+    "transcript_path": "/tmp/archeia-phase4/relay-l0-relay-ask-complex-02-trial1/.archeia-eval/conversation.json"
+  },
+  "code_quality": {
+    "lint": {
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "cwd": "/tmp/archeia-phase4/relay-l0-relay-ask-complex-02-trial1",
+      "exit_code": 127,
+      "finished_at": "2026-04-10T05:27:04+00:00",
+      "started_at": "2026-04-10T05:26:48+00:00",
+      "stderr": "sh: eslint: command not found\n",
+      "stdout": "\n> agent-relay@3.1.19 lint\n> eslint src --ext .ts\n\n"
+    },
+    "lint_baseline": {
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "cwd": "/tmp/archeia-phase4/relay-l0-relay-ask-complex-02-trial1",
+      "exit_code": 127,
+      "finished_at": "2026-04-10T05:09:12+00:00",
+      "started_at": "2026-04-10T05:09:10+00:00",
+      "stderr": "sh: eslint: command not found\n",
+      "stdout": "\n> agent-relay@3.1.19 lint\n> eslint src --ext .ts\n\n"
+    },
+    "lint_baseline_findings": 3,
+    "lint_delta": 0,
+    "lint_findings": 3,
+    "tests": {
+      "command": [
+        "npm",
+        "test"
+      ],
+      "cwd": "/tmp/archeia-phase4/relay-l0-relay-ask-complex-02-trial1",
+      "exit_code": -1,
+      "finished_at": "2026-04-10T05:26:48+00:00",
+      "started_at": "2026-04-10T05:16:48+00:00",
+      "stderr": "    Blocking waiting for file lock on package cache\n    Blocking waiting for file lock on package cache\n    Blocking waiting for file lock on package cache\n    Blocking waiting for file lock on package cache\n   Compiling libc v0.2.180\n   Compiling proc-macro2 v1.0.106\n   Compiling unicode-ident v1.0.23\n   Compiling quote v1.0.44\n   Compiling cfg-if v1.0.4\n   Compiling log v0.4.29\n   Compiling smallvec v1.15.1\n   Compiling bytes v1.11.1\n   Compiling itoa v1.0.17\n   Compiling pin-project-lite v0.2.16\n   Compiling futures-core v0.3.31\n   Compiling once_cell v1.21.3\n   Compiling memchr v2.8.0\n   Compiling parking_lot_core v0.9.12\n   Compiling scopeguard v1.2.0\n   Compiling stable_deref_trait v1.2.1\n   Compiling lock_api v0.4.14\n   Compiling typenum v1.19.0\n   Compiling version_check v0.9.5\n   Compiling pin-utils v0.1.0\n   Compiling shlex v1.3.0\n   Compiling find-msvc-tools v0.1.9\n   Compiling zerocopy v0.8.39\n   Compiling cc v1.2.55\n   Compiling http v1.4.0\n   Compiling generic-array v0.14.7\n   Compiling syn v2.0.114\n   Compiling futures-sink v0.3.31\n   Compiling httparse v1.10.1\n   Compiling errno v0.3.14\n   Compiling signal-hook-registry v1.4.8\n   Compiling mio v1.1.1\n   Compiling parking_lot v0.12.5\n   Compiling getrandom v0.2.17\n   Compiling socket2 v0.6.2\n   Compiling ring v0.17.14\n   Compiling tracing-core v0.1.36\n   Compiling futures-io v0.3.31\n   Compiling bitflags v2.10.0\n   Compiling zeroize v1.8.2\n   Compiling serde_core v1.0.228\n   Compiling rustls-pki-types v1.14.0\n   Compiling getrandom v0.3.4\n   Compiling slab v0.4.12\n   Compiling futures-task v0.3.31\n   Compiling block-buffer v0.10.4\n   Compiling crypto-common v0.1.7\n   Compiling http-body v1.0.1\n   Compiling untrusted v0.9.0\n   Compiling writeable v0.6.2\n   Compiling litemap v0.8.1\n   Compiling autocfg v1.5.0\n   Compiling digest v0.10.7\n   Compiling cpufeatures v0.2.17\n   Compiling icu_properties_data v2.1.2\n   Compiling icu_normalizer_data v2.1.1\n   Compiling tower-service v0.3.3\n   Compiling percent-encoding v2.3.2\n   Compiling rustls v0.23.36\n   Compiling core-foundation-sys v0.8.7\n   Compiling serde v1.0.228\n   Compiling subtle v2.6.1\n   Compiling try-lock v0.2.5\n   Compiling thiserror v1.0.69\n   Compiling want v0.3.1\n   Compiling sha1 v0.10.6\n   Compiling futures-channel v0.3.31\n   Compiling sync_wrapper v1.0.2\n   Compiling tower-layer v0.3.3\n   Compiling thiserror v2.0.18\n   Compiling utf-8 v0.7.6\n   Compiling atomic-waker v1.1.2\n   Compiling httpdate v1.0.3\n   Compiling zmij v1.0.20\n   Compiling data-encoding v2.10.0\n   Compiling form_urlencoded v1.2.2\n   Compiling rand_core v0.9.5\n   Compiling rand_core v0.6.4\n   Compiling serde_json v1.0.149\n   Compiling base64 v0.22.1\n   Compiling ipnet v2.11.0\n   Compiling core-foundation v0.10.1\n   Compiling security-framework-sys v2.15.0\n   Compiling memoffset v0.6.5\n   Compiling http-body-util v0.1.3\n   Compiling aho-corasick v1.1.4\n   Compiling regex-syntax v0.8.9\n   Compiling ryu v1.0.23\n   Compiling utf8parse v0.2.2\n   Compiling signal-hook v0.3.18\n   Compiling utf8_iter v1.0.4\n   Compiling anstyle-parse v0.2.7\n   Compiling synstructure v0.13.2\n   Compiling security-framework v3.5.1\n   Compiling num-traits v0.2.19\n   Compiling webpki-roots v1.0.6\n   Compiling serial-core v0.4.0\n   Compiling termios v0.2.2\n   Compiling ioctl-rs v0.1.6\n   Compiling rustix v0.38.44\n   Compiling ppv-lite86 v0.2.21\n   Compiling anstyle-query v1.1.5\n   Compiling rand_chacha v0.9.0\n   Compiling rand_chacha v0.3.1\n",
+      "stdout": "\n> agent-relay@3.1.19 pretest\n> npm run build\n\n\n> agent-relay@3.1.19 build\n> npm run clean && npm run build:rust && turbo run build --filter='./packages/*' && tsc\n\n\n> agent-relay@3.1.19 clean\n> rm -rf dist && find packages -maxdepth 2 -name dist -type d -exec rm -rf {} + 2>/dev/null || true\n\n\n> agent-relay@3.1.19 build:rust\n> if command -v ~/.cargo/bin/cargo >/dev/null 2>&1; then ~/.cargo/bin/cargo build --release --bin agent-relay-broker && mkdir -p packages/sdk/bin && cp target/release/agent-relay-broker packages/sdk/bin/agent-relay-broker.new && mv -f packages/sdk/bin/agent-relay-broker.new packages/sdk/bin/agent-relay-broker && echo '\u2713 broker binary (agent-relay-broker) built and copied to packages/sdk/bin/'; else echo '\u26a0 Rust not installed, using prebuilt binaries from bin/'; fi\n\n",
+      "timed_out": true,
+      "timeout_seconds": 600
+    }
+  },
+  "condition_application": {
+    "archeia_output": "evals/archeia-output/relay",
+    "condition_id": "l0",
+    "copied_paths": [],
+    "kept_existing_docs": true,
+    "removed_paths": [],
+    "repo_id": "relay",
+    "worktree": "/tmp/archeia-phase4/relay-l0-relay-ask-complex-02-trial1"
+  },
+  "condition_commit": {
+    "command": [
+      "git",
+      "commit",
+      "-m",
+      "Apply evaluation condition"
+    ],
+    "cwd": "/tmp/archeia-phase4/relay-l0-relay-ask-complex-02-trial1",
+    "exit_code": 1,
+    "finished_at": "2026-04-10T05:09:10+00:00",
+    "started_at": "2026-04-10T05:09:10+00:00",
+    "stderr": "",
+    "stdout": "Not currently on any branch.\nnothing to commit, working tree clean\n"
+  },
+  "condition_id": "l0",
+  "diff": "",
+  "finished_at": "2026-04-10T05:29:07+00:00",
+  "judge": {
+    "command": [
+      "claude",
+      "--output-format",
+      "json",
+      "-p",
+      "You are judging an Archeia evaluation run.\n\nTask category: ask_complex\nTask id: relay-ask-complex-02\n\nTask prompt:\nRead the codebase and explain how relay spawns and manages a PTY-backed session, from CLI entrypoint through session supervision. Base your answer only on code you actually read.\n\nGround truth / reference:\nExpected outcome:\n- Must connect CLI invocation, spawning, PTY management, and supervision/recovery behavior using real modules. Expected grounding includes src/main.rs, src/cli/, src/pty.rs, src/spawner.rs, and src/supervisor.rs.\n\nMust mention / touch:\n- src/main.rs\n- src/cli/\n- src/pty.rs\n- src/spawner.rs\n- src/supervisor.rs\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo\n\nAcceptance criteria:\n[\n  \"Explains the lifecycle from CLI entry to managed PTY session.\",\n  \"Names the modules responsible for spawning, PTY I/O, and supervision.\",\n  \"Clarifies boundaries between setup and long-lived runtime management.\",\n  \"Does not hand-wave over the Rust runtime structure.\"\n]\n\nAgent response:\nNow I have a complete picture. Let me provide a comprehensive explanation of how relay spawns and manages PTY-backed sessions.\n\n## PTY-Backed Session Spawning & Management Flow\n\n### 1. **CLI Entrypoint** (`src/cli/commands/agent-management.ts:449-550`)\n\nThe `spawn` command accepts:\n- `<name>` - agent name\n- `<cli>` - CLI to use (claude, codex, etc.)\n- `[task]` - task description (or stdin)\n- Options like `--model`, `--team`, `--continue-from`, `--shadow-of`\n\nThe command:\n1. Ensures a task description exists (from arg or stdin)\n2. Creates an `AgentManagementClient` via `createAutostartClient()` which auto-starts the broker if needed\n3. Calls `client.spawnPty()` with spawn parameters\n\n### 2. **HTTP API Request** (`src/listen_api.rs:307-405`)\n\nThe `spawnPty()` client method POSTs to `/api/spawn`:\n- Parses JSON request body (name, cli, model, task, channels, etc.)\n- Creates a oneshot channel for the reply\n- Sends a `ListenApiRequest::Spawn` message on the broker's `tx` channel\n- Waits for the response\n\n### 3. **Broker Event Loop Handling** (`src/main.rs:1610-1810`)\n\nWhen the broker receives `ListenApiRequest::Spawn`:\n\n**Pre-registration:**\n- Calls `retry_agent_registration()` to pre-register the agent with relaycast\n- If successful, gets a `worker_relay_key` token for MCP server bootstrap\n- If it fails fatally, replies with error\n\n**Continuity Context (--continue-from):**\n- If `continue_from` is specified, reads the continuity file from previous session\n- Injects context: previous task, session summary, recent message history\n- Formats as a continuity block prepended to the current task\n\n**Agent Spawning:**\n- Calls `workers.spawn()` with the `AgentSpec`\n- Stores agent in persisted state\n- Tracks PID and created timestamp\n- Increments spawn count and emits telemetry\n\n### 4. **WorkerRegistry::spawn()** (`src/main.rs:717-934`)\n\nThis method:\n\n1. **Checks for duplicate:** Rejects if agent name already exists\n\n2. **Constructs command:**\n   - Determines runtime type (PTY vs Headless)\n   - For PTY: `agent-relay-broker pty --agent-name <name> <cli>`\n   - Parses CLI name and extracts inline args (e.g., \"codex:full\" \u2192 \"codex\" + [\"--full\"])\n\n3. **Auto-adds bypass flags:**\n   - Claude: `--dangerously-skip-permissions`\n   - Codex: `--dangerously-bypass-approvals-and-sandbox`\n   - Gemini: `--yolo`\n   - Only if not already provided by user\n\n4. **Configures MCP:**\n   - Calls `configure_relaycast_mcp_with_token()` (snippets.rs) for CLI-specific MCP injection\n   - Skips if `skip_relay_prompt` is true (saves tokens for minor tasks)\n   - Claude uses `--mcp-config '{json}'` flag\n   - Codex uses multiple `--config key=value` flags\n   - Opencode writes `opencode.json` + `--agent relaycast`\n\n5. **Spawns process:**\n   - Sets stdio to piped (stdin, stdout, stderr)\n   - Sets environment variables: `RELAY_AGENT_NAME`, `RELAY_API_KEY`, `RELAY_AGENT_TYPE`, `RELAY_AGENT_TOKEN` (if pre-registered)\n   - Disables Claude Code features: `CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false`, `DISABLE_AUTOUPDATER=1`\n   - Sets `cwd` if specified\n\n6. **Spawns reader tasks:**\n   - `spawn_worker_reader()` for stdout (logged)\n   - `spawn_worker_reader()` for stderr (logged)\n   - Both write to `.agent-relay/worker-logs/<name>.log`\n\n7. **Creates WorkerHandle:**\n   - Stores: spec, parent, workspace_id, child process, stdin pipe, spawned_at timestamp\n\n8. **Sends init_worker frame:**\n   - Sends JSON frame via stdin: `{\"msg_type\":\"init_worker\",\"payload\":{\"agent\":spec}}`\n   - Worker reads this on startup\n\n### 5. **PTY Command Execution** (`src/main.rs:PtyCommand` \u2192 `run_pty_worker`)\n\nThe spawned `agent-relay-broker pty` subprocess:\n\n1. **Creates PTY session** (`src/pty.rs:67-132`):\n   - Uses `portable_pty::native_pty_system()` to create master/slave PTY\n   - Spawns the CLI command (e.g., `claude`) on the slave side\n   - Spins up a blocking thread to read PTY output\n\n2. **Starts worker protocol** (`src/pty_worker.rs:133+`):\n   - Sets up stdin/stdout channels with the broker\n   - Waits for `init_worker` frame from broker\n   - Sets `RELAY_AGENT_NAME` and agent identity from env vars or init payload\n   - Handles three main signals:\n     - `init_worker` - initialize and emit `worker_ready` once CLI is ready\n     - `deliver_relay` - inject relay message into PTY\n     - `shutdown_worker` - graceful shutdown with 2s grace period\n\n3. **Monitors CLI readiness:**\n   - Detects CLI prompt patterns (\">\", \"$\", \">>>\", \"codex>\")\n   - For Codex: waits for \"booting mcp server: relaycast\" before considering ready\n   - Times out after 25s (`STARTUP_READY_TIMEOUT`)\n   - Emits `worker_ready` when ready or timeout\n\n4. **Handles message injection:**\n   - Relay messages arrive as `deliver_relay` frames\n   - Formats with `<system-reminder>` wrapper to guide agent to use MCP tools\n   - Injects via PTY write\n   - Detects echo back to confirm injection\n\n5. **Monitors child process** (`src/pty.rs:162-277`):\n   - Uses three mechanisms: `try_wait()`, `kill(pid, 0)`, and fallback counter\n   - Works around macOS PTY quirk where PID may not be available\n   - After 6 consecutive checks with no PID, assumes child exited\n   - Has 120s no-output timeout as final safety net\n\n### 6. **Session Supervision** (`src/supervisor.rs`)\n\nWhen a worker process exits, the broker:\n\n1. **Calls `supervisor.on_exit()`:**\n   - Checks if agent is supervised (not manually released)\n   - Increments `consecutive_failures` counter\n   - Tracks `last_exit` timestamp\n\n2. **Makes restart decision:**\n   - Default policy: max 5 restarts, 2s cooldown, max 3 consecutive failures\n   - Returns `RestartDecision::Restart { delay }` or `RestartDecision::PermanentlyDead`\n\n3. **Schedules restart:**\n   - After cooldown expires, `supervisor.pending_restarts()` returns the agent\n   - Broker respawns it with `workers.spawn()` again\n   - Calls `on_restarted()` to reset failure counter\n\n### 7. **Release Mechanism** (`src/main.rs:988-1015`)\n\nWhen user releases an agent via `release <name>`:\n\n1. Sends `shutdown_worker` frame: `{\"msg_type\":\"shutdown_worker\",\"grace_ms\":2000}`\n2. Waits up to 2s for graceful shutdown\n3. Removes from supervisor (unregisters for restart)\n4. Terminates child process (SIGTERM \u2192 SIGKILL)\n5. Saves continuity context to `~/.agent-relay/continuity/<name>.json`\n\n---\n\n**Key Design Patterns:**\n\n- **Protocol envelope format:** All frames are JSON-encoded: `{v, msg_type, request_id, payload}`\n- **Non-blocking I/O:** All operations use tokio async/await; workers read/write via pipes\n- **PTY transparency:** Relay messages injected directly into PTY; agent sees as terminal input\n- **MCP bootstrap:** Pre-registered agents get `RELAY_AGENT_TOKEN` injected for immediate MCP connectivity\n- **Session leadership:** Workers use `setsid()` to become session leaders (Unix), enabling reattachment\n- **Crash recovery:** Pending deliveries and state persisted; agents auto-restart with configurable policy\n\nGit diff:\n\n\nCode-quality signals:\n{\n  \"lint\": {\n    \"command\": [\n      \"npm\",\n      \"run\",\n      \"lint\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/relay-l0-relay-ask-complex-02-trial1\",\n    \"exit_code\": 127,\n    \"finished_at\": \"2026-04-10T05:27:04+00:00\",\n    \"started_at\": \"2026-04-10T05:26:48+00:00\",\n    \"stderr\": \"sh: eslint: command not found\\n\",\n    \"stdout\": \"\\n> agent-relay@3.1.19 lint\\n> eslint src --ext .ts\\n\\n\"\n  },\n  \"lint_baseline\": {\n    \"command\": [\n      \"npm\",\n      \"run\",\n      \"lint\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/relay-l0-relay-ask-complex-02-trial1\",\n    \"exit_code\": 127,\n    \"finished_at\": \"2026-04-10T05:09:12+00:00\",\n    \"started_at\": \"2026-04-10T05:09:10+00:00\",\n    \"stderr\": \"sh: eslint: command not found\\n\",\n    \"stdout\": \"\\n> agent-relay@3.1.19 lint\\n> eslint src --ext .ts\\n\\n\"\n  },\n  \"lint_baseline_findings\": 3,\n  \"lint_delta\": 0,\n  \"lint_findings\": 3,\n  \"tests\": {\n    \"command\": [\n      \"npm\",\n      \"test\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/relay-l0-relay-ask-complex-02-trial1\",\n    \"exit_code\": -1,\n    \"finished_at\": \"2026-04-10T05:26:48+00:00\",\n    \"started_at\": \"2026-04-10T05:16:48+00:00\",\n    \"stderr\": \"    Blocking waiting for file lock on package cache\\n    Blocking waiting for file lock on package cache\\n    Blocking waiting for file lock on package cache\\n    Blocking waiting for file lock on package cache\\n   Compiling libc v0.2.180\\n   Compiling proc-macro2 v1.0.106\\n   Compiling unicode-ident v1.0.23\\n   Compiling quote v1.0.44\\n   Compiling cfg-if v1.0.4\\n   Compiling log v0.4.29\\n   Compiling smallvec v1.15.1\\n   Compiling bytes v1.11.1\\n   Compiling itoa v1.0.17\\n   Compiling pin-project-lite v0.2.16\\n   Compiling futures-core v0.3.31\\n   Compiling once_cell v1.21.3\\n   Compiling memchr v2.8.0\\n   Compiling parking_lot_core v0.9.12\\n   Compiling scopeguard v1.2.0\\n   Compiling stable_deref_trait v1.2.1\\n   Compiling lock_api v0.4.14\\n   Compiling typenum v1.19.0\\n   Compiling version_check v0.9.5\\n   Compiling pin-utils v0.1.0\\n   Compiling shlex v1.3.0\\n   Compiling find-msvc-tools v0.1.9\\n   Compiling zerocopy v0.8.39\\n   Compiling cc v1.2.55\\n   Compiling http v1.4.0\\n   Compiling generic-array v0.14.7\\n   Compiling syn v2.0.114\\n   Compiling futures-sink v0.3.31\\n   Compiling httparse v1.10.1\\n   Compiling errno v0.3.14\\n   Compiling signal-hook-registry v1.4.8\\n   Compiling mio v1.1.1\\n   Compiling parking_lot v0.12.5\\n   Compiling getrandom v0.2.17\\n   Compiling socket2 v0.6.2\\n   Compiling ring v0.17.14\\n   Compiling tracing-core v0.1.36\\n   Compiling futures-io v0.3.31\\n   Compiling bitflags v2.10.0\\n   Compiling zeroize v1.8.2\\n   Compiling serde_core v1.0.228\\n   Compiling rustls-pki-types v1.14.0\\n   Compiling getrandom v0.3.4\\n   Compiling slab v0.4.12\\n   Compiling futures-task v0.3.31\\n   Compiling block-buffer v0.10.4\\n   Compiling crypto-common v0.1.7\\n   Compiling http-body v1.0.1\\n   Compiling untrusted v0.9.0\\n   Compiling writeable v0.6.2\\n   Compiling litemap v0.8.1\\n   Compiling autocfg v1.5.0\\n   Compiling digest v0.10.7\\n   Compiling cpufeatures v0.2.17\\n   Compiling icu_properties_data v2.1.2\\n   Compiling icu_normalizer_data v2.1.1\\n   Compiling tower-service v0.3.3\\n   Compiling percent-encoding v2.3.2\\n   Compiling rustls v0.23.36\\n   Compiling core-foundation-sys v0.8.7\\n   Compiling serde v1.0.228\\n   Compiling subtle v2.6.1\\n   Compiling try-lock v0.2.5\\n   Compiling thiserror v1.0.69\\n   Compiling want v0.3.1\\n   Compiling sha1 v0.10.6\\n   Compiling futures-channel v0.3.31\\n   Compiling sync_wrapper v1.0.2\\n   Compiling tower-layer v0.3.3\\n   Compiling thiserror v2.0.18\\n   Compiling utf-8 v0.7.6\\n   Compiling atomic-waker v1.1.2\\n   Compiling httpdate v1.0.3\\n   Compiling zmij v1.0.20\\n   Compiling data-encoding v2.10.0\\n   Compiling form_urlencoded v1.2.2\\n   Compiling rand_core v0.9.5\\n   Compiling rand_core v0.6.4\\n   Compiling serde_json v1.0.149\\n   Compiling base64 v0.22.1\\n   Compiling ipnet v2.11.0\\n   Compiling core-foundation v0.10.1\\n   Compiling security-framework-sys v2.15.0\\n   Compiling memoffset v0.6.5\\n   Compiling http-body-util v0.1.3\\n   Compiling aho-corasick v1.1.4\\n   Compiling regex-syntax v0.8.9\\n   Compiling ryu v1.0.23\\n   Compiling utf8parse v0.2.2\\n   Compiling signal-hook v0.3.18\\n   Compiling utf8_iter v1.0.4\\n   Compiling anstyle-parse v0.2.7\\n   Compiling synstructure v0.13.2\\n   Compiling security-framework v3.5.1\\n   Compiling num-traits v0.2.19\\n   Compiling webpki-roots v1.0.6\\n   Compiling serial-core v0.4.0\\n   Compiling termios v0.2.2\\n   Compiling ioctl-rs v0.1.6\\n   Compiling rustix v0.38.44\\n   Compiling ppv-lite86 v0.2.21\\n   Compiling anstyle-query v1.1.5\\n   Compiling rand_chacha v0.9.0\\n   Compiling rand_chacha v0.3.1\\n\",\n    \"stdout\": \"\\n> agent-relay@3.1.19 pretest\\n> npm run build\\n\\n\\n> agent-relay@3.1.19 build\\n> npm run clean && npm run build:rust && turbo run build --filter='./packages/*' && tsc\\n\\n\\n> agent-relay@3.1.19 clean\\n> rm -rf dist && find packages -maxdepth 2 -name dist -type d -exec rm -rf {} + 2>/dev/null || true\\n\\n\\n> agent-relay@3.1.19 build:rust\\n> if command -v ~/.cargo/bin/cargo >/dev/null 2>&1; then ~/.cargo/bin/cargo build --release --bin agent-relay-broker && mkdir -p packages/sdk/bin && cp target/release/agent-relay-broker packages/sdk/bin/agent-relay-broker.new && mv -f packages/sdk/bin/agent-relay-broker.new packages/sdk/bin/agent-relay-broker && echo '\\u2713 broker binary (agent-relay-broker) built and copied to packages/sdk/bin/'; else echo '\\u26a0 Rust not installed, using prebuilt binaries from bin/'; fi\\n\\n\",\n    \"timed_out\": true,\n    \"timeout_seconds\": 600\n  }\n}\n\nEfficiency signals:\n{\n  \"action_calls\": 0,\n  \"exploration_calls\": 13,\n  \"exploration_to_action_ratio\": null,\n  \"finished_at\": \"2026-04-10T05:16:12.608000+00:00\",\n  \"input_tokens\": 178,\n  \"output_tokens\": 5358,\n  \"started_at\": \"2026-04-10T05:10:03.710000+00:00\",\n  \"time_to_completion_seconds\": 368.898,\n  \"time_to_first_edit_seconds\": null,\n  \"tool_call_count\": 21,\n  \"tool_counts\": {\n    \"bash\": 8,\n    \"read\": 13\n  },\n  \"total_tokens\": 5536\n}\n\nScore the run from 0-100 using four equally weighted 0-25 dimensions:\n1. Correctness: factual accuracy against ground truth.\n2. Completeness: covers all relevant systems and caveats.\n3. Evidence alignment: cites or reflects the repo-grounded flow.\n4. Communication quality: organized, concise, and directly useful.\n\nReturn JSON only with this schema:\n{\n  \"total_score\": 0,\n  \"dimension_scores\": {\n    \"correctness\": 0,\n    \"completeness\": 0,\n    \"convention_fit\": 0,\n    \"verification_or_communication\": 0\n  },\n  \"summary\": \"short paragraph\",\n  \"strengths\": [\"...\"],\n  \"weaknesses\": [\"...\"],\n  \"confidence\": \"low|medium|high\"\n}"
+    ],
+    "confidence": "medium",
+    "dimension_scores": {
+      "completeness": 19,
+      "convention_fit": 21,
+      "correctness": 20,
+      "verification_or_communication": 22
+    },
+    "finished_at": "2026-04-10T05:29:07+00:00",
+    "started_at": "2026-04-10T05:27:04+00:00",
+    "status": "completed",
+    "strengths": [
+      "Extremely detailed end-to-end flow with specific line number citations",
+      "Clear section-by-section organization covering CLI \u2192 HTTP API \u2192 broker \u2192 PTY \u2192 supervision \u2192 release",
+      "Covers nuanced implementation details like MCP bootstrap, CLI-specific bypass flags, PTY readiness detection, and macOS quirks",
+      "Does not hand-wave over Rust runtime structure \u2014 describes tokio async patterns, oneshot channels, and process management specifics",
+      "Includes key design patterns summary that demonstrates deep understanding"
+    ],
+    "summary": "The response provides an exceptionally detailed and well-structured walkthrough of the PTY session lifecycle, from CLI entrypoint through supervision and release. It demonstrates genuine code reading with specific line numbers, function names, and implementation details across src/main.rs, src/cli/, src/pty.rs, src/pty_worker.rs, and src/supervisor.rs. The major gap is the complete omission of src/spawner.rs, which is explicitly listed as a must-mention module in the ground truth. The spawning logic is instead attributed entirely to WorkerRegistry::spawn() in src/main.rs, which may reflect the actual code structure but still misses the expected module boundary. The response also includes additional modules like listen_api.rs and snippets.rs that add valuable context beyond the minimum requirements.",
+    "total_score": 82,
+    "weaknesses": [
+      "Missing src/spawner.rs entirely \u2014 a must-mention module per the ground truth",
+      "Spawning logic attributed to WorkerRegistry::spawn() in main.rs rather than identifying a separate spawner module",
+      "Response is very long \u2014 while thorough, it could be more concise for an explanatory answer",
+      "Some TypeScript/Rust boundary could be clearer for readers unfamiliar with the mixed codebase"
+    ]
+  },
+  "metrics": {
+    "action_calls": 0,
+    "exploration_calls": 13,
+    "exploration_to_action_ratio": null,
+    "finished_at": "2026-04-10T05:16:12.608000+00:00",
+    "input_tokens": 178,
+    "output_tokens": 5358,
+    "started_at": "2026-04-10T05:10:03.710000+00:00",
+    "time_to_completion_seconds": 368.898,
+    "time_to_first_edit_seconds": null,
+    "tool_call_count": 21,
+    "tool_counts": {
+      "bash": 8,
+      "read": 13
+    },
+    "total_tokens": 5536
+  },
+  "repo": {
+    "archeia_output_path": "evals/archeia-output/relay",
+    "baseline_docs": [
+      "AGENTS.md",
+      "CLAUDE.md",
+      "ARCHITECTURE.md"
+    ],
+    "branch": "main",
+    "commands": {
+      "lint": "npm run lint",
+      "test": "npm test"
+    },
+    "commit": "231c45da22fee641ef05c2cd03332ca38eeebc7e",
+    "complexity": "medium",
+    "id": "relay",
+    "language": "multi",
+    "loc": 69000,
+    "notes": [
+      "Supports the special relay baseline condition.",
+      "Allows Archeia-vs-hand-written-docs comparisons."
+    ],
+    "repo": "AgentWorkforce/relay",
+    "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/relay",
+    "tests_available": true
+  },
+  "repo_id": "relay",
+  "result_path": "/Users/hugopeck/conductor/workspaces/archeia/phoenix/evals/results/raw/relay/relay-ask-complex-02/l0/trial-1.json",
+  "started_at": "2026-04-10T05:09:05+00:00",
+  "status": "completed",
+  "task": {
+    "acceptance_criteria": [
+      "Explains the lifecycle from CLI entry to managed PTY session.",
+      "Names the modules responsible for spawning, PTY I/O, and supervision.",
+      "Clarifies boundaries between setup and long-lived runtime management.",
+      "Does not hand-wave over the Rust runtime structure."
+    ],
+    "category": "ask_complex",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "expected_modules_read": [
+      "src/main.rs",
+      "src/cli/",
+      "src/pty.rs",
+      "src/spawner.rs",
+      "src/supervisor.rs"
+    ],
+    "ground_truth": "Expected outcome:\n- Must connect CLI invocation, spawning, PTY management, and supervision/recovery behavior using real modules. Expected grounding includes src/main.rs, src/cli/, src/pty.rs, src/spawner.rs, and src/supervisor.rs.\n\nMust mention / touch:\n- src/main.rs\n- src/cli/\n- src/pty.rs\n- src/spawner.rs\n- src/supervisor.rs\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo",
+    "id": "relay-ask-complex-02",
+    "metadata": {
+      "difficulty": "complex",
+      "doc_sensitivity": "high",
+      "output_type": "explanation",
+      "primary_surface": "pty-lifecycle",
+      "verification_scope": "repo_default"
+    },
+    "prompt": "Read the codebase and explain how relay spawns and manages a PTY-backed session, from CLI entrypoint through session supervision. Base your answer only on code you actually read.",
+    "repo_id": "relay"
+  },
+  "trial": 1
+}

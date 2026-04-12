@@ -1,0 +1,167 @@
+{
+  "level": 3,
+  "title": "Component Diagram",
+  "containers": [
+    {
+      "id": "proxy-core",
+      "name": "Proxy Core",
+      "components": [
+        {
+          "id": "proxy-core-master",
+          "name": "Master",
+          "technology": "Python / asyncio",
+          "description": "asyncio event loop entry point; coordinates startup, shutdown, addon loading, and flow replay",
+          "type": "service",
+          "evidence": ["mitmproxy/master.py"]
+        },
+        {
+          "id": "proxy-core-options",
+          "name": "Options / OptManager",
+          "technology": "Python",
+          "description": "Typed options store with change notification; shared across all addons",
+          "type": "config",
+          "evidence": ["mitmproxy/options.py", "mitmproxy/optmanager.py"]
+        },
+        {
+          "id": "proxy-core-addonmanager",
+          "name": "AddonManager",
+          "technology": "Python",
+          "description": "Registers, configures, and dispatches lifecycle hook events to all addons",
+          "type": "service",
+          "evidence": ["mitmproxy/addonmanager.py"]
+        },
+        {
+          "id": "proxy-core-server",
+          "name": "Proxy Server",
+          "technology": "Python / asyncio",
+          "description": "Accepts client TCP connections, drives the layer pipeline, handles server connections",
+          "type": "handler",
+          "evidence": ["mitmproxy/proxy/server.py"]
+        },
+        {
+          "id": "proxy-core-layers",
+          "name": "Protocol Layers",
+          "technology": "Python",
+          "description": "Stateful protocol processors stacked per connection: TLS, HTTP/1, HTTP/2, WebSocket, DNS, QUIC",
+          "type": "module",
+          "evidence": ["mitmproxy/proxy/layers/", "mitmproxy/proxy/layer.py"]
+        },
+        {
+          "id": "proxy-core-addons",
+          "name": "Built-in Addons",
+          "technology": "Python",
+          "description": "Core behaviors: intercept, flow store, content decode, dump, export, DNS resolver",
+          "type": "module",
+          "evidence": ["mitmproxy/addons/"]
+        }
+      ]
+    },
+    {
+      "id": "web-backend",
+      "name": "Web API Server",
+      "components": [
+        {
+          "id": "web-backend-app",
+          "name": "Tornado App",
+          "technology": "Python / Tornado",
+          "description": "REST API handlers for flows, options, content views, and flow file import/export",
+          "type": "controller",
+          "evidence": ["mitmproxy/tools/web/app.py"]
+        },
+        {
+          "id": "web-backend-websocket",
+          "name": "WebSocket Relay",
+          "technology": "Python / Tornado WebSocket",
+          "description": "Pushes real-time flow events to connected browser clients via /updates",
+          "type": "handler",
+          "evidence": ["mitmproxy/tools/web/app.py"]
+        },
+        {
+          "id": "web-backend-auth",
+          "name": "WebAuth Addon",
+          "technology": "Python",
+          "description": "Optional HTTP Basic authentication middleware for the web interface",
+          "type": "middleware",
+          "evidence": ["mitmproxy/tools/web/webaddons.py"]
+        }
+      ]
+    }
+  ],
+  "external_systems": [
+    {
+      "id": "mitmproxy-rs",
+      "name": "mitmproxy_rs",
+      "description": "Rust extension providing WireGuard transport, local redirect modes, and UDP/DNS handling"
+    },
+    {
+      "id": "target-server",
+      "name": "Target HTTP Server",
+      "description": "The upstream server whose traffic is being intercepted and proxied"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "proxy-core-master",
+      "target": "proxy-core-addonmanager",
+      "description": "Creates and triggers lifecycle events on addon manager",
+      "technology": "function call",
+      "evidence": ["mitmproxy/master.py"]
+    },
+    {
+      "source": "proxy-core-master",
+      "target": "proxy-core-server",
+      "description": "Sets up proxy server via proxyserver addon during startup",
+      "technology": "function call",
+      "evidence": ["mitmproxy/master.py"]
+    },
+    {
+      "source": "proxy-core-server",
+      "target": "proxy-core-layers",
+      "description": "Feeds connection events into the layer pipeline",
+      "technology": "function call",
+      "evidence": ["mitmproxy/proxy/server.py"]
+    },
+    {
+      "source": "proxy-core-layers",
+      "target": "proxy-core-addonmanager",
+      "description": "Triggers request/response/error hooks with flow objects",
+      "technology": "function call",
+      "evidence": ["mitmproxy/proxy/layers/", "mitmproxy/addonmanager.py"]
+    },
+    {
+      "source": "proxy-core-addonmanager",
+      "target": "proxy-core-addons",
+      "description": "Dispatches hook events to registered built-in addons",
+      "technology": "function call",
+      "evidence": ["mitmproxy/addonmanager.py"]
+    },
+    {
+      "source": "proxy-core-server",
+      "target": "mitmproxy-rs",
+      "description": "Delegates WireGuard and local redirect transport",
+      "technology": "Python/Rust FFI",
+      "evidence": ["mitmproxy/proxy/server.py"]
+    },
+    {
+      "source": "proxy-core-server",
+      "target": "target-server",
+      "description": "Opens upstream connections and forwards traffic",
+      "technology": "HTTPS",
+      "evidence": ["mitmproxy/proxy/server.py"]
+    },
+    {
+      "source": "web-backend-app",
+      "target": "proxy-core-addonmanager",
+      "description": "Reads and mutates flows, calls commands, updates options",
+      "technology": "function call",
+      "evidence": ["mitmproxy/tools/web/app.py"]
+    },
+    {
+      "source": "web-backend-websocket",
+      "target": "proxy-core-addonmanager",
+      "description": "Subscribes to flow lifecycle events for real-time push to browser",
+      "technology": "function call",
+      "evidence": ["mitmproxy/tools/web/app.py"]
+    }
+  ]
+}

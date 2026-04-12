@@ -1,0 +1,29 @@
+{
+  "id": "arq-implement-moderate-02",
+  "repo_id": "arq",
+  "category": "implement_moderate",
+  "prompt": "Read the codebase and add a small metadata field that propagates through enqueueing and job inspection APIs. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should add one narrow field, preserve compatibility, and update tests around job representation or inspection. The field should move through existing job metadata paths rather than creating side channels.\n\nMust mention / touch:\n- arq/jobs.py\n- arq/worker.py\n- tests/test_jobs.py\n\nCommon failure modes:\n- Changing behavior outside the intended scope\n- Skipping regression coverage or verification for the touched path",
+  "acceptance_criteria": [
+    "Adds one focused metadata field.",
+    "Propagates it through the right job/enqueue surfaces.",
+    "Includes tests around representation or inspection.",
+    "Maintains backward compatibility."
+  ],
+  "expected_modules_read": [
+    "arq/jobs.py",
+    "arq/worker.py",
+    "tests/test_jobs.py"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "moderate",
+    "output_type": "code_change",
+    "primary_surface": "job-metadata",
+    "doc_sensitivity": "medium",
+    "verification_scope": "repo_default"
+  }
+}

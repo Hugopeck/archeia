@@ -1,0 +1,30 @@
+{
+  "id": "daily-api-plan-complex-02",
+  "repo_id": "daily-api",
+  "category": "plan_complex",
+  "prompt": "Read the codebase and plan comprehensive rate limiting for the public API using daily-api's existing middleware and configuration patterns. Ground your plan in the actual modules and patterns you find.",
+  "ground_truth": "Expected outcome:\n- The plan should identify where request throttling should be configured and enforced, how policy would vary by route or actor, and how to validate the behavior. It should fit current HTTP/config architecture.\n\nMust mention / touch:\n- src/http.ts\n- src/routes/\n- src/config.ts\n- src/common/\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path",
+  "acceptance_criteria": [
+    "Maps rate limiting to the current HTTP/config structure.",
+    "Identifies the right middleware or route boundaries.",
+    "Includes rollout/testing considerations.",
+    "Avoids introducing architecture unrelated to current patterns."
+  ],
+  "expected_modules_read": [
+    "src/http.ts",
+    "src/routes/",
+    "src/config.ts",
+    "src/common/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "plan",
+    "primary_surface": "rate-limiting",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

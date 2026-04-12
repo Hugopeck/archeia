@@ -1,0 +1,203 @@
+{
+  "source_type": "sqlalchemy",
+  "entities": [
+    {
+      "id": "product",
+      "name": "Product",
+      "description": "A sellable item with pricing, benefits, and visibility controls.",
+      "table": "products",
+      "fields": [
+        {"name": "id", "type": "UUID", "constraints": ["pk"]},
+        {"name": "name", "type": "CITEXT", "constraints": ["not_null"]},
+        {"name": "organization_id", "type": "UUID", "constraints": ["fk:organization", "not_null"]},
+        {"name": "visibility", "type": "StringEnum(ProductVisibility)", "constraints": ["default:public"]},
+        {"name": "billing_type", "type": "StringEnum(ProductBillingType)", "constraints": ["not_null"]},
+        {"name": "is_archived", "type": "Boolean", "constraints": ["not_null", "default:false"]}
+      ],
+      "evidence": ["server/polar/models/product.py"]
+    },
+    {
+      "id": "order",
+      "name": "Order",
+      "description": "A completed purchase or subscription renewal with line items and tax details.",
+      "table": "orders",
+      "fields": [
+        {"name": "id", "type": "UUID", "constraints": ["pk"]},
+        {"name": "customer_id", "type": "UUID", "constraints": ["fk:customer", "not_null"]},
+        {"name": "product_id", "type": "UUID", "constraints": ["fk:product", "not_null"]},
+        {"name": "checkout_id", "type": "UUID", "constraints": ["fk:checkout", "nullable"]},
+        {"name": "subscription_id", "type": "UUID", "constraints": ["fk:subscription", "nullable"]},
+        {"name": "amount", "type": "Integer", "constraints": ["not_null"]}
+      ],
+      "evidence": ["server/polar/models/order.py"]
+    },
+    {
+      "id": "customer",
+      "name": "Customer",
+      "description": "An end user who purchases products from a merchant organization.",
+      "table": "customers",
+      "fields": [
+        {"name": "id", "type": "UUID", "constraints": ["pk"]},
+        {"name": "organization_id", "type": "UUID", "constraints": ["fk:organization", "not_null"]},
+        {"name": "email", "type": "String", "constraints": ["not_null"]},
+        {"name": "name", "type": "String", "constraints": ["nullable"]},
+        {"name": "stripe_customer_id", "type": "String", "constraints": ["nullable", "unique"]}
+      ],
+      "evidence": ["server/polar/models/customer.py"]
+    },
+    {
+      "id": "subscription",
+      "name": "Subscription",
+      "description": "A recurring billing relationship between a customer and a product.",
+      "table": "subscriptions",
+      "fields": [
+        {"name": "id", "type": "UUID", "constraints": ["pk"]},
+        {"name": "customer_id", "type": "UUID", "constraints": ["fk:customer", "not_null"]},
+        {"name": "product_id", "type": "UUID", "constraints": ["fk:product", "not_null"]},
+        {"name": "status", "type": "StringEnum(SubscriptionStatus)", "constraints": ["not_null"]},
+        {"name": "current_period_start", "type": "TIMESTAMP", "constraints": ["nullable"]},
+        {"name": "current_period_end", "type": "TIMESTAMP", "constraints": ["nullable"]}
+      ],
+      "evidence": ["server/polar/models/subscription.py"]
+    },
+    {
+      "id": "checkout",
+      "name": "Checkout",
+      "description": "A transient checkout session tracking cart, payment, and customer data before order creation.",
+      "table": "checkouts",
+      "fields": [
+        {"name": "id", "type": "UUID", "constraints": ["pk"]},
+        {"name": "customer_id", "type": "UUID", "constraints": ["fk:customer", "nullable"]},
+        {"name": "product_id", "type": "UUID", "constraints": ["fk:product", "nullable"]},
+        {"name": "status", "type": "StringEnum(CheckoutStatus)", "constraints": ["not_null"]},
+        {"name": "amount", "type": "Integer", "constraints": ["nullable"]},
+        {"name": "currency", "type": "String", "constraints": ["nullable"]}
+      ],
+      "evidence": ["server/polar/models/checkout.py"]
+    },
+    {
+      "id": "organization",
+      "name": "Organization",
+      "description": "A merchant entity that owns products, manages customers, and receives payouts.",
+      "table": "organizations",
+      "fields": [
+        {"name": "id", "type": "UUID", "constraints": ["pk"]},
+        {"name": "slug", "type": "CITEXT", "constraints": ["not_null", "unique"]},
+        {"name": "name", "type": "String", "constraints": ["not_null"]},
+        {"name": "stripe_customer_id", "type": "String", "constraints": ["nullable"]}
+      ],
+      "evidence": ["server/polar/models/organization.py"]
+    },
+    {
+      "id": "benefit",
+      "name": "Benefit",
+      "description": "A digital entitlement (license key, file download, repo access) that can be attached to products.",
+      "table": "benefits",
+      "fields": [
+        {"name": "id", "type": "UUID", "constraints": ["pk"]},
+        {"name": "organization_id", "type": "UUID", "constraints": ["fk:organization", "not_null"]},
+        {"name": "type", "type": "String", "constraints": ["not_null"]},
+        {"name": "description", "type": "Text", "constraints": ["not_null"]}
+      ],
+      "evidence": ["server/polar/models/benefit.py"]
+    },
+    {
+      "id": "transaction",
+      "name": "Transaction",
+      "description": "A financial ledger entry tracking money movement (charges, refunds, payouts, fees).",
+      "table": "transactions",
+      "fields": [
+        {"name": "id", "type": "UUID", "constraints": ["pk"]},
+        {"name": "type", "type": "String", "constraints": ["not_null"]},
+        {"name": "amount", "type": "Integer", "constraints": ["not_null"]},
+        {"name": "currency", "type": "String", "constraints": ["not_null"]},
+        {"name": "order_id", "type": "UUID", "constraints": ["fk:order", "nullable"]}
+      ],
+      "evidence": ["server/polar/models/transaction.py"]
+    },
+    {
+      "id": "user",
+      "name": "User",
+      "description": "An authenticated user who can be a merchant, team member, or admin.",
+      "table": "users",
+      "fields": [
+        {"name": "id", "type": "UUID", "constraints": ["pk"]},
+        {"name": "email", "type": "String", "constraints": ["not_null", "unique"]},
+        {"name": "username", "type": "String", "constraints": ["not_null", "unique"]}
+      ],
+      "evidence": ["server/polar/models/user.py"]
+    }
+  ],
+  "relationships": [
+    {
+      "source": "product",
+      "target": "organization",
+      "cardinality": "many_to_one",
+      "description": "Products belong to an organization.",
+      "evidence": ["server/polar/models/product.py"]
+    },
+    {
+      "source": "order",
+      "target": "customer",
+      "cardinality": "many_to_one",
+      "description": "Orders are placed by a customer.",
+      "evidence": ["server/polar/models/order.py"]
+    },
+    {
+      "source": "order",
+      "target": "product",
+      "cardinality": "many_to_one",
+      "description": "Orders reference a product.",
+      "evidence": ["server/polar/models/order.py"]
+    },
+    {
+      "source": "order",
+      "target": "checkout",
+      "cardinality": "many_to_one",
+      "description": "Orders may originate from a checkout session.",
+      "evidence": ["server/polar/models/order.py"]
+    },
+    {
+      "source": "subscription",
+      "target": "customer",
+      "cardinality": "many_to_one",
+      "description": "Subscriptions belong to a customer.",
+      "evidence": ["server/polar/models/subscription.py"]
+    },
+    {
+      "source": "subscription",
+      "target": "product",
+      "cardinality": "many_to_one",
+      "description": "Subscriptions are for a specific product.",
+      "evidence": ["server/polar/models/subscription.py"]
+    },
+    {
+      "source": "customer",
+      "target": "organization",
+      "cardinality": "many_to_one",
+      "description": "Customers belong to an organization (merchant).",
+      "evidence": ["server/polar/models/customer.py"]
+    },
+    {
+      "source": "benefit",
+      "target": "organization",
+      "cardinality": "many_to_one",
+      "description": "Benefits are owned by an organization.",
+      "evidence": ["server/polar/models/benefit.py"]
+    },
+    {
+      "source": "transaction",
+      "target": "order",
+      "cardinality": "many_to_one",
+      "description": "Transactions may reference an order.",
+      "evidence": ["server/polar/models/transaction.py"]
+    },
+    {
+      "source": "product",
+      "target": "benefit",
+      "cardinality": "many_to_many",
+      "description": "Products grant multiple benefits via product_benefits join table.",
+      "evidence": ["server/polar/models/product_benefit.py"]
+    }
+  ]
+}

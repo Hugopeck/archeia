@@ -1,0 +1,169 @@
+{
+  "level": 2,
+  "title": "Container Diagram",
+  "system_boundary": {
+    "id": "agent-relay",
+    "name": "Agent Relay",
+    "description": "Real-time agent-to-agent communication system for spawning and coordinating AI agents"
+  },
+  "containers": [
+    {
+      "id": "relay-cli",
+      "name": "Relay CLI",
+      "technology": "TypeScript / Node.js",
+      "description": "CLI entry point that orchestrates the broker and exposes the agent-relay command",
+      "type": "cli",
+      "evidence": ["src/cli/index.ts", "package.json"]
+    },
+    {
+      "id": "broker-binary",
+      "name": "Broker Binary",
+      "technology": "Rust / Axum / Tokio",
+      "description": "Statically-linked WebSocket broker that spawns agents as PTY subprocesses and routes messages",
+      "type": "worker",
+      "evidence": ["src/main.rs", "Cargo.toml"]
+    },
+    {
+      "id": "sdk",
+      "name": "TypeScript SDK",
+      "technology": "TypeScript / Node.js",
+      "description": "Client library consumed by developers to spawn agents and send messages",
+      "type": "library",
+      "evidence": ["packages/sdk/src/index.ts", "package.json"]
+    },
+    {
+      "id": "openclaw-gateway",
+      "name": "OpenClaw Gateway",
+      "technology": "TypeScript / Node.js",
+      "description": "Inbound gateway that receives messages from external platforms and delivers them to agents",
+      "type": "api",
+      "evidence": ["packages/openclaw/src/gateway.ts", "packages/openclaw/src/index.ts"]
+    },
+    {
+      "id": "openclaw-web",
+      "name": "OpenClaw Web",
+      "technology": "Next.js / React / SST",
+      "description": "Web dashboard for managing OpenClaw workspace configuration and agents",
+      "type": "webapp",
+      "evidence": ["openclaw-web/app", "package.json"]
+    }
+  ],
+  "external_systems": [
+    {
+      "id": "relaycast-cloud",
+      "name": "Relaycast Cloud",
+      "description": "WebSocket relay backbone that brokers messages between agents"
+    },
+    {
+      "id": "claude-cli",
+      "name": "Claude CLI",
+      "description": "Anthropic Claude coding agent spawned as a PTY subprocess"
+    },
+    {
+      "id": "codex-cli",
+      "name": "Codex CLI",
+      "description": "OpenAI Codex coding agent spawned as a PTY subprocess"
+    },
+    {
+      "id": "posthog",
+      "name": "PostHog",
+      "description": "Product analytics and telemetry event collection"
+    },
+    {
+      "id": "sqlite",
+      "name": "SQLite",
+      "description": "Local persistence for relay state and session data"
+    },
+    {
+      "id": "fly-io",
+      "name": "Fly.io",
+      "description": "Cloud platform hosting the Agent Relay API and web dashboard"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "relay-cli",
+      "target": "broker-binary",
+      "description": "Spawns and manages the broker subprocess",
+      "technology": "IPC / subprocess",
+      "evidence": ["packages/sdk/src/client.ts"]
+    },
+    {
+      "source": "sdk",
+      "target": "broker-binary",
+      "description": "Sends protocol commands to spawn agents and route messages",
+      "technology": "IPC / subprocess",
+      "evidence": ["packages/sdk/src/client.ts"]
+    },
+    {
+      "source": "broker-binary",
+      "target": "relaycast-cloud",
+      "description": "Connects via WebSocket for cross-process message relay",
+      "technology": "WebSocket",
+      "evidence": ["src/main.rs", "Cargo.toml"]
+    },
+    {
+      "source": "broker-binary",
+      "target": "claude-cli",
+      "description": "Spawns Claude as a PTY subprocess and injects messages",
+      "technology": "PTY",
+      "evidence": ["src/main.rs"]
+    },
+    {
+      "source": "broker-binary",
+      "target": "codex-cli",
+      "description": "Spawns Codex as a PTY subprocess and injects messages",
+      "technology": "PTY",
+      "evidence": ["src/main.rs"]
+    },
+    {
+      "source": "broker-binary",
+      "target": "sqlite",
+      "description": "Persists session state locally",
+      "technology": "SQL",
+      "evidence": [".env.example"]
+    },
+    {
+      "source": "openclaw-gateway",
+      "target": "relaycast-cloud",
+      "description": "Subscribes to inbound message events from the relay backbone",
+      "technology": "WebSocket",
+      "evidence": ["packages/openclaw/src/gateway.ts"]
+    },
+    {
+      "source": "openclaw-gateway",
+      "target": "sdk",
+      "description": "Delivers inbound messages to agents via the relay SDK",
+      "technology": "function call",
+      "evidence": ["packages/openclaw/src/gateway.ts"]
+    },
+    {
+      "source": "relay-cli",
+      "target": "posthog",
+      "description": "Emits telemetry events",
+      "technology": "HTTPS",
+      "evidence": ["packages/telemetry/src/index.ts", ".env.example"]
+    },
+    {
+      "source": "openclaw-web",
+      "target": "fly-io",
+      "description": "Deployed as a web app on Fly.io / SST",
+      "technology": "HTTPS",
+      "evidence": ["fly.toml", "package.json"]
+    }
+  ],
+  "people_container_mappings": [
+    {
+      "person": "developer",
+      "container": "sdk",
+      "description": "Imports SDK to build multi-agent applications",
+      "technology": "npm"
+    },
+    {
+      "person": "developer",
+      "container": "relay-cli",
+      "description": "Runs the CLI to start the relay and manage agents",
+      "technology": "CLI"
+    }
+  ]
+}

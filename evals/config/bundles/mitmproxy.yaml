@@ -1,0 +1,53 @@
+{
+  "repo_id": "mitmproxy",
+  "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/mitmproxy",
+  "commit": "2a7bb7ba05a9a1c14b4fd7674d5356bc665a4182",
+  "pipeline_order": [
+    "archeia-scan-repo",
+    "archeia-scan-git",
+    "archeia-write-tech-docs",
+    "archeia-write-readmes",
+    "archeia-write-agents-docs",
+    "archeia-draw-diagrams"
+  ],
+  "required_outputs": {
+    "root_docs": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "archeia": [
+      "Architecture.md",
+      "System.json",
+      "Standards.md",
+      "Guide.md"
+    ]
+  },
+  "always_attempted_outputs": [
+    "Containers.json",
+    "Components.json",
+    "DataFlow.json"
+  ],
+  "conditional_expectations": {
+    "Entities.json": "expected_skip",
+    "StateMachine.json": "expected_skip"
+  },
+  "copy_rules": {
+    "include_root_docs": true,
+    "include_archeia_dir": true,
+    "include_colocated_readmes": true,
+    "include_colocated_agents": true,
+    "exclude": [
+      ".archeia/codebase/scan-report.md",
+      ".archeia/codebase/git-report.md"
+    ]
+  },
+  "validation": {
+    "run_validate_evidence": true,
+    "include_root_docs": true,
+    "require_manifests": true
+  },
+  "notes": [
+    "Pilot repo for Phase 3.",
+    "Manual draft bundle content must be overwritten by canonical skill output."
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "polar-ask-complex-02",
+  "repo_id": "polar",
+  "category": "ask_complex",
+  "prompt": "Read the codebase and explain how billing, account credits, and invoices interact in Polar's backend. Base your answer only on code you actually read.",
+  "ground_truth": "Expected outcome:\n- Must describe the relationship between billing entries, credits, and invoice-related modules using actual domain boundaries in the code. Expected grounding includes account_credit, billing_entry, invoice, and model-level surfaces.\n\nMust mention / touch:\n- server/polar/account_credit/\n- server/polar/billing_entry/\n- server/polar/invoice/\n- server/polar/models/\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo",
+  "acceptance_criteria": [
+    "Explains the interaction among billing, credit, and invoice modules.",
+    "Uses actual Polar domain modules and models.",
+    "Clarifies where state or financial records are represented.",
+    "Avoids unsupported claims about financial behavior."
+  ],
+  "expected_modules_read": [
+    "server/polar/account_credit/",
+    "server/polar/billing_entry/",
+    "server/polar/invoice/",
+    "server/polar/models/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "explanation",
+    "primary_surface": "billing-credit-invoice",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

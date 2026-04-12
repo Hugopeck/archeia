@@ -1,0 +1,29 @@
+{
+  "id": "mitmproxy-implement-simple-02",
+  "repo_id": "mitmproxy",
+  "category": "implement_simple",
+  "prompt": "Read the codebase and add validation so string options with declared choices reject unknown values instead of accepting them into the option state. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should enforce declared option choices during option updates, raise a clear error for invalid values, preserve current behavior for valid choices, and add targeted option-manager tests.\n\nMust mention / touch:\n- mitmproxy/options.py\n- mitmproxy/optmanager.py\n- test/mitmproxy/test_optmanager.py\n\nCommon failure modes:\n- Leaving invalid choice values accepted into the live option state\n- Over-applying validation to option types that do not declare choices",
+  "acceptance_criteria": [
+    "Rejects invalid values for choice-constrained string options.",
+    "Preserves existing behavior for valid choice updates.",
+    "Uses the established option-manager error path.",
+    "Includes targeted regression coverage."
+  ],
+  "expected_modules_read": [
+    "mitmproxy/options.py",
+    "mitmproxy/optmanager.py",
+    "test/mitmproxy/test_optmanager.py"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "simple",
+    "output_type": "code_change",
+    "primary_surface": "option-choice-validation",
+    "doc_sensitivity": "medium",
+    "verification_scope": "repo_default"
+  }
+}

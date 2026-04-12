@@ -1,0 +1,30 @@
+{
+  "id": "mitmproxy-plan-complex-02",
+  "repo_id": "mitmproxy",
+  "category": "plan_complex",
+  "prompt": "Read the codebase and plan a structured request-tracing feature that can follow a request across proxy core handling and expose the trace to one of mitmproxy's user-facing tools. Ground your plan in the actual modules and patterns you find.",
+  "ground_truth": "Expected outcome:\n- The plan should identify where trace events would be emitted, how request identity would be preserved, what user-facing surface would show the trace, and which tests would need to be added. It must connect proxy core, flow state, and tooling/UI boundaries instead of treating mitmproxy as a single flat module.\n\nMust mention / touch:\n- mitmproxy/proxy/\n- mitmproxy/tools/\n- web/src/\n- mitmproxy/flow.py\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path",
+  "acceptance_criteria": [
+    "Maps trace data production, storage, and presentation to real modules.",
+    "Describes boundaries between proxy internals and user-facing tools.",
+    "Includes sequencing and risk notes for implementation.",
+    "Avoids proposing architecture inconsistent with existing module patterns."
+  ],
+  "expected_modules_read": [
+    "mitmproxy/proxy/",
+    "mitmproxy/tools/",
+    "web/src/",
+    "mitmproxy/flow.py"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "plan",
+    "primary_surface": "request-tracing",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

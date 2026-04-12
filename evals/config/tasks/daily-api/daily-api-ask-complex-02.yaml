@@ -1,0 +1,30 @@
+{
+  "id": "daily-api-ask-complex-02",
+  "repo_id": "daily-api",
+  "category": "ask_complex",
+  "prompt": "Read the codebase and explain how bookmark-related behavior interacts with the personalized feed and API responses. Base your answer only on code you actually read.",
+  "ground_truth": "Expected outcome:\n- Must connect bookmark persistence and route handling to the data exposed back to clients and any feed-related implications. Expected grounding includes bookmark-relevant routes, entities, shared helper modules, and tests.\n\nMust mention / touch:\n- src/routes/\n- src/entity/\n- src/common/\n- __tests__/bookmarks.ts\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo",
+  "acceptance_criteria": [
+    "Covers route handling, persistence, and API output behavior.",
+    "Names real modules and entities involved in bookmarks.",
+    "Explains any interaction with feed assembly or response shaping.",
+    "Does not overclaim behavior beyond the repo evidence."
+  ],
+  "expected_modules_read": [
+    "src/routes/",
+    "src/entity/",
+    "src/common/",
+    "__tests__/bookmarks.ts"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "explanation",
+    "primary_surface": "bookmarks-feed",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

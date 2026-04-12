@@ -1,0 +1,212 @@
+{
+  "agent_run": {
+    "command": [
+      "claude",
+      "--model",
+      "haiku",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--permission-mode",
+      "auto",
+      "--append-system-prompt",
+      "CRITICAL RULE: You MUST use your tools to read files in this repository before answering. Do NOT answer from memory or training data. Start by exploring the project structure with Bash(ls) or Glob, then read the specific files needed to answer the question. Every claim you make must cite a specific file path you actually read in this session. If you answer without reading files first, your response will be scored as zero.",
+      "-p",
+      "Read the codebase and design durable retry and acknowledgement behavior for outbound delivery without breaking the current routing model. Ground your plan in the actual modules and patterns you find."
+    ],
+    "exit_code": 0,
+    "finished_at": "2026-04-10T05:04:38+00:00",
+    "started_at": "2026-04-10T05:03:02+00:00",
+    "status": "completed",
+    "stderr": "",
+    "stdout": "Based on my exploration of the codebase and the existing design memory, let me provide you with a comprehensive implementation guide grounded in the actual code structure.\n\n## Design Summary: Durable Retry & Acknowledgement\n\nI've reviewed the actual codebase and found that the memory design is well-aligned with reality. Here's the grounded analysis:\n\n### Current State (Verified Against Code)\n\n**PendingDelivery (main.rs:445)**\n```rust\nstruct PendingDelivery {\n    worker_name: String,        // Single target\n    delivery: RelayDelivery,     // Immutable event\n    attempts: u32,              // Total attempts\n    next_retry_at: Instant,     // Retry schedule\n}\n```\n\n**Routing Model (routing.rs)**\n- Returns `Vec<String>` targets (worker names)\n- Workspace-isolated: workers filter by `workspace_id`\n- Channel delivery: multi-target via subscriptions\n- Direct delivery: single target or empty\n- Thread reply: broadcast to workspace (except sender)\n\n**Delivery Pipeline (main.rs:4613+)**\n1. `queue_and_try_delivery_raw()` \u2192 creates one `PendingDelivery` per target\n2. `retry_pending_delivery()` \u2192 attempts delivery, reschedules with constant `retry_interval`\n3. `delivery_ack` handler \u2192 removes from `pending_deliveries` HashMap\n\n**Critical Gap**: Multi-target deliveries create N separate `PendingDelivery` entries (one per worker), but there's no cross-target coordination. If Worker A acks but Worker B crashes, the delivery stays queued separately for B.\n\n---\n\n## Implementation Blueprint\n\n### Phase 1: Data Structures (Backwards Compatible)\n\nCreate a new module `src/delivery.rs` with enhanced types:\n\n```rust\n// Immutable delivery metadata (shared across all targets)\n#[derive(Clone, Serialize, Deserialize, Debug)]\npub struct DeliveryMetadata {\n    pub delivery_id: String,\n    pub event_id: String,\n    pub workspace_id: Option<String>,\n    pub from: String,\n    pub target: String,          // Display target (#channel or @worker)\n    pub body: String,\n    pub thread_id: Option<String>,\n    pub priority: Option<u8>,\n    pub created_at_secs: u64,    // Wall-clock time for persistence\n}\n\n// Per-worker delivery state within a single delivery\n#[derive(Clone, Serialize, Deserialize, Debug, Default)]\npub struct TargetState {\n    pub worker_name: String,\n    \n    // Lifecycle timestamps (secs since epoch for persistence)\n    pub queued_at_secs: Option<u64>,      // Worker ack: delivery_queued\n    pub injected_at_secs: Option<u64>,    // Worker ack: delivery_injected\n    pub acked_at_secs: Option<u64>,       // Worker ack: delivery_ack (terminal)\n    pub failed_at_secs: Option<u64>,      // Worker ack: delivery_failed (terminal)\n    pub failure_reason: Option<String>,   // Worker-provided reason\n    \n    // Retry tracking\n    pub attempts: u32,\n    pub last_attempt_at_secs: Option<u64>,\n}\n\n// Mutable delivery state (per delivery_id, tracking all targets)\n#[derive(Clone, Debug)]\npub struct DeliveryState {\n    pub metadata: DeliveryMetadata,\n    pub targets: HashMap<String, TargetState>,  // key: worker_name\n    \n    // Retry control (runtime, not persisted)\n    pub next_retry_at: Instant,\n    pub attempts: u32,\n    pub backoff_multiplier: f64,\n}\n\n// Persisted format (for crash recovery)\n#[derive(Serialize, Deserialize)]\npub struct PersistedDelivery {\n    pub metadata: DeliveryMetadata,\n    pub targets: HashMap<String, TargetState>,\n}\n```\n\n### Phase 2: Backoff Function\n\n```rust\nconst DEFAULT_RETRY_MS: u64 = 1000;\nconst MAX_RETRY_ATTEMPTS: u32 = 10;\nconst DELIVERY_ACK_TIMEOUT_SECS: u64 = 300;  // 5 min\n\npub fn compute_next_retry_delay(attempt_count: u32) -> Duration {\n    // Exponential with cap: 1s, 2s, 4s, 8s, 16s (capped), repeat 16s\n    let multiplier = 2u64.pow(attempt_count.min(4));\n    let delay_ms = DEFAULT_RETRY_MS.saturating_mul(multiplier);\n    \n    // Add jitter (\u00b125%)\n    let jitter_ms = (delay_ms / 4).max(1) as u32;\n    let jitter_offset = (std::time::SystemTime::now()\n        .duration_since(std::time::UNIX_EPOCH)\n        .unwrap_or_default()\n        .as_millis() % jitter_ms as u128) as u64;\n    \n    Duration::from_millis(delay_ms + jitter_offset)\n}\n```\n\n### Phase 3: Refactor Delivery Queue\n\nChange `queue_and_try_delivery_raw()` to:\n\n```rust\nasync fn queue_and_try_delivery_raw(\n    workers: &mut WorkerRegistry,\n    pending_deliveries: &mut HashMap<String, DeliveryState>,\n    delivery_targets: Vec<String>,  // Multiple targets from routing\n    event_id: &str,\n    from: &str,\n    target: &str,  // Display target (#channel or @user)\n    body: &str,\n    thread_id: Option<String>,\n    workspace_id: Option<String>,\n    workspace_alias: Option<String>,\n    priority: u8,\n    retry_interval: Duration,\n) -> Result<()> {\n    let delivery_id = format!(\"del_{}\", Uuid::new_v4().simple());\n    let now_secs = std::time::SystemTime::now()\n        .duration_since(std::time::UNIX_EPOCH)\n        .unwrap_or_default()\n        .as_secs();\n    \n    let metadata = DeliveryMetadata {\n        delivery_id: delivery_id.clone(),\n        event_id: event_id.to_string(),\n        workspace_id,\n        from: from.to_string(),\n        target: target.to_string(),\n        body: body.to_string(),\n        thread_id,\n        priority: Some(priority),\n        created_at_secs: now_secs,\n    };\n    \n    // Create initial state for each target\n    let mut targets = HashMap::new();\n    for worker_name in &delivery_targets {\n        targets.insert(worker_name.clone(), TargetState {\n            worker_name: worker_name.clone(),\n            ..Default::default()\n        });\n    }\n    \n    let state = DeliveryState {\n        metadata,\n        targets,\n        next_retry_at: Instant::now(),\n        attempts: 0,\n        backoff_multiplier: 1.0,\n    };\n    \n    pending_deliveries.insert(delivery_id.clone(), state);\n    \n    // Attempt first delivery to all targets\n    for target_name in delivery_targets {\n        retry_deliver_to_target(&delivery_id, &target_name, workers, pending_deliveries).await?;\n    }\n    \n    Ok(())\n}\n```\n\n### Phase 4: Per-Target Retry Loop\n\nReplace the single `retry_pending_delivery()` with per-target logic in the main retry loop:\n\n```rust\n// In the main event loop (around line 3240 area)\nfor (delivery_id, state) in pending_deliveries.iter_mut() {\n    // Skip terminal deliveries (all targets acked or failed)\n    if is_delivery_terminal(state) {\n        continue;\n    }\n    \n    // Check timeout (5 min with no ack from any target)\n    if state.metadata.created_at_secs + DELIVERY_ACK_TIMEOUT_SECS < now_secs {\n        if !state.targets.values().any(|t| t.acked_at_secs.is_some()) {\n            tracing::warn!(\n                delivery_id = %delivery_id,\n                elapsed_secs = now_secs - state.metadata.created_at_secs,\n                \"delivery timed out: no ack from any target\"\n            );\n            // Move to terminal state (don't retry)\n            continue;\n        }\n    }\n    \n    // Skip if not yet time to retry\n    if Instant::now() < state.next_retry_at {\n        continue;\n    }\n    \n    // Compute next backoff\n    let delay = compute_next_retry_delay(state.attempts);\n    state.next_retry_at = Instant::now() + delay;\n    state.attempts += 1;\n    \n    // Retry non-terminal targets\n    for (worker_name, target_state) in state.targets.iter_mut() {\n        if target_state.acked_at_secs.is_none() \n            && target_state.failed_at_secs.is_none() {\n            if let Err(e) = retry_deliver_to_target(\n                delivery_id,\n                worker_name,\n                workers,\n                &state.metadata,\n            ).await {\n                tracing::debug!(error = %e, \"retry delivery failed\");\n            }\n        }\n    }\n}\n```\n\n### Phase 5: Acknowledgement Processing\n\nEnhance `delivery_ack` handler (main.rs:2780+):\n\n```rust\n\"delivery_ack\" => {\n    if let Ok(ack) = serde_json::from_str::<DeliveryAckPayload>(&payload) {\n        if let Some(state) = pending_deliveries.get_mut(&ack.delivery_id) {\n            if let Some(target) = state.targets.get_mut(&name) {\n                target.acked_at_secs = Some(now_secs());\n                \n                // Check if all targets are terminal\n                if is_delivery_terminal(state) {\n                    tracing::info!(\n                        delivery_id = %ack.delivery_id,\n                        event_id = %state.metadata.event_id,\n                        target_count = state.targets.len(),\n                        \"delivery completed: all targets acked\"\n                    );\n                    // Optional: remove immediately, or keep for observability window\n                    // pending_deliveries.remove(&ack.delivery_id);\n                }\n            }\n        }\n    }\n}\n\n\"delivery_failed\" => {\n    if let Ok(fail) = serde_json::from_str::<DeliveryFailedPayload>(&payload) {\n        if let Some(state) = pending_deliveries.get_mut(&fail.delivery_id) {\n            if let Some(target) = state.targets.get_mut(&name) {\n                target.failed_at_secs = Some(now_secs());\n                target.failure_reason = fail.reason;\n                \n                // Decision: fail fast (remove on first failure) or \n                // wait for all targets? Depends on semantics.\n                // For now, track but keep retrying other targets.\n                tracing::warn!(\n                    delivery_id = %fail.delivery_id,\n                    worker = %name,\n                    reason = %fail.reason,\n                    \"worker rejected delivery\"\n                );\n            }\n        }\n    }\n}\n```\n\n### Phase 6: Persistence\n\nUpdate `save_pending_deliveries()` and `load_pending_deliveries()`:\n\n```rust\nfn save_pending_deliveries(\n    path: &Path,\n    deliveries: &HashMap<String, DeliveryState>,\n) -> Result<()> {\n    let persisted: Vec<PersistedDelivery> = deliveries\n        .values()\n        .map(|state| PersistedDelivery {\n            metadata: state.metadata.clone(),\n            targets: state.targets.clone(),\n        })\n        .collect();\n    let json = serde_json::to_string_pretty(&persisted)?;\n    // ... atomic write with tempfile ...\n    Ok(())\n}\n\nfn load_pending_deliveries(path: &Path) -> HashMap<String, DeliveryState> {\n    let data = match std::fs::read_to_string(path) {\n        Ok(d) => d,\n        Err(_) => return HashMap::new(),\n    };\n    let persisted: Vec<PersistedDelivery> = match serde_json::from_str(&data) {\n        Ok(v) => v,\n        Err(e) => {\n            tracing::warn!(error = %e, \"failed parsing persisted deliveries\");\n            return HashMap::new();\n        }\n    };\n    \n    persisted\n        .into_iter()\n        .map(|p| {\n            let id = p.metadata.delivery_id.clone();\n            (\n                id,\n                DeliveryState {\n                    metadata: p.metadata,\n                    targets: p.targets,\n                    next_retry_at: Instant::now(),  // Retry immediately on restart\n                    attempts: 0,\n                    backoff_multiplier: 1.0,\n                },\n            )\n        })\n        .collect()\n}\n```\n\n---\n\n## Routing Compatibility \u2713\n\n**No changes required to `routing.rs`:**\n- `resolve_delivery_targets()` still returns `Vec<String>`\n- Workspace isolation still enforced\n- Channel subscriptions still determine eligibility\n\n**The only change is the consumer:**\n- Old: queue one `PendingDelivery` per target\n- New: queue one `DeliveryState` with multiple `TargetState` entries\n\n---\n\n## Testing Strategy\n\n1. **Unit**: Test `compute_next_retry_delay()` exponential curve\n2. **Integration**: \n   - Multi-target delivery with one worker offline\n   - Verify backoff intervals\n   - Restart broker mid-delivery, confirm restoration\n3. **Scenario**: Channel with 5 subscribers, one crashes after ack\u2014verify others still retry\n\n---\n\n## Observability Additions\n\n```rust\n// Add metrics\nmetrics::counter!(\"delivery.attempted\", 1);\nmetrics::histogram!(\"delivery.latency_ms\", elapsed_ms as f64);\nmetrics::gauge!(\"delivery.pending_count\", pending_deliveries.len() as i64);\nmetrics::counter!(\"delivery.timeout\", 1);  // 5 min timeout triggered\n```\n\nThis design preserves the existing routing model while adding per-worker tracking, exponential backoff, and timeout safety. Would you like me to elaborate on any specific phase or create a working branch to implement this?",
+    "transcript_path": "/tmp/archeia-phase4/relay-l1-relay-plan-complex-01-trial1/.archeia-eval/conversation.json"
+  },
+  "code_quality": {
+    "lint": {
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "cwd": "/tmp/archeia-phase4/relay-l1-relay-plan-complex-01-trial1",
+      "exit_code": 254,
+      "finished_at": "2026-04-10T05:04:41+00:00",
+      "started_at": "2026-04-10T05:04:39+00:00",
+      "stderr": "npm error code ENOENT\nnpm error syscall open\nnpm error path /private/tmp/archeia-phase4/relay-l1-relay-plan-complex-01-trial1/package.json\nnpm error errno -2\nnpm error enoent Could not read package.json: Error: ENOENT: no such file or directory, open '/private/tmp/archeia-phase4/relay-l1-relay-plan-complex-01-trial1/package.json'\nnpm error enoent This is related to npm not being able to find a file.\nnpm error enoent\nnpm error A complete log of this run can be found in: /Users/hugopeck/.npm/_logs/2026-04-10T05_04_40_323Z-debug-0.log\n",
+      "stdout": ""
+    },
+    "lint_baseline": {
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "cwd": "/tmp/archeia-phase4/relay-l1-relay-plan-complex-01-trial1",
+      "exit_code": 127,
+      "finished_at": "2026-04-10T05:03:02+00:00",
+      "started_at": "2026-04-10T05:03:00+00:00",
+      "stderr": "sh: eslint: command not found\n",
+      "stdout": "\n> agent-relay@3.1.19 lint\n> eslint src --ext .ts\n\n"
+    },
+    "lint_baseline_findings": 3,
+    "lint_delta": 5,
+    "lint_findings": 8,
+    "tests": {
+      "command": [
+        "npm",
+        "test"
+      ],
+      "cwd": "/tmp/archeia-phase4/relay-l1-relay-plan-complex-01-trial1",
+      "exit_code": 254,
+      "finished_at": "2026-04-10T05:04:39+00:00",
+      "started_at": "2026-04-10T05:04:38+00:00",
+      "stderr": "npm error code ENOENT\nnpm error syscall open\nnpm error path /private/tmp/archeia-phase4/relay-l1-relay-plan-complex-01-trial1/package.json\nnpm error errno -2\nnpm error enoent Could not read package.json: Error: ENOENT: no such file or directory, open '/private/tmp/archeia-phase4/relay-l1-relay-plan-complex-01-trial1/package.json'\nnpm error enoent This is related to npm not being able to find a file.\nnpm error enoent\nnpm error A complete log of this run can be found in: /Users/hugopeck/.npm/_logs/2026-04-10T05_04_39_249Z-debug-0.log\n",
+      "stdout": ""
+    }
+  },
+  "condition_application": {
+    "archeia_output": "evals/archeia-output/relay",
+    "condition_id": "l1",
+    "copied_paths": [
+      ".archeia",
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "kept_existing_docs": false,
+    "removed_paths": [
+      "AGENTS.md"
+    ],
+    "repo_id": "relay",
+    "worktree": "/tmp/archeia-phase4/relay-l1-relay-plan-complex-01-trial1"
+  },
+  "condition_commit": {
+    "command": [
+      "git",
+      "commit",
+      "-m",
+      "Apply evaluation condition"
+    ],
+    "cwd": "/tmp/archeia-phase4/relay-l1-relay-plan-complex-01-trial1",
+    "exit_code": 0,
+    "finished_at": "2026-04-10T05:03:00+00:00",
+    "started_at": "2026-04-10T05:03:00+00:00",
+    "stderr": "",
+    "stdout": "[detached HEAD 9497f24] Apply evaluation condition\n 14 files changed, 1207 insertions(+)\n create mode 100644 .archeia/Architecture.md\n create mode 100644 .archeia/Components.json\n create mode 100644 .archeia/Containers.json\n create mode 100644 .archeia/DataFlow.json\n create mode 100644 .archeia/Guide.md\n create mode 100644 .archeia/Standards.md\n create mode 100644 .archeia/System.json\n create mode 100644 .archeia/diagrams/components-broker-binary.md\n create mode 100644 .archeia/diagrams/components-relay-cli.md\n create mode 100644 .archeia/diagrams/components-sdk.md\n create mode 100644 .archeia/diagrams/containers.md\n create mode 100644 .archeia/diagrams/context.md\n create mode 100644 .archeia/diagrams/sequence-primary.md\n"
+  },
+  "condition_id": "l1",
+  "diff": "",
+  "finished_at": "2026-04-10T05:07:36+00:00",
+  "judge": {
+    "command": [
+      "claude",
+      "--output-format",
+      "json",
+      "-p",
+      "You are judging an Archeia evaluation run.\n\nTask category: plan_complex\nTask id: relay-plan-complex-01\n\nTask prompt:\nRead the codebase and design durable retry and acknowledgement behavior for outbound delivery without breaking the current routing model. Ground your plan in the actual modules and patterns you find.\n\nGround truth / reference:\nExpected outcome:\n- The plan should map how outbound messages are currently routed and buffered, identify where acknowledgement state belongs, and propose changes that preserve current protocol expectations. It should include testing and migration risks.\n\nMust mention / touch:\n- src/relaycast_ws.rs\n- src/replay_buffer.rs\n- src/queue.rs\n- src/routing.rs\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path\n\nAcceptance criteria:\n[\n  \"Identifies concrete modules for retry, ack state, and delivery changes.\",\n  \"Preserves current routing/protocol expectations.\",\n  \"Includes failure-mode handling and tests.\",\n  \"Avoids speculative redesigns outside the current architecture.\"\n]\n\nAgent response:\nBased on my exploration of the codebase and the existing design memory, let me provide you with a comprehensive implementation guide grounded in the actual code structure.\n\n## Design Summary: Durable Retry & Acknowledgement\n\nI've reviewed the actual codebase and found that the memory design is well-aligned with reality. Here's the grounded analysis:\n\n### Current State (Verified Against Code)\n\n**PendingDelivery (main.rs:445)**\n```rust\nstruct PendingDelivery {\n    worker_name: String,        // Single target\n    delivery: RelayDelivery,     // Immutable event\n    attempts: u32,              // Total attempts\n    next_retry_at: Instant,     // Retry schedule\n}\n```\n\n**Routing Model (routing.rs)**\n- Returns `Vec<String>` targets (worker names)\n- Workspace-isolated: workers filter by `workspace_id`\n- Channel delivery: multi-target via subscriptions\n- Direct delivery: single target or empty\n- Thread reply: broadcast to workspace (except sender)\n\n**Delivery Pipeline (main.rs:4613+)**\n1. `queue_and_try_delivery_raw()` \u2192 creates one `PendingDelivery` per target\n2. `retry_pending_delivery()` \u2192 attempts delivery, reschedules with constant `retry_interval`\n3. `delivery_ack` handler \u2192 removes from `pending_deliveries` HashMap\n\n**Critical Gap**: Multi-target deliveries create N separate `PendingDelivery` entries (one per worker), but there's no cross-target coordination. If Worker A acks but Worker B crashes, the delivery stays queued separately for B.\n\n---\n\n## Implementation Blueprint\n\n### Phase 1: Data Structures (Backwards Compatible)\n\nCreate a new module `src/delivery.rs` with enhanced types:\n\n```rust\n// Immutable delivery metadata (shared across all targets)\n#[derive(Clone, Serialize, Deserialize, Debug)]\npub struct DeliveryMetadata {\n    pub delivery_id: String,\n    pub event_id: String,\n    pub workspace_id: Option<String>,\n    pub from: String,\n    pub target: String,          // Display target (#channel or @worker)\n    pub body: String,\n    pub thread_id: Option<String>,\n    pub priority: Option<u8>,\n    pub created_at_secs: u64,    // Wall-clock time for persistence\n}\n\n// Per-worker delivery state within a single delivery\n#[derive(Clone, Serialize, Deserialize, Debug, Default)]\npub struct TargetState {\n    pub worker_name: String,\n    \n    // Lifecycle timestamps (secs since epoch for persistence)\n    pub queued_at_secs: Option<u64>,      // Worker ack: delivery_queued\n    pub injected_at_secs: Option<u64>,    // Worker ack: delivery_injected\n    pub acked_at_secs: Option<u64>,       // Worker ack: delivery_ack (terminal)\n    pub failed_at_secs: Option<u64>,      // Worker ack: delivery_failed (terminal)\n    pub failure_reason: Option<String>,   // Worker-provided reason\n    \n    // Retry tracking\n    pub attempts: u32,\n    pub last_attempt_at_secs: Option<u64>,\n}\n\n// Mutable delivery state (per delivery_id, tracking all targets)\n#[derive(Clone, Debug)]\npub struct DeliveryState {\n    pub metadata: DeliveryMetadata,\n    pub targets: HashMap<String, TargetState>,  // key: worker_name\n    \n    // Retry control (runtime, not persisted)\n    pub next_retry_at: Instant,\n    pub attempts: u32,\n    pub backoff_multiplier: f64,\n}\n\n// Persisted format (for crash recovery)\n#[derive(Serialize, Deserialize)]\npub struct PersistedDelivery {\n    pub metadata: DeliveryMetadata,\n    pub targets: HashMap<String, TargetState>,\n}\n```\n\n### Phase 2: Backoff Function\n\n```rust\nconst DEFAULT_RETRY_MS: u64 = 1000;\nconst MAX_RETRY_ATTEMPTS: u32 = 10;\nconst DELIVERY_ACK_TIMEOUT_SECS: u64 = 300;  // 5 min\n\npub fn compute_next_retry_delay(attempt_count: u32) -> Duration {\n    // Exponential with cap: 1s, 2s, 4s, 8s, 16s (capped), repeat 16s\n    let multiplier = 2u64.pow(attempt_count.min(4));\n    let delay_ms = DEFAULT_RETRY_MS.saturating_mul(multiplier);\n    \n    // Add jitter (\u00b125%)\n    let jitter_ms = (delay_ms / 4).max(1) as u32;\n    let jitter_offset = (std::time::SystemTime::now()\n        .duration_since(std::time::UNIX_EPOCH)\n        .unwrap_or_default()\n        .as_millis() % jitter_ms as u128) as u64;\n    \n    Duration::from_millis(delay_ms + jitter_offset)\n}\n```\n\n### Phase 3: Refactor Delivery Queue\n\nChange `queue_and_try_delivery_raw()` to:\n\n```rust\nasync fn queue_and_try_delivery_raw(\n    workers: &mut WorkerRegistry,\n    pending_deliveries: &mut HashMap<String, DeliveryState>,\n    delivery_targets: Vec<String>,  // Multiple targets from routing\n    event_id: &str,\n    from: &str,\n    target: &str,  // Display target (#channel or @user)\n    body: &str,\n    thread_id: Option<String>,\n    workspace_id: Option<String>,\n    workspace_alias: Option<String>,\n    priority: u8,\n    retry_interval: Duration,\n) -> Result<()> {\n    let delivery_id = format!(\"del_{}\", Uuid::new_v4().simple());\n    let now_secs = std::time::SystemTime::now()\n        .duration_since(std::time::UNIX_EPOCH)\n        .unwrap_or_default()\n        .as_secs();\n    \n    let metadata = DeliveryMetadata {\n        delivery_id: delivery_id.clone(),\n        event_id: event_id.to_string(),\n        workspace_id,\n        from: from.to_string(),\n        target: target.to_string(),\n        body: body.to_string(),\n        thread_id,\n        priority: Some(priority),\n        created_at_secs: now_secs,\n    };\n    \n    // Create initial state for each target\n    let mut targets = HashMap::new();\n    for worker_name in &delivery_targets {\n        targets.insert(worker_name.clone(), TargetState {\n            worker_name: worker_name.clone(),\n            ..Default::default()\n        });\n    }\n    \n    let state = DeliveryState {\n        metadata,\n        targets,\n        next_retry_at: Instant::now(),\n        attempts: 0,\n        backoff_multiplier: 1.0,\n    };\n    \n    pending_deliveries.insert(delivery_id.clone(), state);\n    \n    // Attempt first delivery to all targets\n    for target_name in delivery_targets {\n        retry_deliver_to_target(&delivery_id, &target_name, workers, pending_deliveries).await?;\n    }\n    \n    Ok(())\n}\n```\n\n### Phase 4: Per-Target Retry Loop\n\nReplace the single `retry_pending_delivery()` with per-target logic in the main retry loop:\n\n```rust\n// In the main event loop (around line 3240 area)\nfor (delivery_id, state) in pending_deliveries.iter_mut() {\n    // Skip terminal deliveries (all targets acked or failed)\n    if is_delivery_terminal(state) {\n        continue;\n    }\n    \n    // Check timeout (5 min with no ack from any target)\n    if state.metadata.created_at_secs + DELIVERY_ACK_TIMEOUT_SECS < now_secs {\n        if !state.targets.values().any(|t| t.acked_at_secs.is_some()) {\n            tracing::warn!(\n                delivery_id = %delivery_id,\n                elapsed_secs = now_secs - state.metadata.created_at_secs,\n                \"delivery timed out: no ack from any target\"\n            );\n            // Move to terminal state (don't retry)\n            continue;\n        }\n    }\n    \n    // Skip if not yet time to retry\n    if Instant::now() < state.next_retry_at {\n        continue;\n    }\n    \n    // Compute next backoff\n    let delay = compute_next_retry_delay(state.attempts);\n    state.next_retry_at = Instant::now() + delay;\n    state.attempts += 1;\n    \n    // Retry non-terminal targets\n    for (worker_name, target_state) in state.targets.iter_mut() {\n        if target_state.acked_at_secs.is_none() \n            && target_state.failed_at_secs.is_none() {\n            if let Err(e) = retry_deliver_to_target(\n                delivery_id,\n                worker_name,\n                workers,\n                &state.metadata,\n            ).await {\n                tracing::debug!(error = %e, \"retry delivery failed\");\n            }\n        }\n    }\n}\n```\n\n### Phase 5: Acknowledgement Processing\n\nEnhance `delivery_ack` handler (main.rs:2780+):\n\n```rust\n\"delivery_ack\" => {\n    if let Ok(ack) = serde_json::from_str::<DeliveryAckPayload>(&payload) {\n        if let Some(state) = pending_deliveries.get_mut(&ack.delivery_id) {\n            if let Some(target) = state.targets.get_mut(&name) {\n                target.acked_at_secs = Some(now_secs());\n                \n                // Check if all targets are terminal\n                if is_delivery_terminal(state) {\n                    tracing::info!(\n                        delivery_id = %ack.delivery_id,\n                        event_id = %state.metadata.event_id,\n                        target_count = state.targets.len(),\n                        \"delivery completed: all targets acked\"\n                    );\n                    // Optional: remove immediately, or keep for observability window\n                    // pending_deliveries.remove(&ack.delivery_id);\n                }\n            }\n        }\n    }\n}\n\n\"delivery_failed\" => {\n    if let Ok(fail) = serde_json::from_str::<DeliveryFailedPayload>(&payload) {\n        if let Some(state) = pending_deliveries.get_mut(&fail.delivery_id) {\n            if let Some(target) = state.targets.get_mut(&name) {\n                target.failed_at_secs = Some(now_secs());\n                target.failure_reason = fail.reason;\n                \n                // Decision: fail fast (remove on first failure) or \n                // wait for all targets? Depends on semantics.\n                // For now, track but keep retrying other targets.\n                tracing::warn!(\n                    delivery_id = %fail.delivery_id,\n                    worker = %name,\n                    reason = %fail.reason,\n                    \"worker rejected delivery\"\n                );\n            }\n        }\n    }\n}\n```\n\n### Phase 6: Persistence\n\nUpdate `save_pending_deliveries()` and `load_pending_deliveries()`:\n\n```rust\nfn save_pending_deliveries(\n    path: &Path,\n    deliveries: &HashMap<String, DeliveryState>,\n) -> Result<()> {\n    let persisted: Vec<PersistedDelivery> = deliveries\n        .values()\n        .map(|state| PersistedDelivery {\n            metadata: state.metadata.clone(),\n            targets: state.targets.clone(),\n        })\n        .collect();\n    let json = serde_json::to_string_pretty(&persisted)?;\n    // ... atomic write with tempfile ...\n    Ok(())\n}\n\nfn load_pending_deliveries(path: &Path) -> HashMap<String, DeliveryState> {\n    let data = match std::fs::read_to_string(path) {\n        Ok(d) => d,\n        Err(_) => return HashMap::new(),\n    };\n    let persisted: Vec<PersistedDelivery> = match serde_json::from_str(&data) {\n        Ok(v) => v,\n        Err(e) => {\n            tracing::warn!(error = %e, \"failed parsing persisted deliveries\");\n            return HashMap::new();\n        }\n    };\n    \n    persisted\n        .into_iter()\n        .map(|p| {\n            let id = p.metadata.delivery_id.clone();\n            (\n                id,\n                DeliveryState {\n                    metadata: p.metadata,\n                    targets: p.targets,\n                    next_retry_at: Instant::now(),  // Retry immediately on restart\n                    attempts: 0,\n                    backoff_multiplier: 1.0,\n                },\n            )\n        })\n        .collect()\n}\n```\n\n---\n\n## Routing Compatibility \u2713\n\n**No changes required to `routing.rs`:**\n- `resolve_delivery_targets()` still returns `Vec<String>`\n- Workspace isolation still enforced\n- Channel subscriptions still determine eligibility\n\n**The only change is the consumer:**\n- Old: queue one `PendingDelivery` per target\n- New: queue one `DeliveryState` with multiple `TargetState` entries\n\n---\n\n## Testing Strategy\n\n1. **Unit**: Test `compute_next_retry_delay()` exponential curve\n2. **Integration**: \n   - Multi-target delivery with one worker offline\n   - Verify backoff intervals\n   - Restart broker mid-delivery, confirm restoration\n3. **Scenario**: Channel with 5 subscribers, one crashes after ack\u2014verify others still retry\n\n---\n\n## Observability Additions\n\n```rust\n// Add metrics\nmetrics::counter!(\"delivery.attempted\", 1);\nmetrics::histogram!(\"delivery.latency_ms\", elapsed_ms as f64);\nmetrics::gauge!(\"delivery.pending_count\", pending_deliveries.len() as i64);\nmetrics::counter!(\"delivery.timeout\", 1);  // 5 min timeout triggered\n```\n\nThis design preserves the existing routing model while adding per-worker tracking, exponential backoff, and timeout safety. Would you like me to elaborate on any specific phase or create a working branch to implement this?\n\nGit diff:\n\n\nCode-quality signals:\n{\n  \"lint\": {\n    \"command\": [\n      \"npm\",\n      \"run\",\n      \"lint\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/relay-l1-relay-plan-complex-01-trial1\",\n    \"exit_code\": 254,\n    \"finished_at\": \"2026-04-10T05:04:41+00:00\",\n    \"started_at\": \"2026-04-10T05:04:39+00:00\",\n    \"stderr\": \"npm error code ENOENT\\nnpm error syscall open\\nnpm error path /private/tmp/archeia-phase4/relay-l1-relay-plan-complex-01-trial1/package.json\\nnpm error errno -2\\nnpm error enoent Could not read package.json: Error: ENOENT: no such file or directory, open '/private/tmp/archeia-phase4/relay-l1-relay-plan-complex-01-trial1/package.json'\\nnpm error enoent This is related to npm not being able to find a file.\\nnpm error enoent\\nnpm error A complete log of this run can be found in: /Users/hugopeck/.npm/_logs/2026-04-10T05_04_40_323Z-debug-0.log\\n\",\n    \"stdout\": \"\"\n  },\n  \"lint_baseline\": {\n    \"command\": [\n      \"npm\",\n      \"run\",\n      \"lint\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/relay-l1-relay-plan-complex-01-trial1\",\n    \"exit_code\": 127,\n    \"finished_at\": \"2026-04-10T05:03:02+00:00\",\n    \"started_at\": \"2026-04-10T05:03:00+00:00\",\n    \"stderr\": \"sh: eslint: command not found\\n\",\n    \"stdout\": \"\\n> agent-relay@3.1.19 lint\\n> eslint src --ext .ts\\n\\n\"\n  },\n  \"lint_baseline_findings\": 3,\n  \"lint_delta\": 5,\n  \"lint_findings\": 8,\n  \"tests\": {\n    \"command\": [\n      \"npm\",\n      \"test\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/relay-l1-relay-plan-complex-01-trial1\",\n    \"exit_code\": 254,\n    \"finished_at\": \"2026-04-10T05:04:39+00:00\",\n    \"started_at\": \"2026-04-10T05:04:38+00:00\",\n    \"stderr\": \"npm error code ENOENT\\nnpm error syscall open\\nnpm error path /private/tmp/archeia-phase4/relay-l1-relay-plan-complex-01-trial1/package.json\\nnpm error errno -2\\nnpm error enoent Could not read package.json: Error: ENOENT: no such file or directory, open '/private/tmp/archeia-phase4/relay-l1-relay-plan-complex-01-trial1/package.json'\\nnpm error enoent This is related to npm not being able to find a file.\\nnpm error enoent\\nnpm error A complete log of this run can be found in: /Users/hugopeck/.npm/_logs/2026-04-10T05_04_39_249Z-debug-0.log\\n\",\n    \"stdout\": \"\"\n  }\n}\n\nEfficiency signals:\n{\n  \"action_calls\": 0,\n  \"exploration_calls\": 7,\n  \"exploration_to_action_ratio\": null,\n  \"finished_at\": \"2026-04-10T05:04:07.041000+00:00\",\n  \"input_tokens\": 130,\n  \"output_tokens\": 6228,\n  \"started_at\": \"2026-04-10T05:03:19.554000+00:00\",\n  \"time_to_completion_seconds\": 47.487,\n  \"time_to_first_edit_seconds\": null,\n  \"tool_call_count\": 15,\n  \"tool_counts\": {\n    \"bash\": 8,\n    \"read\": 7\n  },\n  \"total_tokens\": 6358\n}\n\nScore the run from 0-100 using four equally weighted 0-25 dimensions:\n1. Correctness: technically sound approach.\n2. Completeness: affected modules, sequencing, and risks covered.\n3. Convention fit: follows the repo's apparent patterns.\n4. Actionability: specific enough to implement.\n\nReturn JSON only with this schema:\n{\n  \"total_score\": 0,\n  \"dimension_scores\": {\n    \"correctness\": 0,\n    \"completeness\": 0,\n    \"convention_fit\": 0,\n    \"verification_or_communication\": 0\n  },\n  \"summary\": \"short paragraph\",\n  \"strengths\": [\"...\"],\n  \"weaknesses\": [\"...\"],\n  \"confidence\": \"low|medium|high\"\n}"
+    ],
+    "confidence": "high",
+    "dimension_scores": {
+      "completeness": 17,
+      "convention_fit": 18,
+      "correctness": 19,
+      "verification_or_communication": 18
+    },
+    "finished_at": "2026-04-10T05:07:36+00:00",
+    "started_at": "2026-04-10T05:04:41+00:00",
+    "status": "completed",
+    "strengths": [
+      "Accurately identifies PendingDelivery struct, line numbers, and field structure",
+      "Correctly maps the queue_and_try_delivery_raw \u2192 retry \u2192 ack pipeline",
+      "Preserves routing model \u2014 correctly notes no changes needed to routing.rs",
+      "Exponential backoff with jitter is a sound retry strategy",
+      "Persistence approach (save/load) aligns with existing patterns"
+    ],
+    "summary": "The plan is well-grounded in the actual codebase, correctly identifying PendingDelivery (main.rs:445), routing.rs's resolve_delivery_targets returning a DeliveryPlan, and the delivery_ack handler at line 2780. The proposed DeliveryState with per-target tracking is a sound evolution of the existing single-target PendingDelivery pattern. However, the plan fails to meaningfully discuss relaycast_ws.rs (the WebSocket transport layer that actually sends deliveries) and replay_buffer.rs (the reconnect replay mechanism), both of which are critical to durable delivery. The routing claim that it returns Vec<String> is slightly inaccurate \u2014 it returns a DeliveryPlan struct. The testing strategy is thin (3 bullet points) and migration risks are barely addressed. The plan also proposes a new delivery.rs module and metrics/observability additions that go somewhat beyond what the architecture currently has, though these are reasonable extensions.",
+    "total_score": 72,
+    "weaknesses": [
+      "Does not meaningfully discuss relaycast_ws.rs or replay_buffer.rs \u2014 two of the four required modules",
+      "Slightly mischaracterizes routing.rs as returning Vec<String> when it returns DeliveryPlan",
+      "Testing strategy is too shallow \u2014 no concrete test cases or failure scenarios detailed",
+      "Migration risks and backwards compatibility with existing persisted state not addressed",
+      "No discussion of how replay_buffer interacts with retry (duplicate delivery risk on reconnect)"
+    ]
+  },
+  "metrics": {
+    "action_calls": 0,
+    "exploration_calls": 7,
+    "exploration_to_action_ratio": null,
+    "finished_at": "2026-04-10T05:04:07.041000+00:00",
+    "input_tokens": 130,
+    "output_tokens": 6228,
+    "started_at": "2026-04-10T05:03:19.554000+00:00",
+    "time_to_completion_seconds": 47.487,
+    "time_to_first_edit_seconds": null,
+    "tool_call_count": 15,
+    "tool_counts": {
+      "bash": 8,
+      "read": 7
+    },
+    "total_tokens": 6358
+  },
+  "repo": {
+    "archeia_output_path": "evals/archeia-output/relay",
+    "baseline_docs": [
+      "AGENTS.md",
+      "CLAUDE.md",
+      "ARCHITECTURE.md"
+    ],
+    "branch": "main",
+    "commands": {
+      "lint": "npm run lint",
+      "test": "npm test"
+    },
+    "commit": "231c45da22fee641ef05c2cd03332ca38eeebc7e",
+    "complexity": "medium",
+    "id": "relay",
+    "language": "multi",
+    "loc": 69000,
+    "notes": [
+      "Supports the special relay baseline condition.",
+      "Allows Archeia-vs-hand-written-docs comparisons."
+    ],
+    "repo": "AgentWorkforce/relay",
+    "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/relay",
+    "tests_available": true
+  },
+  "repo_id": "relay",
+  "result_path": "/Users/hugopeck/conductor/workspaces/archeia/phoenix/evals/results/raw/relay/relay-plan-complex-01/l1/trial-1.json",
+  "started_at": "2026-04-10T05:02:56+00:00",
+  "status": "completed",
+  "task": {
+    "acceptance_criteria": [
+      "Identifies concrete modules for retry, ack state, and delivery changes.",
+      "Preserves current routing/protocol expectations.",
+      "Includes failure-mode handling and tests.",
+      "Avoids speculative redesigns outside the current architecture."
+    ],
+    "category": "plan_complex",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "expected_modules_read": [
+      "src/relaycast_ws.rs",
+      "src/replay_buffer.rs",
+      "src/queue.rs",
+      "src/routing.rs"
+    ],
+    "ground_truth": "Expected outcome:\n- The plan should map how outbound messages are currently routed and buffered, identify where acknowledgement state belongs, and propose changes that preserve current protocol expectations. It should include testing and migration risks.\n\nMust mention / touch:\n- src/relaycast_ws.rs\n- src/replay_buffer.rs\n- src/queue.rs\n- src/routing.rs\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path",
+    "id": "relay-plan-complex-01",
+    "metadata": {
+      "difficulty": "complex",
+      "doc_sensitivity": "high",
+      "output_type": "plan",
+      "primary_surface": "delivery-ack-retry",
+      "verification_scope": "repo_default"
+    },
+    "prompt": "Read the codebase and design durable retry and acknowledgement behavior for outbound delivery without breaking the current routing model. Ground your plan in the actual modules and patterns you find.",
+    "repo_id": "relay"
+  },
+  "trial": 1
+}

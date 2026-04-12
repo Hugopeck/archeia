@@ -1,0 +1,208 @@
+{
+  "agent_run": {
+    "command": [
+      "claude",
+      "--model",
+      "haiku",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--permission-mode",
+      "auto",
+      "--append-system-prompt",
+      "CRITICAL RULE: You MUST use your tools to read files in this repository before answering. Do NOT answer from memory or training data. Start by exploring the project structure with Bash(ls) or Glob, then read the specific files needed to answer the question. Every claim you make must cite a specific file path you actually read in this session. If you answer without reading files first, your response will be scored as zero.",
+      "-p",
+      "Read the codebase and explain the message-routing architecture in relay from message ingestion through queueing or routing decisions to final delivery. Base your answer only on code you actually read."
+    ],
+    "exit_code": 0,
+    "finished_at": "2026-04-10T05:17:02+00:00",
+    "started_at": "2026-04-10T05:09:12+00:00",
+    "status": "completed",
+    "stderr": "",
+    "stdout": "Based on my review of the code, here's the message-routing architecture in relay:\n\n## **1. Message Ingestion**\n\nMessages arrive via **WebSocket from Relaycast cloud** (main.rs:2595). The broker receives `ServerEvent` JSON objects and:\n\n- **Maps events** (message_bridge.rs:map_ws_event): Converts raw Relaycast events to `InboundRelayEvent` structures with:\n  - Event type detection (MessageCreated, DmReceived, ThreadReply, Presence, ReactionReceived)\n  - Priority assignment: DMs \u2192 P2, Messages/Threads \u2192 P3, Presence/Reactions \u2192 P4\n  - Field extraction (sender, target, text, thread context)\n  - Deduplication key: `\"{workspace_id}:{event_id}\"` (main.rs:2604)\n\n- **Deduplication** (main.rs:2605): Hash-based cache prevents re-routing the same event ID within the same workspace\n\n- **Self-echo filtering** (main.rs:2621-2628): Drops messages from the broker's own agents unless they target local workers (dashboard-originated messages)\n\n## **2. Routing Decisions** (routing.rs)\n\nBased on event type and target, the broker resolves delivery targets using `resolve_delivery_targets()`:\n\n**Channel Messages** (`#general`, `#dev`, etc.):\n- Filters workers who:\n  - Are joined to that channel\n  - Are NOT the sender (ignoring case)\n  - Match the event's workspace (workspace isolation)\n- Returns: Vector of matching worker names (routing.rs:145-173)\n\n**Direct Messages** (to `@alice` or bare name):\n- Matches by worker name (case-insensitive)\n- Filters out sender and workspace mismatches\n- Returns: Single target worker (routing.rs:175-200)\n\n**DM with Participant Resolution**:\n- If no matching local worker found, marks `needs_dm_resolution: true`\n- HTTP call to Relaycast to fetch DM participants (main.rs:4700-4734)\n- Re-matches against participant list (routing.rs:202-227)\n\n**Thread Replies** (target `\"thread\"`):\n- Broadcasts to ALL workers in the same workspace (except sender)\n- Treated as local delivery when any worker exists (main.rs:2613-2617)\n\nOutput: **DeliveryPlan** with targets, display_target, and workspace_id\n\n## **3. Queueing** (queue.rs + main.rs)\n\nFor each resolved target worker:\n\n- **Priority Queue** (BoundedPriorityQueue, queue.rs:16-96):\n  - 5-level priority system (P0 highest \u2192 P4 lowest)\n  - FIFO within same priority\n  - Bounded by max size\n  - Overflow policy: drops P4, P3, P2 items to make room (preserves P0, P1)\n\n- **Pending Deliveries Map** (main.rs:4639-4646):\n  - Stores `PendingDelivery` struct with:\n    - `delivery_id`: Unique ID\n    - `worker_name`: Target agent name\n    - `delivery`: The actual message (RelayDelivery with from/target/body/thread context)\n    - `attempts`: Retry counter\n    - `next_retry_at`: Instant for backoff timing\n\n- **Immediate Delivery Attempt** (main.rs:4650):\n  - Calls `retry_pending_delivery()` right after queueing\n  - If worker is busy (no idle state), delivery waits\n  - If max retries exceeded (MAX_DELIVERY_RETRIES), removed from queue\n\n## **4. Final Delivery to PTY**\n\n**WorkerRegistry.deliver()** (main.rs:975-986):\n- Sends JSON message to worker via stdio: `\"deliver_relay\"` message type\n- Payload: RelayDelivery struct containing:\n  - delivery_id (for tracking)\n  - from, target, body, thread_id\n  - workspace context\n  - priority\n\n**Worker-side Injection** (inject.rs + packages/openclaw):\n- Worker receives message on stdin\n- `Injector.deliver_with()` (inject.rs:42-82):\n  - Calls sink function (PTY write operation)\n  - Status sequence: Queued \u2192 Injecting \u2192 Delivered (or Failed)\n  - Retries with configurable delay (max_retries, retry_delay_ms)\n  - Emits `inject_result` event on completion\n\n**Delivery Acknowledgment** (main.rs:2780-2800):\n- Worker sends back `delivery_ack` message with delivery_id\n- Clears delivery from pending map on success\n- Tracks attempts count for retry logic\n\n## **5. Retry & Backoff**\n\n- **Pending Delivery Timeout** (main.rs:5106): Default 100ms per retry\n- **Retry Interval**: Configurable via `DELIVERY_RETRY_INTERVAL_MS` env var\n- **Failure Tracking** (main.rs:4745-4758):\n  - When delivery succeeds, pending entry is removed\n  - When worker shuts down, all pending deliveries for that worker are dropped (main.rs:4736-4743)\n- **Event Completion** (main.rs:4763-4800): Optional event_id matching clears pending delivery when agent reports task completion\n\n## **Data Flow Summary**\n\n```\nRelaycast WS Event\n      \u2193\nmap_ws_event() \u2192 InboundRelayEvent\n      \u2193\nDedup check (workspace:event_id)\n      \u2193\nSelf-echo filter\n      \u2193\nresolve_delivery_targets() \u2192 DeliveryPlan\n      \u2193\nFor each target:\n  queue_and_try_delivery()\n      \u2193\n  Create PendingDelivery\n      \u2193\n  retry_pending_delivery()\n      \u2193\n  WorkerRegistry.deliver() \u2192 stdio \u2192 Worker\n      \u2193\n  Worker sends delivery_ack\n      \u2193\n  Remove from pending, emit inject_result\n```\n\nThe architecture prioritizes reliability with retry logic, workspace isolation, and graceful degradation when workers become unavailable.",
+    "transcript_path": "/tmp/archeia-phase4/relay-l0-relay-ask-complex-01-trial1/.archeia-eval/conversation.json"
+  },
+  "code_quality": {
+    "lint": {
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "cwd": "/tmp/archeia-phase4/relay-l0-relay-ask-complex-01-trial1",
+      "exit_code": 127,
+      "finished_at": "2026-04-10T05:27:18+00:00",
+      "started_at": "2026-04-10T05:27:02+00:00",
+      "stderr": "sh: eslint: command not found\n",
+      "stdout": "\n> agent-relay@3.1.19 lint\n> eslint src --ext .ts\n\n"
+    },
+    "lint_baseline": {
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "cwd": "/tmp/archeia-phase4/relay-l0-relay-ask-complex-01-trial1",
+      "exit_code": 127,
+      "finished_at": "2026-04-10T05:09:12+00:00",
+      "started_at": "2026-04-10T05:09:11+00:00",
+      "stderr": "sh: eslint: command not found\n",
+      "stdout": "\n> agent-relay@3.1.19 lint\n> eslint src --ext .ts\n\n"
+    },
+    "lint_baseline_findings": 3,
+    "lint_delta": 0,
+    "lint_findings": 3,
+    "tests": {
+      "command": [
+        "npm",
+        "test"
+      ],
+      "cwd": "/tmp/archeia-phase4/relay-l0-relay-ask-complex-01-trial1",
+      "exit_code": -1,
+      "finished_at": "2026-04-10T05:27:02+00:00",
+      "started_at": "2026-04-10T05:17:02+00:00",
+      "stderr": "    Blocking waiting for file lock on artifact directory\n",
+      "stdout": "\n> agent-relay@3.1.19 pretest\n> npm run build\n\n\n> agent-relay@3.1.19 build\n> npm run clean && npm run build:rust && turbo run build --filter='./packages/*' && tsc\n\n\n> agent-relay@3.1.19 clean\n> rm -rf dist && find packages -maxdepth 2 -name dist -type d -exec rm -rf {} + 2>/dev/null || true\n\n\n> agent-relay@3.1.19 build:rust\n> if command -v ~/.cargo/bin/cargo >/dev/null 2>&1; then ~/.cargo/bin/cargo build --release --bin agent-relay-broker && mkdir -p packages/sdk/bin && cp target/release/agent-relay-broker packages/sdk/bin/agent-relay-broker.new && mv -f packages/sdk/bin/agent-relay-broker.new packages/sdk/bin/agent-relay-broker && echo '\u2713 broker binary (agent-relay-broker) built and copied to packages/sdk/bin/'; else echo '\u26a0 Rust not installed, using prebuilt binaries from bin/'; fi\n\n",
+      "timed_out": true,
+      "timeout_seconds": 600
+    }
+  },
+  "condition_application": {
+    "archeia_output": "evals/archeia-output/relay",
+    "condition_id": "l0",
+    "copied_paths": [],
+    "kept_existing_docs": true,
+    "removed_paths": [],
+    "repo_id": "relay",
+    "worktree": "/tmp/archeia-phase4/relay-l0-relay-ask-complex-01-trial1"
+  },
+  "condition_commit": {
+    "command": [
+      "git",
+      "commit",
+      "-m",
+      "Apply evaluation condition"
+    ],
+    "cwd": "/tmp/archeia-phase4/relay-l0-relay-ask-complex-01-trial1",
+    "exit_code": 1,
+    "finished_at": "2026-04-10T05:09:11+00:00",
+    "started_at": "2026-04-10T05:09:11+00:00",
+    "stderr": "",
+    "stdout": "Not currently on any branch.\nnothing to commit, working tree clean\n"
+  },
+  "condition_id": "l0",
+  "diff": "",
+  "finished_at": "2026-04-10T05:29:09+00:00",
+  "judge": {
+    "command": [
+      "claude",
+      "--output-format",
+      "json",
+      "-p",
+      "You are judging an Archeia evaluation run.\n\nTask category: ask_complex\nTask id: relay-ask-complex-01\n\nTask prompt:\nRead the codebase and explain the message-routing architecture in relay from message ingestion through queueing or routing decisions to final delivery. Base your answer only on code you actually read.\n\nGround truth / reference:\nExpected outcome:\n- Must trace the major routing stages across the broker/runtime, identify where protocol objects are interpreted, and explain where delivery paths diverge. Expected grounding includes src/routing.rs, src/queue.rs, src/protocol.rs, and relaycast WebSocket delivery surfaces.\n\nMust mention / touch:\n- src/routing.rs\n- src/queue.rs\n- src/protocol.rs\n- src/relaycast_ws.rs\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo\n\nAcceptance criteria:\n[\n  \"Explains ingress, routing, buffering/queueing, and delivery in order.\",\n  \"Uses real relay module names and boundaries.\",\n  \"Mentions protocol interpretation and transport concerns where relevant.\",\n  \"Avoids inventing services or queues not present in the codebase.\"\n]\n\nAgent response:\nBased on my review of the code, here's the message-routing architecture in relay:\n\n## **1. Message Ingestion**\n\nMessages arrive via **WebSocket from Relaycast cloud** (main.rs:2595). The broker receives `ServerEvent` JSON objects and:\n\n- **Maps events** (message_bridge.rs:map_ws_event): Converts raw Relaycast events to `InboundRelayEvent` structures with:\n  - Event type detection (MessageCreated, DmReceived, ThreadReply, Presence, ReactionReceived)\n  - Priority assignment: DMs \u2192 P2, Messages/Threads \u2192 P3, Presence/Reactions \u2192 P4\n  - Field extraction (sender, target, text, thread context)\n  - Deduplication key: `\"{workspace_id}:{event_id}\"` (main.rs:2604)\n\n- **Deduplication** (main.rs:2605): Hash-based cache prevents re-routing the same event ID within the same workspace\n\n- **Self-echo filtering** (main.rs:2621-2628): Drops messages from the broker's own agents unless they target local workers (dashboard-originated messages)\n\n## **2. Routing Decisions** (routing.rs)\n\nBased on event type and target, the broker resolves delivery targets using `resolve_delivery_targets()`:\n\n**Channel Messages** (`#general`, `#dev`, etc.):\n- Filters workers who:\n  - Are joined to that channel\n  - Are NOT the sender (ignoring case)\n  - Match the event's workspace (workspace isolation)\n- Returns: Vector of matching worker names (routing.rs:145-173)\n\n**Direct Messages** (to `@alice` or bare name):\n- Matches by worker name (case-insensitive)\n- Filters out sender and workspace mismatches\n- Returns: Single target worker (routing.rs:175-200)\n\n**DM with Participant Resolution**:\n- If no matching local worker found, marks `needs_dm_resolution: true`\n- HTTP call to Relaycast to fetch DM participants (main.rs:4700-4734)\n- Re-matches against participant list (routing.rs:202-227)\n\n**Thread Replies** (target `\"thread\"`):\n- Broadcasts to ALL workers in the same workspace (except sender)\n- Treated as local delivery when any worker exists (main.rs:2613-2617)\n\nOutput: **DeliveryPlan** with targets, display_target, and workspace_id\n\n## **3. Queueing** (queue.rs + main.rs)\n\nFor each resolved target worker:\n\n- **Priority Queue** (BoundedPriorityQueue, queue.rs:16-96):\n  - 5-level priority system (P0 highest \u2192 P4 lowest)\n  - FIFO within same priority\n  - Bounded by max size\n  - Overflow policy: drops P4, P3, P2 items to make room (preserves P0, P1)\n\n- **Pending Deliveries Map** (main.rs:4639-4646):\n  - Stores `PendingDelivery` struct with:\n    - `delivery_id`: Unique ID\n    - `worker_name`: Target agent name\n    - `delivery`: The actual message (RelayDelivery with from/target/body/thread context)\n    - `attempts`: Retry counter\n    - `next_retry_at`: Instant for backoff timing\n\n- **Immediate Delivery Attempt** (main.rs:4650):\n  - Calls `retry_pending_delivery()` right after queueing\n  - If worker is busy (no idle state), delivery waits\n  - If max retries exceeded (MAX_DELIVERY_RETRIES), removed from queue\n\n## **4. Final Delivery to PTY**\n\n**WorkerRegistry.deliver()** (main.rs:975-986):\n- Sends JSON message to worker via stdio: `\"deliver_relay\"` message type\n- Payload: RelayDelivery struct containing:\n  - delivery_id (for tracking)\n  - from, target, body, thread_id\n  - workspace context\n  - priority\n\n**Worker-side Injection** (inject.rs + packages/openclaw):\n- Worker receives message on stdin\n- `Injector.deliver_with()` (inject.rs:42-82):\n  - Calls sink function (PTY write operation)\n  - Status sequence: Queued \u2192 Injecting \u2192 Delivered (or Failed)\n  - Retries with configurable delay (max_retries, retry_delay_ms)\n  - Emits `inject_result` event on completion\n\n**Delivery Acknowledgment** (main.rs:2780-2800):\n- Worker sends back `delivery_ack` message with delivery_id\n- Clears delivery from pending map on success\n- Tracks attempts count for retry logic\n\n## **5. Retry & Backoff**\n\n- **Pending Delivery Timeout** (main.rs:5106): Default 100ms per retry\n- **Retry Interval**: Configurable via `DELIVERY_RETRY_INTERVAL_MS` env var\n- **Failure Tracking** (main.rs:4745-4758):\n  - When delivery succeeds, pending entry is removed\n  - When worker shuts down, all pending deliveries for that worker are dropped (main.rs:4736-4743)\n- **Event Completion** (main.rs:4763-4800): Optional event_id matching clears pending delivery when agent reports task completion\n\n## **Data Flow Summary**\n\n```\nRelaycast WS Event\n      \u2193\nmap_ws_event() \u2192 InboundRelayEvent\n      \u2193\nDedup check (workspace:event_id)\n      \u2193\nSelf-echo filter\n      \u2193\nresolve_delivery_targets() \u2192 DeliveryPlan\n      \u2193\nFor each target:\n  queue_and_try_delivery()\n      \u2193\n  Create PendingDelivery\n      \u2193\n  retry_pending_delivery()\n      \u2193\n  WorkerRegistry.deliver() \u2192 stdio \u2192 Worker\n      \u2193\n  Worker sends delivery_ack\n      \u2193\n  Remove from pending, emit inject_result\n```\n\nThe architecture prioritizes reliability with retry logic, workspace isolation, and graceful degradation when workers become unavailable.\n\nGit diff:\n\n\nCode-quality signals:\n{\n  \"lint\": {\n    \"command\": [\n      \"npm\",\n      \"run\",\n      \"lint\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/relay-l0-relay-ask-complex-01-trial1\",\n    \"exit_code\": 127,\n    \"finished_at\": \"2026-04-10T05:27:18+00:00\",\n    \"started_at\": \"2026-04-10T05:27:02+00:00\",\n    \"stderr\": \"sh: eslint: command not found\\n\",\n    \"stdout\": \"\\n> agent-relay@3.1.19 lint\\n> eslint src --ext .ts\\n\\n\"\n  },\n  \"lint_baseline\": {\n    \"command\": [\n      \"npm\",\n      \"run\",\n      \"lint\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/relay-l0-relay-ask-complex-01-trial1\",\n    \"exit_code\": 127,\n    \"finished_at\": \"2026-04-10T05:09:12+00:00\",\n    \"started_at\": \"2026-04-10T05:09:11+00:00\",\n    \"stderr\": \"sh: eslint: command not found\\n\",\n    \"stdout\": \"\\n> agent-relay@3.1.19 lint\\n> eslint src --ext .ts\\n\\n\"\n  },\n  \"lint_baseline_findings\": 3,\n  \"lint_delta\": 0,\n  \"lint_findings\": 3,\n  \"tests\": {\n    \"command\": [\n      \"npm\",\n      \"test\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/relay-l0-relay-ask-complex-01-trial1\",\n    \"exit_code\": -1,\n    \"finished_at\": \"2026-04-10T05:27:02+00:00\",\n    \"started_at\": \"2026-04-10T05:17:02+00:00\",\n    \"stderr\": \"    Blocking waiting for file lock on artifact directory\\n\",\n    \"stdout\": \"\\n> agent-relay@3.1.19 pretest\\n> npm run build\\n\\n\\n> agent-relay@3.1.19 build\\n> npm run clean && npm run build:rust && turbo run build --filter='./packages/*' && tsc\\n\\n\\n> agent-relay@3.1.19 clean\\n> rm -rf dist && find packages -maxdepth 2 -name dist -type d -exec rm -rf {} + 2>/dev/null || true\\n\\n\\n> agent-relay@3.1.19 build:rust\\n> if command -v ~/.cargo/bin/cargo >/dev/null 2>&1; then ~/.cargo/bin/cargo build --release --bin agent-relay-broker && mkdir -p packages/sdk/bin && cp target/release/agent-relay-broker packages/sdk/bin/agent-relay-broker.new && mv -f packages/sdk/bin/agent-relay-broker.new packages/sdk/bin/agent-relay-broker && echo '\\u2713 broker binary (agent-relay-broker) built and copied to packages/sdk/bin/'; else echo '\\u26a0 Rust not installed, using prebuilt binaries from bin/'; fi\\n\\n\",\n    \"timed_out\": true,\n    \"timeout_seconds\": 600\n  }\n}\n\nEfficiency signals:\n{\n  \"action_calls\": 0,\n  \"exploration_calls\": 12,\n  \"exploration_to_action_ratio\": null,\n  \"finished_at\": \"2026-04-10T05:16:23.068000+00:00\",\n  \"input_tokens\": 250,\n  \"output_tokens\": 6796,\n  \"started_at\": \"2026-04-10T05:09:03.749000+00:00\",\n  \"time_to_completion_seconds\": 439.319,\n  \"time_to_first_edit_seconds\": null,\n  \"tool_call_count\": 30,\n  \"tool_counts\": {\n    \"bash\": 18,\n    \"read\": 12\n  },\n  \"total_tokens\": 7046\n}\n\nScore the run from 0-100 using four equally weighted 0-25 dimensions:\n1. Correctness: factual accuracy against ground truth.\n2. Completeness: covers all relevant systems and caveats.\n3. Evidence alignment: cites or reflects the repo-grounded flow.\n4. Communication quality: organized, concise, and directly useful.\n\nReturn JSON only with this schema:\n{\n  \"total_score\": 0,\n  \"dimension_scores\": {\n    \"correctness\": 0,\n    \"completeness\": 0,\n    \"convention_fit\": 0,\n    \"verification_or_communication\": 0\n  },\n  \"summary\": \"short paragraph\",\n  \"strengths\": [\"...\"],\n  \"weaknesses\": [\"...\"],\n  \"confidence\": \"low|medium|high\"\n}"
+    ],
+    "confidence": "medium",
+    "dimension_scores": {
+      "completeness": 16,
+      "convention_fit": 15,
+      "correctness": 17,
+      "verification_or_communication": 22
+    },
+    "finished_at": "2026-04-10T05:29:09+00:00",
+    "started_at": "2026-04-10T05:27:19+00:00",
+    "status": "completed",
+    "strengths": [
+      "Excellent structural organization tracing the full ingress-to-delivery pipeline",
+      "Specific line-number citations suggest genuine code reading rather than fabrication",
+      "Thorough coverage of routing.rs resolve_delivery_targets() with channel, DM, and thread variants",
+      "Good explanation of queue.rs bounded priority queue with overflow policy",
+      "Useful ASCII data-flow summary diagram"
+    ],
+    "summary": "The response is well-structured and demonstrates genuine code reading with specific line-number citations across routing.rs, queue.rs, main.rs, message_bridge.rs, and inject.rs. However, it fails to mention two of the four explicitly required modules: src/protocol.rs (protocol object interpretation) and src/relaycast_ws.rs (WebSocket delivery surface). The absence of protocol.rs means the protocol interpretation layer\u2014a key routing stage\u2014is not explained as a distinct concern. The absence of relaycast_ws.rs means the outbound WebSocket delivery surface is collapsed into vague references to 'Relaycast WS' rather than grounded in the actual module. The detail on ingestion, routing decisions, queueing, and retry is thorough and plausible, but the two missing modules represent significant architectural layers the ground truth considers essential.",
+    "total_score": 70,
+    "weaknesses": [
+      "Missing src/protocol.rs entirely\u2014no discussion of protocol object interpretation as a distinct layer",
+      "Missing src/relaycast_ws.rs\u2014WebSocket delivery surface not identified as a named module",
+      "Only 2 of 4 required modules explicitly covered",
+      "Transport concerns (protocol framing, WS connection lifecycle) are underexplored",
+      "Heavy reliance on main.rs line references rather than identifying the architectural modules that encapsulate those concerns"
+    ]
+  },
+  "metrics": {
+    "action_calls": 0,
+    "exploration_calls": 12,
+    "exploration_to_action_ratio": null,
+    "finished_at": "2026-04-10T05:16:23.068000+00:00",
+    "input_tokens": 250,
+    "output_tokens": 6796,
+    "started_at": "2026-04-10T05:09:03.749000+00:00",
+    "time_to_completion_seconds": 439.319,
+    "time_to_first_edit_seconds": null,
+    "tool_call_count": 30,
+    "tool_counts": {
+      "bash": 18,
+      "read": 12
+    },
+    "total_tokens": 7046
+  },
+  "repo": {
+    "archeia_output_path": "evals/archeia-output/relay",
+    "baseline_docs": [
+      "AGENTS.md",
+      "CLAUDE.md",
+      "ARCHITECTURE.md"
+    ],
+    "branch": "main",
+    "commands": {
+      "lint": "npm run lint",
+      "test": "npm test"
+    },
+    "commit": "231c45da22fee641ef05c2cd03332ca38eeebc7e",
+    "complexity": "medium",
+    "id": "relay",
+    "language": "multi",
+    "loc": 69000,
+    "notes": [
+      "Supports the special relay baseline condition.",
+      "Allows Archeia-vs-hand-written-docs comparisons."
+    ],
+    "repo": "AgentWorkforce/relay",
+    "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/relay",
+    "tests_available": true
+  },
+  "repo_id": "relay",
+  "result_path": "/Users/hugopeck/conductor/workspaces/archeia/phoenix/evals/results/raw/relay/relay-ask-complex-01/l0/trial-1.json",
+  "started_at": "2026-04-10T05:09:05+00:00",
+  "status": "completed",
+  "task": {
+    "acceptance_criteria": [
+      "Explains ingress, routing, buffering/queueing, and delivery in order.",
+      "Uses real relay module names and boundaries.",
+      "Mentions protocol interpretation and transport concerns where relevant.",
+      "Avoids inventing services or queues not present in the codebase."
+    ],
+    "category": "ask_complex",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "expected_modules_read": [
+      "src/routing.rs",
+      "src/queue.rs",
+      "src/protocol.rs",
+      "src/relaycast_ws.rs"
+    ],
+    "ground_truth": "Expected outcome:\n- Must trace the major routing stages across the broker/runtime, identify where protocol objects are interpreted, and explain where delivery paths diverge. Expected grounding includes src/routing.rs, src/queue.rs, src/protocol.rs, and relaycast WebSocket delivery surfaces.\n\nMust mention / touch:\n- src/routing.rs\n- src/queue.rs\n- src/protocol.rs\n- src/relaycast_ws.rs\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo",
+    "id": "relay-ask-complex-01",
+    "metadata": {
+      "difficulty": "complex",
+      "doc_sensitivity": "high",
+      "output_type": "explanation",
+      "primary_surface": "message-routing",
+      "verification_scope": "repo_default"
+    },
+    "prompt": "Read the codebase and explain the message-routing architecture in relay from message ingestion through queueing or routing decisions to final delivery. Base your answer only on code you actually read.",
+    "repo_id": "relay"
+  },
+  "trial": 1
+}

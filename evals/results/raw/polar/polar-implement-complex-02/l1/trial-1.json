@@ -1,0 +1,178 @@
+{
+  "agent_run": {
+    "command": [
+      "claude",
+      "--model",
+      "haiku",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--permission-mode",
+      "auto",
+      "--append-system-prompt",
+      "CRITICAL RULE: You MUST use your tools to read files in this repository before answering. Do NOT answer from memory or training data. Start by exploring the project structure with Bash(ls) or Glob, then read the specific files needed to answer the question. Every claim you make must cite a specific file path you actually read in this session. If you answer without reading files first, your response will be scored as zero.",
+      "-p",
+      "Read the codebase and create a shared billing totals helper used by both checkout totals and invoice generation so subtotal, discount, tax, and total assembly live in one place. Base your changes only on patterns you find in the code."
+    ],
+    "exit_code": 0,
+    "finished_at": "2026-04-10T01:48:17+00:00",
+    "started_at": "2026-04-10T01:41:24+00:00",
+    "status": "completed",
+    "stderr": "",
+    "stdout": "## Summary\n\nI've successfully created a shared billing totals helper that consolidates subtotal, discount, tax, and total calculations in one place. Here's what was implemented:\n\n### New Module: `server/polar/billing/totals.py`\n\nThis is the single source of truth for billing calculations, containing:\n\n- **`BillingTotals` dataclass**: Encapsulates billing components with calculated `net_amount` and `total_amount` properties\n- **`calculate_net_amount()`**: Returns `subtotal - discount`\n- **`calculate_total_amount()`**: Returns `subtotal - discount + tax`\n- **`calculate_totals()`**: Factory function to create a BillingTotals instance\n\n### Files Updated\n\n1. **Order Model** (`server/polar/models/order.py`)\n   - `net_amount` property now uses `calculate_net_amount()`\n   - `total_amount` property now uses `calculate_total_amount()`\n\n2. **Checkout Model** (`server/polar/models/checkout.py`)\n   - `net_amount` property now uses `calculate_net_amount()`\n   - `total_amount` property now uses `calculate_total_amount()`\n\n3. **Order Service** (`server/polar/order/service.py`)\n   - `create_subscription_order()` now uses `calculate_total_amount()` instead of inline formula\n\n4. **Invoice Generator** (`server/polar/invoice/generator.py`)\n   - `totals_items` property now uses `calculate_total_amount()` for invoice total calculation\n\n5. **Search Service** (`server/polar/search/service.py`)\n   - Simplified to use the `Order.total_amount` hybrid property instead of repeating the calculation\n\nAll changes follow the existing codebase patterns and ensure the billing formula is consistently applied: **total = subtotal - discount + tax**",
+    "transcript_path": "/tmp/archeia-phase4/polar-l1-polar-implement-complex-02-trial1/.archeia-eval/conversation.json"
+  },
+  "code_quality": {
+    "lint": null,
+    "lint_baseline": null,
+    "lint_baseline_findings": null,
+    "lint_delta": null,
+    "lint_findings": null,
+    "tests": null
+  },
+  "condition_application": {
+    "archeia_output": "evals/archeia-output/polar",
+    "condition_id": "l1",
+    "copied_paths": [
+      ".archeia",
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "kept_existing_docs": false,
+    "removed_paths": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "repo_id": "polar",
+    "worktree": "/tmp/archeia-phase4/polar-l1-polar-implement-complex-02-trial1"
+  },
+  "condition_commit": {
+    "command": [
+      "git",
+      "commit",
+      "-m",
+      "Apply evaluation condition"
+    ],
+    "cwd": "/tmp/archeia-phase4/polar-l1-polar-implement-complex-02-trial1",
+    "exit_code": 0,
+    "finished_at": "2026-04-10T01:41:24+00:00",
+    "started_at": "2026-04-10T01:41:24+00:00",
+    "stderr": "",
+    "stdout": "[detached HEAD 646b245] Apply evaluation condition\n 14 files changed, 1448 insertions(+), 274 deletions(-)\n create mode 100644 .archeia/Architecture.md\n create mode 100644 .archeia/Components.json\n create mode 100644 .archeia/Containers.json\n create mode 100644 .archeia/DataFlow.json\n create mode 100644 .archeia/Entities.json\n create mode 100644 .archeia/Guide.md\n create mode 100644 .archeia/Standards.md\n create mode 100644 .archeia/System.json\n create mode 100644 .archeia/diagrams/containers.md\n create mode 100644 .archeia/diagrams/context.md\n create mode 100644 .archeia/diagrams/erd.md\n create mode 100644 .archeia/diagrams/sequence-primary.md\n"
+  },
+  "condition_id": "l1",
+  "diff": "diff --git a/server/polar/invoice/generator.py b/server/polar/invoice/generator.py\nindex 0877b99..2a08c0f 100755\n--- a/server/polar/invoice/generator.py\n+++ b/server/polar/invoice/generator.py\n@@ -12,6 +12,7 @@ from fpdf.enums import Align, TableBordersLayout, XPos, YPos\n from fpdf.fonts import FontFace\n from pydantic import BaseModel\n \n+from polar.billing.totals import calculate_total_amount\n from polar.config import Environment, settings\n from polar.kit.address import Address\n from polar.kit.currency import format_currency\n@@ -140,7 +141,9 @@ class Invoice(BaseModel):\n                 )\n             )\n \n-        total = self.subtotal_amount - self.discount_amount + self.tax_amount\n+        total = calculate_total_amount(\n+            self.subtotal_amount, self.discount_amount, self.tax_amount\n+        )\n         items.append(\n             InvoiceTotalsItem(\n                 label=\"Total\",\ndiff --git a/server/polar/models/checkout.py b/server/polar/models/checkout.py\nindex 21b45f0..8df2b6b 100644\n--- a/server/polar/models/checkout.py\n+++ b/server/polar/models/checkout.py\n@@ -21,6 +21,7 @@ from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy\n from sqlalchemy.ext.hybrid import hybrid_property\n from sqlalchemy.orm import Mapped, Mapper, declared_attr, mapped_column, relationship\n \n+from polar.billing.totals import calculate_net_amount, calculate_total_amount\n from polar.config import settings\n from polar.custom_field.data import CustomFieldDataMixin\n from polar.enums import PaymentProcessor, TaxProcessor\n@@ -303,11 +304,13 @@ class Checkout(\n \n     @property\n     def net_amount(self) -> int:\n-        return self.amount - self.discount_amount\n+        return calculate_net_amount(self.amount, self.discount_amount)\n \n     @property\n     def total_amount(self) -> int:\n-        return self.net_amount + (self.tax_amount or 0)\n+        return calculate_total_amount(\n+            self.amount, self.discount_amount, self.tax_amount or 0\n+        )\n \n     @property\n     def is_discount_applicable(self) -> bool:\ndiff --git a/server/polar/models/order.py b/server/polar/models/order.py\nindex 54997b1..a95f18a 100644\n--- a/server/polar/models/order.py\n+++ b/server/polar/models/order.py\n@@ -22,6 +22,7 @@ from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy\n from sqlalchemy.ext.hybrid import hybrid_property\n from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship\n \n+from polar.billing.totals import calculate_net_amount, calculate_total_amount\n from polar.custom_field.data import CustomFieldDataMixin\n from polar.enums import TaxProcessor\n from polar.exceptions import PolarError\n@@ -265,7 +266,7 @@ class Order(CustomFieldDataMixin, MetadataMixin, RecordModel):\n \n     @hybrid_property\n     def net_amount(self) -> int:\n-        return self.subtotal_amount - self.discount_amount\n+        return calculate_net_amount(self.subtotal_amount, self.discount_amount)\n \n     @net_amount.inplace.expression\n     @classmethod\n@@ -274,12 +275,14 @@ class Order(CustomFieldDataMixin, MetadataMixin, RecordModel):\n \n     @hybrid_property\n     def total_amount(self) -> int:\n-        return self.net_amount + self.tax_amount\n+        return calculate_total_amount(\n+            self.subtotal_amount, self.discount_amount, self.tax_amount\n+        )\n \n     @total_amount.inplace.expression\n     @classmethod\n     def _total_amount_expression(cls) -> ColumnElement[int]:\n-        return cls.net_amount + cls.tax_amount\n+        return cls.subtotal_amount - cls.discount_amount + cls.tax_amount\n \n     @hybrid_property\n     def due_amount(self) -> int:\ndiff --git a/server/polar/order/service.py b/server/polar/order/service.py\nindex c47def5..f7d68c9 100644\n--- a/server/polar/order/service.py\n+++ b/server/polar/order/service.py\n@@ -81,6 +81,7 @@ from polar.payment_method.service import payment_method as payment_method_servic\n from polar.product.guard import is_custom_price, is_seat_price, is_static_price\n from polar.product.price_set import PriceSet\n from polar.subscription.service import subscription as subscription_service\n+from polar.billing.totals import calculate_total_amount\n from polar.tax.calculation import (\n     CalculationExpiredError,\n     TaxabilityReason,\n@@ -673,7 +674,9 @@ class OrderService:\n                 session, subscription.organization, customer\n             )\n \n-            total_amount = subtotal_amount - discount_amount + tax_amount\n+            total_amount = calculate_total_amount(\n+                subtotal_amount, discount_amount, tax_amount\n+            )\n             customer_balance = await wallet_service.get_billing_wallet_balance(\n                 session, customer, subscription.currency\n             )\ndiff --git a/server/polar/search/service.py b/server/polar/search/service.py\nindex 42b9a9b..1b7ffa4 100644\n--- a/server/polar/search/service.py\n+++ b/server/polar/search/service.py\n@@ -243,9 +243,7 @@ class SearchService:\n                 Customer.name.label(\"customer_name\"),\n                 Customer.email.label(\"customer_email\"),\n                 Product.name.label(\"product_name\"),\n-                (\n-                    Order.subtotal_amount - Order.discount_amount + Order.tax_amount\n-                ).label(\"amount\"),\n+                Order.total_amount.label(\"amount\"),\n                 Order.currency.label(\"currency\"),\n                 literal(None).cast(String).label(\"status\"),\n             )\n",
+  "finished_at": "2026-04-10T01:48:48+00:00",
+  "judge": {
+    "command": [
+      "claude",
+      "--output-format",
+      "json",
+      "-p",
+      "You are judging an Archeia evaluation run.\n\nTask category: implement_complex\nTask id: polar-implement-complex-02\n\nTask prompt:\nRead the codebase and create a shared billing totals helper used by both checkout totals and invoice generation so subtotal, discount, tax, and total assembly live in one place. Base your changes only on patterns you find in the code.\n\nGround truth / reference:\nExpected outcome:\n- The implementation should identify real shared billing total assembly logic, centralize it in an appropriate shared backend surface, preserve current money calculations, and avoid changing business rules.\n\nMust mention / touch:\n- server/polar/checkout/\n- server/polar/invoice/\n- server/polar/kit/\n- server/polar/billing_entry/\n\nCommon failure modes:\n- Extracting a helper that changes subtotal, discount, tax, or total behavior\n- Moving logic without actually consolidating shared billing total assembly\n\nAcceptance criteria:\n[\n  \"Extracts a shared billing totals helper into an appropriate shared backend surface.\",\n  \"Uses the helper from both checkout and invoice-related code.\",\n  \"Preserves existing subtotal, discount, tax, and total behavior.\",\n  \"Avoids unrelated business-rule changes.\"\n]\n\nAgent response:\n## Summary\n\nI've successfully created a shared billing totals helper that consolidates subtotal, discount, tax, and total calculations in one place. Here's what was implemented:\n\n### New Module: `server/polar/billing/totals.py`\n\nThis is the single source of truth for billing calculations, containing:\n\n- **`BillingTotals` dataclass**: Encapsulates billing components with calculated `net_amount` and `total_amount` properties\n- **`calculate_net_amount()`**: Returns `subtotal - discount`\n- **`calculate_total_amount()`**: Returns `subtotal - discount + tax`\n- **`calculate_totals()`**: Factory function to create a BillingTotals instance\n\n### Files Updated\n\n1. **Order Model** (`server/polar/models/order.py`)\n   - `net_amount` property now uses `calculate_net_amount()`\n   - `total_amount` property now uses `calculate_total_amount()`\n\n2. **Checkout Model** (`server/polar/models/checkout.py`)\n   - `net_amount` property now uses `calculate_net_amount()`\n   - `total_amount` property now uses `calculate_total_amount()`\n\n3. **Order Service** (`server/polar/order/service.py`)\n   - `create_subscription_order()` now uses `calculate_total_amount()` instead of inline formula\n\n4. **Invoice Generator** (`server/polar/invoice/generator.py`)\n   - `totals_items` property now uses `calculate_total_amount()` for invoice total calculation\n\n5. **Search Service** (`server/polar/search/service.py`)\n   - Simplified to use the `Order.total_amount` hybrid property instead of repeating the calculation\n\nAll changes follow the existing codebase patterns and ensure the billing formula is consistently applied: **total = subtotal - discount + tax**\n\nGit diff:\ndiff --git a/server/polar/invoice/generator.py b/server/polar/invoice/generator.py\nindex 0877b99..2a08c0f 100755\n--- a/server/polar/invoice/generator.py\n+++ b/server/polar/invoice/generator.py\n@@ -12,6 +12,7 @@ from fpdf.enums import Align, TableBordersLayout, XPos, YPos\n from fpdf.fonts import FontFace\n from pydantic import BaseModel\n \n+from polar.billing.totals import calculate_total_amount\n from polar.config import Environment, settings\n from polar.kit.address import Address\n from polar.kit.currency import format_currency\n@@ -140,7 +141,9 @@ class Invoice(BaseModel):\n                 )\n             )\n \n-        total = self.subtotal_amount - self.discount_amount + self.tax_amount\n+        total = calculate_total_amount(\n+            self.subtotal_amount, self.discount_amount, self.tax_amount\n+        )\n         items.append(\n             InvoiceTotalsItem(\n                 label=\"Total\",\ndiff --git a/server/polar/models/checkout.py b/server/polar/models/checkout.py\nindex 21b45f0..8df2b6b 100644\n--- a/server/polar/models/checkout.py\n+++ b/server/polar/models/checkout.py\n@@ -21,6 +21,7 @@ from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy\n from sqlalchemy.ext.hybrid import hybrid_property\n from sqlalchemy.orm import Mapped, Mapper, declared_attr, mapped_column, relationship\n \n+from polar.billing.totals import calculate_net_amount, calculate_total_amount\n from polar.config import settings\n from polar.custom_field.data import CustomFieldDataMixin\n from polar.enums import PaymentProcessor, TaxProcessor\n@@ -303,11 +304,13 @@ class Checkout(\n \n     @property\n     def net_amount(self) -> int:\n-        return self.amount - self.discount_amount\n+        return calculate_net_amount(self.amount, self.discount_amount)\n \n     @property\n     def total_amount(self) -> int:\n-        return self.net_amount + (self.tax_amount or 0)\n+        return calculate_total_amount(\n+            self.amount, self.discount_amount, self.tax_amount or 0\n+        )\n \n     @property\n     def is_discount_applicable(self) -> bool:\ndiff --git a/server/polar/models/order.py b/server/polar/models/order.py\nindex 54997b1..a95f18a 100644\n--- a/server/polar/models/order.py\n+++ b/server/polar/models/order.py\n@@ -22,6 +22,7 @@ from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy\n from sqlalchemy.ext.hybrid import hybrid_property\n from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship\n \n+from polar.billing.totals import calculate_net_amount, calculate_total_amount\n from polar.custom_field.data import CustomFieldDataMixin\n from polar.enums import TaxProcessor\n from polar.exceptions import PolarError\n@@ -265,7 +266,7 @@ class Order(CustomFieldDataMixin, MetadataMixin, RecordModel):\n \n     @hybrid_property\n     def net_amount(self) -> int:\n-        return self.subtotal_amount - self.discount_amount\n+        return calculate_net_amount(self.subtotal_amount, self.discount_amount)\n \n     @net_amount.inplace.expression\n     @classmethod\n@@ -274,12 +275,14 @@ class Order(CustomFieldDataMixin, MetadataMixin, RecordModel):\n \n     @hybrid_property\n     def total_amount(self) -> int:\n-        return self.net_amount + self.tax_amount\n+        return calculate_total_amount(\n+            self.subtotal_amount, self.discount_amount, self.tax_amount\n+        )\n \n     @total_amount.inplace.expression\n     @classmethod\n     def _total_amount_expression(cls) -> ColumnElement[int]:\n-        return cls.net_amount + cls.tax_amount\n+        return cls.subtotal_amount - cls.discount_amount + cls.tax_amount\n \n     @hybrid_property\n     def due_amount(self) -> int:\ndiff --git a/server/polar/order/service.py b/server/polar/order/service.py\nindex c47def5..f7d68c9 100644\n--- a/server/polar/order/service.py\n+++ b/server/polar/order/service.py\n@@ -81,6 +81,7 @@ from polar.payment_method.service import payment_method as payment_method_servic\n from polar.product.guard import is_custom_price, is_seat_price, is_static_price\n from polar.product.price_set import PriceSet\n from polar.subscription.service import subscription as subscription_service\n+from polar.billing.totals import calculate_total_amount\n from polar.tax.calculation import (\n     CalculationExpiredError,\n     TaxabilityReason,\n@@ -673,7 +674,9 @@ class OrderService:\n                 session, subscription.organization, customer\n             )\n \n-            total_amount = subtotal_amount - discount_amount + tax_amount\n+            total_amount = calculate_total_amount(\n+                subtotal_amount, discount_amount, tax_amount\n+            )\n             customer_balance = await wallet_service.get_billing_wallet_balance(\n                 session, customer, subscription.currency\n             )\ndiff --git a/server/polar/search/service.py b/server/polar/search/service.py\nindex 42b9a9b..1b7ffa4 100644\n--- a/server/polar/search/service.py\n+++ b/server/polar/search/service.py\n@@ -243,9 +243,7 @@ class SearchService:\n                 Customer.name.label(\"customer_name\"),\n                 Customer.email.label(\"customer_email\"),\n                 Product.name.label(\"product_name\"),\n-                (\n-                    Order.subtotal_amount - Order.discount_amount + Order.tax_amount\n-                ).label(\"amount\"),\n+                Order.total_amount.label(\"amount\"),\n                 Order.currency.label(\"currency\"),\n                 literal(None).cast(String).label(\"status\"),\n             )\n\n\nCode-quality signals:\n{\n  \"lint\": null,\n  \"lint_baseline\": null,\n  \"lint_baseline_findings\": null,\n  \"lint_delta\": null,\n  \"lint_findings\": null,\n  \"tests\": null\n}\n\nEfficiency signals:\n{\n  \"action_calls\": 12,\n  \"exploration_calls\": 25,\n  \"exploration_to_action_ratio\": 2.0833333333333335,\n  \"finished_at\": \"2026-04-10T01:48:11.827000+00:00\",\n  \"input_tokens\": 482,\n  \"output_tokens\": 15659,\n  \"started_at\": \"2026-04-10T01:41:43.354000+00:00\",\n  \"time_to_completion_seconds\": 388.473,\n  \"time_to_first_edit_seconds\": null,\n  \"tool_call_count\": 59,\n  \"tool_counts\": {\n    \"bash\": 22,\n    \"edit\": 10,\n    \"read\": 25,\n    \"write\": 2\n  },\n  \"total_tokens\": 16141\n}\n\nScore the run from 0-100 using four equally weighted 0-25 dimensions:\n1. Correctness: change solves the task.\n2. Completeness: includes all required code-path updates.\n3. Convention fit: matches project structure and patterns.\n4. Verification: test/lint outcomes support the change.\n\nReturn JSON only with this schema:\n{\n  \"total_score\": 0,\n  \"dimension_scores\": {\n    \"correctness\": 0,\n    \"completeness\": 0,\n    \"convention_fit\": 0,\n    \"verification_or_communication\": 0\n  },\n  \"summary\": \"short paragraph\",\n  \"strengths\": [\"...\"],\n  \"weaknesses\": [\"...\"],\n  \"confidence\": \"low|medium|high\"\n}"
+    ],
+    "confidence": "medium",
+    "dimension_scores": {
+      "completeness": 12,
+      "convention_fit": 10,
+      "correctness": 17,
+      "verification_or_communication": 5
+    },
+    "finished_at": "2026-04-10T01:48:48+00:00",
+    "started_at": "2026-04-10T01:48:17+00:00",
+    "status": "completed",
+    "strengths": [
+      "Arithmetic formulas are correctly preserved across all updated callsites",
+      "Sensibly replaced inline expression in search/service.py with the existing Order.total_amount hybrid property",
+      "Left SQLAlchemy expression-level queries as inline SQL rather than trying to call Python helpers there",
+      "Good exploration-to-action ratio showing the codebase was read before changes"
+    ],
+    "summary": "The agent extracted billing arithmetic into standalone functions and wired them into checkout, order, invoice, and search code, preserving the subtotal - discount + tax formula. However, it placed the helper in a newly invented `server/polar/billing/` package rather than the existing `server/polar/kit/` shared surface mentioned in the ground truth, and completely missed `server/polar/billing_entry/` which the ground truth requires be touched. The helper functions are trivially thin (single-line arithmetic wrappers), and the `BillingTotals` dataclass was created but never actually used. No tests or linting were run to verify correctness.",
+    "total_score": 44,
+    "weaknesses": [
+      "Placed helper in new server/polar/billing/ package instead of the established server/polar/kit/ shared surface",
+      "server/polar/billing_entry/ was never touched, missing a required integration point",
+      "BillingTotals dataclass was created but never used in any integration \u2014 dead code",
+      "No tests or lint were executed to validate the changes",
+      "The _total_amount_expression was unnecessarily changed from cls.net_amount + cls.tax_amount to an inlined version, a subtle behavioral change to the SQL expression layer"
+    ]
+  },
+  "metrics": {
+    "action_calls": 12,
+    "exploration_calls": 25,
+    "exploration_to_action_ratio": 2.0833333333333335,
+    "finished_at": "2026-04-10T01:48:11.827000+00:00",
+    "input_tokens": 482,
+    "output_tokens": 15659,
+    "started_at": "2026-04-10T01:41:43.354000+00:00",
+    "time_to_completion_seconds": 388.473,
+    "time_to_first_edit_seconds": null,
+    "tool_call_count": 59,
+    "tool_counts": {
+      "bash": 22,
+      "edit": 10,
+      "read": 25,
+      "write": 2
+    },
+    "total_tokens": 16141
+  },
+  "repo": {
+    "archeia_output_path": "evals/archeia-output/polar",
+    "baseline_docs": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "branch": "main",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "commit": "98df9bae772c3cb5b315ed8877c4ec83b05953dd",
+    "complexity": "complex",
+    "id": "polar",
+    "language": "py-ts",
+    "loc": 529000,
+    "notes": [
+      "Largest and most complex evaluation repo.",
+      "Best suited for cross-module plan and implement tasks."
+    ],
+    "repo": "polarsource/polar",
+    "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/polar",
+    "tests_available": false
+  },
+  "repo_id": "polar",
+  "result_path": "/Users/hugopeck/conductor/workspaces/archeia/athens/evals/results/raw/polar/polar-implement-complex-02/l1/trial-1.json",
+  "started_at": "2026-04-10T01:41:23+00:00",
+  "status": "completed",
+  "task": {
+    "acceptance_criteria": [
+      "Extracts a shared billing totals helper into an appropriate shared backend surface.",
+      "Uses the helper from both checkout and invoice-related code.",
+      "Preserves existing subtotal, discount, tax, and total behavior.",
+      "Avoids unrelated business-rule changes."
+    ],
+    "category": "implement_complex",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "expected_modules_read": [
+      "server/polar/checkout/",
+      "server/polar/invoice/",
+      "server/polar/kit/",
+      "server/polar/billing_entry/"
+    ],
+    "ground_truth": "Expected outcome:\n- The implementation should identify real shared billing total assembly logic, centralize it in an appropriate shared backend surface, preserve current money calculations, and avoid changing business rules.\n\nMust mention / touch:\n- server/polar/checkout/\n- server/polar/invoice/\n- server/polar/kit/\n- server/polar/billing_entry/\n\nCommon failure modes:\n- Extracting a helper that changes subtotal, discount, tax, or total behavior\n- Moving logic without actually consolidating shared billing total assembly",
+    "id": "polar-implement-complex-02",
+    "metadata": {
+      "difficulty": "complex",
+      "doc_sensitivity": "high",
+      "output_type": "code_change",
+      "primary_surface": "shared-billing-totals",
+      "verification_scope": "none"
+    },
+    "prompt": "Read the codebase and create a shared billing totals helper used by both checkout totals and invoice generation so subtotal, discount, tax, and total assembly live in one place. Base your changes only on patterns you find in the code.",
+    "repo_id": "polar"
+  },
+  "trial": 1
+}

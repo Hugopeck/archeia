@@ -1,0 +1,26 @@
+{
+  "id": "mitmproxy-ask-complex-01",
+  "repo_id": "mitmproxy",
+  "category": "ask_complex",
+  "prompt": "Explain the complete request lifecycle for [primary use case]. Trace from entrypoint through all major layers to storage or side effects.",
+  "ground_truth": "Expected outcome:\n- Describe the correct high-level answer or implementation shape.\n\nMust mention / touch:\n- module-a/\n- module-b/\n\nCommon failure modes:\n- Inventing subsystems that are not present in the repo\n- Missing one of the major layers or affected modules",
+  "acceptance_criteria": [
+    "Covers all major modules in the flow.",
+    "Does not invent systems that are not present in the repo."
+  ],
+  "expected_modules_read": [
+    "module-a/",
+    "module-b/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "explanation",
+    "primary_surface": "request-lifecycle",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

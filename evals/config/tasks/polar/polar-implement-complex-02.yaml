@@ -1,0 +1,30 @@
+{
+  "id": "polar-implement-complex-02",
+  "repo_id": "polar",
+  "category": "implement_complex",
+  "prompt": "Read the codebase and create a shared billing totals helper used by both checkout totals and invoice generation so subtotal, discount, tax, and total assembly live in one place. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should identify real shared billing total assembly logic, centralize it in an appropriate shared backend surface, preserve current money calculations, and avoid changing business rules.\n\nMust mention / touch:\n- server/polar/checkout/\n- server/polar/invoice/\n- server/polar/kit/\n- server/polar/billing_entry/\n\nCommon failure modes:\n- Extracting a helper that changes subtotal, discount, tax, or total behavior\n- Moving logic without actually consolidating shared billing total assembly",
+  "acceptance_criteria": [
+    "Extracts a shared billing totals helper into an appropriate shared backend surface.",
+    "Uses the helper from both checkout and invoice-related code.",
+    "Preserves existing subtotal, discount, tax, and total behavior.",
+    "Avoids unrelated business-rule changes."
+  ],
+  "expected_modules_read": [
+    "server/polar/checkout/",
+    "server/polar/invoice/",
+    "server/polar/kit/",
+    "server/polar/billing_entry/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "code_change",
+    "primary_surface": "shared-billing-totals",
+    "doc_sensitivity": "high",
+    "verification_scope": "none"
+  }
+}

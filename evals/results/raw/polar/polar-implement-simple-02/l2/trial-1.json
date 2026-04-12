@@ -1,0 +1,201 @@
+{
+  "agent_run": {
+    "command": [
+      "claude",
+      "--model",
+      "haiku",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--permission-mode",
+      "auto",
+      "--append-system-prompt",
+      "CRITICAL RULE: You MUST use your tools to read files in this repository before answering. Do NOT answer from memory or training data. Start by exploring the project structure with Bash(ls) or Glob, then read the specific files needed to answer the question. Every claim you make must cite a specific file path you actually read in this session. If you answer without reading files first, your response will be scored as zero.",
+      "-p",
+      "Read the codebase and normalize customer names so whitespace-only names are treated as missing instead of being stored as literal spaces. Base your changes only on patterns you find in the code."
+    ],
+    "exit_code": 0,
+    "finished_at": "2026-04-10T01:48:29+00:00",
+    "started_at": "2026-04-10T01:41:07+00:00",
+    "status": "completed",
+    "stderr": "",
+    "stdout": "Perfect! Let me create a summary of the changes made:\n\n## Summary\n\nI've successfully normalized customer names across the codebase so that whitespace-only names are treated as missing instead of being stored as literal spaces. Here's what was changed:\n\n### Key Changes\n\n1. **Modified 4 files** to import and apply the existing `empty_str_to_none` normalizer function:\n\n**server/polar/checkout/service.py:**\n- Added import for `empty_str_to_none`\n- Applied normalization when setting `customer.name` from checkout data\n- Applied normalization when setting `customer.billing_name` from checkout data\n\n**server/polar/backoffice/organizations/orders_import.py:**\n- Added import for `empty_str_to_none`\n- Applied normalization to customer names extracted from CSV imports\n\n**server/polar/customer_portal/service/customer.py:**\n- Added import for `empty_str_to_none`\n- Applied normalization when setting `customer.billing_name` in portal updates\n\n**server/polar/models/customer.py:**\n- Added import for `empty_str_to_none`\n- Updated the `billing_name` property setter to normalize values at the model layer\n\n### How It Works\n\nThe `empty_str_to_none` function (which already existed in `polar/kit/schemas.py`):\n- Takes a string or None\n- Strips whitespace using `.strip()`\n- Returns `None` if the result is empty or whitespace-only\n- Returns the stripped string otherwise\n\nThis ensures consistent behavior across the codebase where:\n- `\"   \"` \u2192 `None` (whitespace-only)\n- `\"\"` \u2192 `None` (empty)\n- `\"  John  \"` \u2192 `\"John\"` (stripped)\n- `None` \u2192 `None` (unchanged)\n\nThe changes follow existing patterns in the codebase where the `EmptyStrToNoneValidator` is already applied to customer name fields in Pydantic schemas.",
+    "transcript_path": "/tmp/archeia-phase4/polar-l2-polar-implement-simple-02-trial1/.archeia-eval/conversation.json"
+  },
+  "code_quality": {
+    "lint": null,
+    "lint_baseline": null,
+    "lint_baseline_findings": null,
+    "lint_delta": null,
+    "lint_findings": null,
+    "tests": null
+  },
+  "condition_application": {
+    "archeia_output": "evals/archeia-output/polar",
+    "condition_id": "l2",
+    "copied_paths": [
+      ".archeia",
+      "AGENTS.md",
+      "CLAUDE.md",
+      "clients/packages/i18n/README.md",
+      "clients/packages/orbit/README.md",
+      "dev/README.md",
+      "server/README.md",
+      "server/polar/README.md",
+      "server/polar/benefit/README.md",
+      "server/polar/benefit/agents.md",
+      "server/polar/benefit/claude.md",
+      "server/polar/customer_portal/README.md",
+      "server/polar/integrations/README.md",
+      "server/polar/integrations/agents.md",
+      "server/polar/integrations/claude.md",
+      "server/polar/kit/README.md",
+      "server/polar/models/README.md",
+      "server/polar/models/agents.md",
+      "server/polar/models/claude.md",
+      "server/polar/oauth2/README.md",
+      "server/polar/observability/README.md",
+      "server/polar/transaction/README.md",
+      "server/polar/worker/README.md",
+      "server/polar/worker/agents.md",
+      "server/polar/worker/claude.md",
+      "server/scripts/README.md",
+      "server/tests/README.md",
+      "server/tinybird/README.md",
+      "server/tinybird/agents.md",
+      "server/tinybird/claude.md"
+    ],
+    "kept_existing_docs": false,
+    "removed_paths": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "repo_id": "polar",
+    "worktree": "/tmp/archeia-phase4/polar-l2-polar-implement-simple-02-trial1"
+  },
+  "condition_commit": {
+    "command": [
+      "git",
+      "commit",
+      "-m",
+      "Apply evaluation condition"
+    ],
+    "cwd": "/tmp/archeia-phase4/polar-l2-polar-implement-simple-02-trial1",
+    "exit_code": 0,
+    "finished_at": "2026-04-10T01:41:07+00:00",
+    "started_at": "2026-04-10T01:41:07+00:00",
+    "stderr": "",
+    "stdout": "[detached HEAD 3ab318c] Apply evaluation condition\n 41 files changed, 1983 insertions(+), 274 deletions(-)\n create mode 100644 .archeia/Architecture.md\n create mode 100644 .archeia/Components.json\n create mode 100644 .archeia/Containers.json\n create mode 100644 .archeia/DataFlow.json\n create mode 100644 .archeia/Entities.json\n create mode 100644 .archeia/Guide.md\n create mode 100644 .archeia/Standards.md\n create mode 100644 .archeia/System.json\n create mode 100644 .archeia/diagrams/containers.md\n create mode 100644 .archeia/diagrams/context.md\n create mode 100644 .archeia/diagrams/erd.md\n create mode 100644 .archeia/diagrams/sequence-primary.md\n create mode 100644 clients/packages/i18n/README.md\n create mode 100644 clients/packages/orbit/README.md\n create mode 100644 dev/README.md\n create mode 100644 server/README.md\n create mode 100644 server/polar/README.md\n create mode 100644 server/polar/benefit/README.md\n create mode 100644 server/polar/benefit/agents.md\n create mode 100644 server/polar/benefit/claude.md\n create mode 100644 server/polar/customer_portal/README.md\n create mode 100644 server/polar/integrations/README.md\n create mode 100644 server/polar/integrations/agents.md\n create mode 100644 server/polar/integrations/claude.md\n create mode 100644 server/polar/kit/README.md\n create mode 100644 server/polar/models/README.md\n create mode 100644 server/polar/models/agents.md\n create mode 100644 server/polar/models/claude.md\n create mode 100644 server/polar/oauth2/README.md\n create mode 100644 server/polar/observability/README.md\n create mode 100644 server/polar/transaction/README.md\n create mode 100644 server/polar/worker/README.md\n create mode 100644 server/polar/worker/agents.md\n create mode 100644 server/polar/worker/claude.md\n create mode 100644 server/scripts/README.md\n create mode 100644 server/tests/README.md\n create mode 100644 server/tinybird/README.md\n create mode 100644 server/tinybird/agents.md\n create mode 100644 server/tinybird/claude.md\n"
+  },
+  "condition_id": "l2",
+  "diff": "diff --git a/server/polar/backoffice/organizations/orders_import.py b/server/polar/backoffice/organizations/orders_import.py\nindex 64d94cf..f963a97 100644\n--- a/server/polar/backoffice/organizations/orders_import.py\n+++ b/server/polar/backoffice/organizations/orders_import.py\n@@ -19,6 +19,7 @@ from polar.benefit.repository import BenefitRepository\n from polar.customer.repository import CustomerRepository\n from polar.exceptions import PolarError\n from polar.kit.address import SUPPORTED_COUNTRIES, Address, CountryAlpha2\n+from polar.kit.schemas import empty_str_to_none\n from polar.license_key.repository import LicenseKeyRepository\n from polar.models import Benefit, BenefitGrant, Customer, Order, Organization, Product\n from polar.models.benefit import BenefitType\n@@ -152,7 +153,7 @@ async def orders_import(\n             ),\n         )\n         if customer is None:\n-            name = _getter(row, \"name\", \"user_name\")\n+            name = empty_str_to_none(_getter(row, \"name\", \"user_name\"))\n             raw_country = _getter(row, \"country\")\n             country = raw_country.upper() if raw_country else None\n             if country is None or country not in SUPPORTED_COUNTRIES:\ndiff --git a/server/polar/checkout/service.py b/server/polar/checkout/service.py\nindex abd0617..84b5c0d 100644\n--- a/server/polar/checkout/service.py\n+++ b/server/polar/checkout/service.py\n@@ -50,6 +50,7 @@ from polar.integrations.stripe.utils import get_fingerprint\n from polar.kit.address import AddressInput\n from polar.kit.crypto import generate_token\n from polar.kit.currency import get_presentment_currency\n+from polar.kit.schemas import empty_str_to_none\n from polar.kit.db.locking import is_lock_not_available_error\n from polar.kit.operator import attrgetter\n from polar.kit.pagination import PaginationParams\n@@ -2512,9 +2513,9 @@ class CheckoutService:\n             )\n \n         if checkout.customer_name is not None:\n-            customer.name = checkout.customer_name\n+            customer.name = empty_str_to_none(checkout.customer_name)\n         if checkout.customer_billing_name is not None:\n-            customer.billing_name = checkout.customer_billing_name\n+            customer.billing_name = empty_str_to_none(checkout.customer_billing_name)\n         if checkout.customer_billing_address is not None:\n             customer.billing_address = checkout.customer_billing_address\n         if checkout.customer_tax_id is not None:\ndiff --git a/server/polar/customer_portal/service/customer.py b/server/polar/customer_portal/service/customer.py\nindex 80a0bd3..20217bb 100644\n--- a/server/polar/customer_portal/service/customer.py\n+++ b/server/polar/customer_portal/service/customer.py\n@@ -10,6 +10,7 @@ from polar.exceptions import PolarError, PolarRequestValidationError\n from polar.integrations.stripe.service import stripe as stripe_service\n from polar.integrations.stripe.utils import get_expandable_id\n from polar.kit.pagination import PaginationParams\n+from polar.kit.schemas import empty_str_to_none\n from polar.models import Customer as CustomerModel\n from polar.models import PaymentMethod\n from polar.order.service import order as order_service\n@@ -49,7 +50,7 @@ class CustomerService:\n         customer_update: CustomerPortalCustomerUpdate,\n     ) -> CustomerModel:\n         if customer_update.billing_name is not None:\n-            customer.billing_name = customer_update.billing_name\n+            customer.billing_name = empty_str_to_none(customer_update.billing_name)\n \n         if \"billing_address\" in customer_update.model_fields_set:\n             if customer_update.billing_address is None:\ndiff --git a/server/polar/models/customer.py b/server/polar/models/customer.py\nindex 17703b9..acdd9c1 100644\n--- a/server/polar/models/customer.py\n+++ b/server/polar/models/customer.py\n@@ -31,6 +31,7 @@ from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship\n from polar.kit.address import Address, AddressType\n from polar.kit.db.models import RecordModel\n from polar.kit.metadata import MetadataMixin\n+from polar.kit.schemas import empty_str_to_none\n from polar.tax.tax_id import TaxID, TaxIDType\n \n if TYPE_CHECKING:\n@@ -330,7 +331,7 @@ class Customer(MetadataMixin, RecordModel):\n \n     @billing_name.setter\n     def billing_name(self, value: str | None) -> None:\n-        self._billing_name = value\n+        self._billing_name = empty_str_to_none(value)\n \n     @property\n     def actual_billing_name(self) -> str | None:\n",
+  "finished_at": "2026-04-10T01:48:58+00:00",
+  "judge": {
+    "command": [
+      "claude",
+      "--output-format",
+      "json",
+      "-p",
+      "You are judging an Archeia evaluation run.\n\nTask category: implement_simple\nTask id: polar-implement-simple-02\n\nTask prompt:\nRead the codebase and normalize customer names so whitespace-only names are treated as missing instead of being stored as literal spaces. Base your changes only on patterns you find in the code.\n\nGround truth / reference:\nExpected outcome:\n- The implementation should normalize or validate customer name input in the owning customer schema/path, keep valid customer updates intact, and include focused regression coverage if feasible.\n\nMust mention / touch:\n- server/polar/customer/schemas/customer.py\n- server/polar/customer/endpoints.py\n- server/tests/\n\nCommon failure modes:\n- Leaving whitespace-only names stored as meaningful values\n- Applying normalization in a downstream layer while other customer input paths remain inconsistent\n\nAcceptance criteria:\n[\n  \"Treats whitespace-only customer names as missing or invalid at the owning input path.\",\n  \"Keeps valid customer create and update flows intact.\",\n  \"Matches existing Polar schema-validation patterns.\",\n  \"Includes focused regression coverage where feasible.\"\n]\n\nAgent response:\nPerfect! Let me create a summary of the changes made:\n\n## Summary\n\nI've successfully normalized customer names across the codebase so that whitespace-only names are treated as missing instead of being stored as literal spaces. Here's what was changed:\n\n### Key Changes\n\n1. **Modified 4 files** to import and apply the existing `empty_str_to_none` normalizer function:\n\n**server/polar/checkout/service.py:**\n- Added import for `empty_str_to_none`\n- Applied normalization when setting `customer.name` from checkout data\n- Applied normalization when setting `customer.billing_name` from checkout data\n\n**server/polar/backoffice/organizations/orders_import.py:**\n- Added import for `empty_str_to_none`\n- Applied normalization to customer names extracted from CSV imports\n\n**server/polar/customer_portal/service/customer.py:**\n- Added import for `empty_str_to_none`\n- Applied normalization when setting `customer.billing_name` in portal updates\n\n**server/polar/models/customer.py:**\n- Added import for `empty_str_to_none`\n- Updated the `billing_name` property setter to normalize values at the model layer\n\n### How It Works\n\nThe `empty_str_to_none` function (which already existed in `polar/kit/schemas.py`):\n- Takes a string or None\n- Strips whitespace using `.strip()`\n- Returns `None` if the result is empty or whitespace-only\n- Returns the stripped string otherwise\n\nThis ensures consistent behavior across the codebase where:\n- `\"   \"` \u2192 `None` (whitespace-only)\n- `\"\"` \u2192 `None` (empty)\n- `\"  John  \"` \u2192 `\"John\"` (stripped)\n- `None` \u2192 `None` (unchanged)\n\nThe changes follow existing patterns in the codebase where the `EmptyStrToNoneValidator` is already applied to customer name fields in Pydantic schemas.\n\nGit diff:\ndiff --git a/server/polar/backoffice/organizations/orders_import.py b/server/polar/backoffice/organizations/orders_import.py\nindex 64d94cf..f963a97 100644\n--- a/server/polar/backoffice/organizations/orders_import.py\n+++ b/server/polar/backoffice/organizations/orders_import.py\n@@ -19,6 +19,7 @@ from polar.benefit.repository import BenefitRepository\n from polar.customer.repository import CustomerRepository\n from polar.exceptions import PolarError\n from polar.kit.address import SUPPORTED_COUNTRIES, Address, CountryAlpha2\n+from polar.kit.schemas import empty_str_to_none\n from polar.license_key.repository import LicenseKeyRepository\n from polar.models import Benefit, BenefitGrant, Customer, Order, Organization, Product\n from polar.models.benefit import BenefitType\n@@ -152,7 +153,7 @@ async def orders_import(\n             ),\n         )\n         if customer is None:\n-            name = _getter(row, \"name\", \"user_name\")\n+            name = empty_str_to_none(_getter(row, \"name\", \"user_name\"))\n             raw_country = _getter(row, \"country\")\n             country = raw_country.upper() if raw_country else None\n             if country is None or country not in SUPPORTED_COUNTRIES:\ndiff --git a/server/polar/checkout/service.py b/server/polar/checkout/service.py\nindex abd0617..84b5c0d 100644\n--- a/server/polar/checkout/service.py\n+++ b/server/polar/checkout/service.py\n@@ -50,6 +50,7 @@ from polar.integrations.stripe.utils import get_fingerprint\n from polar.kit.address import AddressInput\n from polar.kit.crypto import generate_token\n from polar.kit.currency import get_presentment_currency\n+from polar.kit.schemas import empty_str_to_none\n from polar.kit.db.locking import is_lock_not_available_error\n from polar.kit.operator import attrgetter\n from polar.kit.pagination import PaginationParams\n@@ -2512,9 +2513,9 @@ class CheckoutService:\n             )\n \n         if checkout.customer_name is not None:\n-            customer.name = checkout.customer_name\n+            customer.name = empty_str_to_none(checkout.customer_name)\n         if checkout.customer_billing_name is not None:\n-            customer.billing_name = checkout.customer_billing_name\n+            customer.billing_name = empty_str_to_none(checkout.customer_billing_name)\n         if checkout.customer_billing_address is not None:\n             customer.billing_address = checkout.customer_billing_address\n         if checkout.customer_tax_id is not None:\ndiff --git a/server/polar/customer_portal/service/customer.py b/server/polar/customer_portal/service/customer.py\nindex 80a0bd3..20217bb 100644\n--- a/server/polar/customer_portal/service/customer.py\n+++ b/server/polar/customer_portal/service/customer.py\n@@ -10,6 +10,7 @@ from polar.exceptions import PolarError, PolarRequestValidationError\n from polar.integrations.stripe.service import stripe as stripe_service\n from polar.integrations.stripe.utils import get_expandable_id\n from polar.kit.pagination import PaginationParams\n+from polar.kit.schemas import empty_str_to_none\n from polar.models import Customer as CustomerModel\n from polar.models import PaymentMethod\n from polar.order.service import order as order_service\n@@ -49,7 +50,7 @@ class CustomerService:\n         customer_update: CustomerPortalCustomerUpdate,\n     ) -> CustomerModel:\n         if customer_update.billing_name is not None:\n-            customer.billing_name = customer_update.billing_name\n+            customer.billing_name = empty_str_to_none(customer_update.billing_name)\n \n         if \"billing_address\" in customer_update.model_fields_set:\n             if customer_update.billing_address is None:\ndiff --git a/server/polar/models/customer.py b/server/polar/models/customer.py\nindex 17703b9..acdd9c1 100644\n--- a/server/polar/models/customer.py\n+++ b/server/polar/models/customer.py\n@@ -31,6 +31,7 @@ from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship\n from polar.kit.address import Address, AddressType\n from polar.kit.db.models import RecordModel\n from polar.kit.metadata import MetadataMixin\n+from polar.kit.schemas import empty_str_to_none\n from polar.tax.tax_id import TaxID, TaxIDType\n \n if TYPE_CHECKING:\n@@ -330,7 +331,7 @@ class Customer(MetadataMixin, RecordModel):\n \n     @billing_name.setter\n     def billing_name(self, value: str | None) -> None:\n-        self._billing_name = value\n+        self._billing_name = empty_str_to_none(value)\n \n     @property\n     def actual_billing_name(self) -> str | None:\n\n\nCode-quality signals:\n{\n  \"lint\": null,\n  \"lint_baseline\": null,\n  \"lint_baseline_findings\": null,\n  \"lint_delta\": null,\n  \"lint_findings\": null,\n  \"tests\": null\n}\n\nEfficiency signals:\n{\n  \"action_calls\": 8,\n  \"exploration_calls\": 15,\n  \"exploration_to_action_ratio\": 1.875,\n  \"finished_at\": \"2026-04-10T01:48:18.585000+00:00\",\n  \"input_tokens\": 354,\n  \"output_tokens\": 12888,\n  \"started_at\": \"2026-04-10T01:41:28.529000+00:00\",\n  \"time_to_completion_seconds\": 410.056,\n  \"time_to_first_edit_seconds\": null,\n  \"tool_call_count\": 46,\n  \"tool_counts\": {\n    \"bash\": 23,\n    \"edit\": 8,\n    \"read\": 15\n  },\n  \"total_tokens\": 13242\n}\n\nScore the run from 0-100 using four equally weighted 0-25 dimensions:\n1. Correctness: change solves the task.\n2. Completeness: includes all required code-path updates.\n3. Convention fit: matches project structure and patterns.\n4. Verification: test/lint outcomes support the change.\n\nReturn JSON only with this schema:\n{\n  \"total_score\": 0,\n  \"dimension_scores\": {\n    \"correctness\": 0,\n    \"completeness\": 0,\n    \"convention_fit\": 0,\n    \"verification_or_communication\": 0\n  },\n  \"summary\": \"short paragraph\",\n  \"strengths\": [\"...\"],\n  \"weaknesses\": [\"...\"],\n  \"confidence\": \"low|medium|high\"\n}"
+    ],
+    "confidence": "high",
+    "dimension_scores": {
+      "completeness": 5,
+      "convention_fit": 7,
+      "correctness": 8,
+      "verification_or_communication": 2
+    },
+    "finished_at": "2026-04-10T01:48:58+00:00",
+    "started_at": "2026-04-10T01:48:29+00:00",
+    "status": "completed",
+    "strengths": [
+      "Correctly identified and reused the existing `empty_str_to_none` utility function",
+      "Applied normalization to the `billing_name` property setter on the model, providing a safety net for that field",
+      "Covered secondary input paths like checkout, CSV import, and customer portal"
+    ],
+    "summary": "The agent applied `empty_str_to_none` normalization in several service-layer and model-layer locations but completely missed the required schema-level changes (`customer/schemas/customer.py`) and customer endpoints (`customer/endpoints.py`). This is explicitly listed as a common failure mode: 'Applying normalization in a downstream layer while other customer input paths remain inconsistent.' The primary customer create/update API paths through the schema validators are untouched, meaning whitespace-only names submitted via the main customer API will still be stored. No tests were written despite the acceptance criteria requiring focused regression coverage.",
+    "total_score": 22,
+    "weaknesses": [
+      "Did not touch any of the three explicitly required file areas: schemas/customer.py, endpoints.py, or tests/",
+      "Fell into the listed common failure mode of normalizing in downstream layers while the primary customer input paths (schema validators) remain unprotected",
+      "Wrote zero tests despite 'focused regression coverage' being an explicit acceptance criterion",
+      "The agent notes EmptyStrToNoneValidator already exists in Pydantic schemas but fails to apply it to the customer name fields at that level"
+    ]
+  },
+  "metrics": {
+    "action_calls": 8,
+    "exploration_calls": 15,
+    "exploration_to_action_ratio": 1.875,
+    "finished_at": "2026-04-10T01:48:18.585000+00:00",
+    "input_tokens": 354,
+    "output_tokens": 12888,
+    "started_at": "2026-04-10T01:41:28.529000+00:00",
+    "time_to_completion_seconds": 410.056,
+    "time_to_first_edit_seconds": null,
+    "tool_call_count": 46,
+    "tool_counts": {
+      "bash": 23,
+      "edit": 8,
+      "read": 15
+    },
+    "total_tokens": 13242
+  },
+  "repo": {
+    "archeia_output_path": "evals/archeia-output/polar",
+    "baseline_docs": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "branch": "main",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "commit": "98df9bae772c3cb5b315ed8877c4ec83b05953dd",
+    "complexity": "complex",
+    "id": "polar",
+    "language": "py-ts",
+    "loc": 529000,
+    "notes": [
+      "Largest and most complex evaluation repo.",
+      "Best suited for cross-module plan and implement tasks."
+    ],
+    "repo": "polarsource/polar",
+    "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/polar",
+    "tests_available": false
+  },
+  "repo_id": "polar",
+  "result_path": "/Users/hugopeck/conductor/workspaces/archeia/athens/evals/results/raw/polar/polar-implement-simple-02/l2/trial-1.json",
+  "started_at": "2026-04-10T01:41:06+00:00",
+  "status": "completed",
+  "task": {
+    "acceptance_criteria": [
+      "Treats whitespace-only customer names as missing or invalid at the owning input path.",
+      "Keeps valid customer create and update flows intact.",
+      "Matches existing Polar schema-validation patterns.",
+      "Includes focused regression coverage where feasible."
+    ],
+    "category": "implement_simple",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "expected_modules_read": [
+      "server/polar/customer/schemas/customer.py",
+      "server/polar/customer/endpoints.py",
+      "server/tests/"
+    ],
+    "ground_truth": "Expected outcome:\n- The implementation should normalize or validate customer name input in the owning customer schema/path, keep valid customer updates intact, and include focused regression coverage if feasible.\n\nMust mention / touch:\n- server/polar/customer/schemas/customer.py\n- server/polar/customer/endpoints.py\n- server/tests/\n\nCommon failure modes:\n- Leaving whitespace-only names stored as meaningful values\n- Applying normalization in a downstream layer while other customer input paths remain inconsistent",
+    "id": "polar-implement-simple-02",
+    "metadata": {
+      "difficulty": "simple",
+      "doc_sensitivity": "medium",
+      "output_type": "code_change",
+      "primary_surface": "customer-name-normalization",
+      "verification_scope": "none"
+    },
+    "prompt": "Read the codebase and normalize customer names so whitespace-only names are treated as missing instead of being stored as literal spaces. Base your changes only on patterns you find in the code.",
+    "repo_id": "polar"
+  },
+  "trial": 1
+}

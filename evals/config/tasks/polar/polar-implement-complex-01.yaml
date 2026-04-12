@@ -1,0 +1,30 @@
+{
+  "id": "polar-implement-complex-01",
+  "repo_id": "polar",
+  "category": "implement_complex",
+  "prompt": "Read the codebase and emit a lifecycle event whenever benefit-grant work is enqueued from invoice-backed billing changes so downstream systems can trace which invoice triggered the grant workflow. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should add a focused cross-domain lifecycle event at the boundary where invoice-backed billing changes enqueue benefit-grant work, preserve current billing behavior, and keep invoice and billing-entry context available to downstream consumers.\n\nMust mention / touch:\n- server/polar/billing_entry/\n- server/polar/event/\n- server/polar/benefit/\n- server/polar/invoice/\n\nCommon failure modes:\n- Emitting the event at the wrong layer without invoice or billing-entry context\n- Changing adjacent billing or benefit-grant behavior outside the new lifecycle signal",
+  "acceptance_criteria": [
+    "Emits a lifecycle event when invoice-backed billing changes enqueue benefit-grant work.",
+    "Carries enough invoice or billing-entry context for downstream tracing.",
+    "Preserves adjacent billing and benefit-grant behavior.",
+    "Avoids unrelated cross-domain refactors."
+  ],
+  "expected_modules_read": [
+    "server/polar/billing_entry/",
+    "server/polar/event/",
+    "server/polar/benefit/",
+    "server/polar/invoice/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "code_change",
+    "primary_surface": "billing-benefit-enqueue-event",
+    "doc_sensitivity": "high",
+    "verification_scope": "none"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "mitmproxy-implement-complex-01",
+  "repo_id": "mitmproxy",
+  "category": "implement_complex",
+  "prompt": "Read the codebase and preserve the negotiated WebSocket subprotocol on upgraded flows so addons and contentviews can inspect it after the handshake completes. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should capture the negotiated WebSocket subprotocol during the upgrade path, expose it on the websocket-aware flow state, preserve existing interception behavior, and add regression coverage.\n\nMust mention / touch:\n- mitmproxy/websocket.py\n- mitmproxy/http.py\n- mitmproxy/proxy/layers/http/\n- test/mitmproxy/proxy/layers/test_websocket.py\n\nCommon failure modes:\n- Capturing request headers without preserving the negotiated server-selected subprotocol\n- Breaking existing WebSocket upgrade or interception behavior",
+  "acceptance_criteria": [
+    "Captures the negotiated WebSocket subprotocol during the upgrade flow.",
+    "Exposes the value on websocket-aware flow state for later inspection.",
+    "Preserves current WebSocket interception behavior.",
+    "Adds focused regression coverage."
+  ],
+  "expected_modules_read": [
+    "mitmproxy/websocket.py",
+    "mitmproxy/http.py",
+    "mitmproxy/proxy/layers/http/",
+    "test/mitmproxy/proxy/layers/test_websocket.py"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "code_change",
+    "primary_surface": "websocket-subprotocol",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "captured_at": "2026-04-09T23:42:12+00:00",
+  "captured_head": "fda407c4cb5ec2e6f2b13c2aa9671f86e7a0f8c5",
+  "colocated_agents": [
+    "arq/agents.md",
+    "arq/claude.md",
+    "tests/agents.md",
+    "tests/claude.md"
+  ],
+  "colocated_readmes": [
+    "arq/README.md",
+    "docs/README.md",
+    "docs/examples/README.md",
+    "tests/README.md"
+  ],
+  "copied_archeia_paths": [
+    ".archeia/Architecture.md",
+    ".archeia/Components.json",
+    ".archeia/Containers.json",
+    ".archeia/DataFlow.json",
+    ".archeia/Guide.md",
+    ".archeia/Standards.md",
+    ".archeia/System.json",
+    ".archeia/diagrams"
+  ],
+  "copied_root_docs": [
+    "AGENTS.md",
+    "CLAUDE.md"
+  ],
+  "pinned_commit": "fda407c4cb5ec2e6f2b13c2aa9671f86e7a0f8c5",
+  "pipeline_order": [
+    "archeia-scan-repo",
+    "archeia-scan-git",
+    "archeia-write-tech-docs",
+    "archeia-write-readmes",
+    "archeia-write-agents-docs",
+    "archeia-draw-diagrams"
+  ],
+  "repo_id": "arq",
+  "skipped_outputs": [
+    ".archeia/Entities.json",
+    ".archeia/StateMachine.json"
+  ],
+  "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/arq",
+  "source_repo": "python-arq/arq",
+  "validation": {
+    "command": [
+      "bash",
+      "/Users/hugopeck/conductor/workspaces/archeia/athens/skills/archeia-write-tech-docs/scripts/validate-evidence.sh",
+      "/tmp/archeia-phase3/arq",
+      "/tmp/archeia-phase3/arq/.archeia",
+      "--include-root-docs"
+    ],
+    "exit_code": 0,
+    "status": "ok",
+    "stderr": "mode=python\n",
+    "stdout": "{\n  \"mode\": \"python\",\n  \"repo_root\": \"/private/tmp/archeia-phase3/arq\",\n  \"output_dir\": \"/private/tmp/archeia-phase3/arq/.archeia\",\n  \"checked_files\": [\n    \".archeia/Architecture.md\",\n    \".archeia/GitReport.md\",\n    \".archeia/Guide.md\",\n    \".archeia/ScanReport.md\",\n    \".archeia/Standards.md\",\n    \".archeia/Components.json\",\n    \".archeia/Containers.json\",\n    \".archeia/DataFlow.json\",\n    \".archeia/System.json\",\n    \"AGENTS.md\",\n    \"CLAUDE.md\"\n  ],\n  \"valid_paths\": [\n    \"pyproject.toml\",\n    \"README.md\",\n    \"arq/__init__.py\",\n    \"arq/connections.py\",\n    \"arq/worker.py\",\n    \"arq/cli.py\",\n    \"arq/jobs.py\",\n    \"arq/cron.py\",\n    \"arq/constants.py\",\n    \".github/workflows/ci.yml\",\n    \"tests/conftest.py\",\n    \"Makefile\",\n    \".pre-commit-config.yaml\",\n    \"arq/py.typed\",\n    \"arq/utils.py\"\n  ],\n  \"invalid_paths\": [],\n  \"malformed_evidence\": [],\n  \"stats\": {\n    \"checked_files\": 11,\n    \"valid_paths\": 15,\n    \"invalid_paths\": 0,\n    \"malformed_evidence\": 0\n  }\n}\n"
+  },
+  "worktree": "/tmp/archeia-phase3/arq"
+}

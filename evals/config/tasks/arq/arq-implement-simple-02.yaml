@@ -1,0 +1,29 @@
+{
+  "id": "arq-implement-simple-02",
+  "repo_id": "arq",
+  "category": "implement_simple",
+  "prompt": "Read the codebase and add a guard so enqueueing a job with a negative delay raises an explicit error instead of silently scheduling in the past. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should reject negative deferral values in the enqueueing path with a clear error, preserve valid defer behavior, and add focused regression coverage.\n\nMust mention / touch:\n- arq/connections.py\n- arq/utils.py\n- tests/\n\nCommon failure modes:\n- Silently clamping or reinterpreting negative delay values\n- Skipping regression coverage for the invalid-input path",
+  "acceptance_criteria": [
+    "Rejects negative delay values in the enqueueing path with an explicit error.",
+    "Preserves existing behavior for valid deferred jobs.",
+    "Includes a focused regression test for the invalid delay case.",
+    "Keeps the change scoped to one invalid-input behavior."
+  ],
+  "expected_modules_read": [
+    "arq/connections.py",
+    "arq/utils.py",
+    "tests/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "simple",
+    "output_type": "code_change",
+    "primary_surface": "negative-delay-guard",
+    "doc_sensitivity": "medium",
+    "verification_scope": "repo_default"
+  }
+}

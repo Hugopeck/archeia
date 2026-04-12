@@ -1,0 +1,53 @@
+{
+  "repo_id": "arq",
+  "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/arq",
+  "commit": "fda407c4cb5ec2e6f2b13c2aa9671f86e7a0f8c5",
+  "pipeline_order": [
+    "archeia-scan-repo",
+    "archeia-scan-git",
+    "archeia-write-tech-docs",
+    "archeia-write-readmes",
+    "archeia-write-agents-docs",
+    "archeia-draw-diagrams"
+  ],
+  "required_outputs": {
+    "root_docs": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "archeia": [
+      "Architecture.md",
+      "System.json",
+      "Standards.md",
+      "Guide.md"
+    ]
+  },
+  "always_attempted_outputs": [
+    "Containers.json",
+    "Components.json",
+    "DataFlow.json"
+  ],
+  "conditional_expectations": {
+    "Entities.json": "expected_skip",
+    "StateMachine.json": "expected_skip"
+  },
+  "copy_rules": {
+    "include_root_docs": true,
+    "include_archeia_dir": true,
+    "include_colocated_readmes": true,
+    "include_colocated_agents": true,
+    "exclude": [
+      ".archeia/codebase/scan-report.md",
+      ".archeia/codebase/git-report.md"
+    ]
+  },
+  "validation": {
+    "run_validate_evidence": true,
+    "include_root_docs": true,
+    "require_manifests": true
+  },
+  "notes": [
+    "Negative control repo.",
+    "Containers and components may legitimately be skipped if the skill finds insufficient runtime structure."
+  ]
+}

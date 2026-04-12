@@ -1,0 +1,209 @@
+{
+  "agent_run": {
+    "command": [
+      "claude",
+      "--model",
+      "haiku",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--permission-mode",
+      "auto",
+      "--append-system-prompt",
+      "CRITICAL RULE: You MUST use your tools to read files in this repository before answering. Do NOT answer from memory or training data. Start by exploring the project structure with Bash(ls) or Glob, then read the specific files needed to answer the question. Every claim you make must cite a specific file path you actually read in this session. If you answer without reading files first, your response will be scored as zero.",
+      "-p",
+      "Read the codebase and explain how cron scheduling flows through arq, from cron job definition to worker-side execution. Base your answer only on code you actually read."
+    ],
+    "exit_code": 0,
+    "finished_at": "2026-04-10T05:15:11+00:00",
+    "started_at": "2026-04-10T05:09:29+00:00",
+    "status": "completed",
+    "stderr": "",
+    "stdout": "Now I have a complete picture of the cron scheduling flow. Here's how it works end-to-end:\n\n## Cron Scheduling Flow in arq\n\n### 1. **Job Definition** (`arq/cron.py`)\n\nThe `cron()` function creates a `CronJob` dataclass that stores:\n- The coroutine function to execute (`coroutine`)\n- Scheduling parameters: `month`, `day`, `weekday`, `hour`, `minute`, `second`, `microsecond`\n- Execution options: `unique` (prevent duplicates across workers), `job_id`, timeout, retry config\n- A `next_run` attribute to track when it should execute next\n\n```python\n@dataclass\nclass CronJob:\n    name: str\n    coroutine: WorkerCoroutine\n    month: OptionType\n    day: OptionType\n    # ... other timing parameters\n    next_run: Optional[datetime] = None\n```\n\nThe `next_cron()` function calculates the next execution datetime by iteratively checking each time unit (month, day, hour, etc.) against the scheduling parameters (`arq/cron.py:22-89`).\n\n### 2. **Worker Registration** (`arq/worker.py:187-234`)\n\nWhen a Worker is instantiated with `cron_jobs` parameter:\n- CronJob objects are stored in `self.cron_jobs` list\n- They're also added to `self.functions` dictionary (keyed by name) so they can be looked up during execution\n- The first execution time for each cron job is calculated on-demand during the first heartbeat\n\n### 3. **Periodic Scheduling via Heartbeat** (`arq/worker.py:725-765`)\n\nThe worker's main polling loop calls `heart_beat()` on each iteration (`worker.py:361-362`). This triggers `run_cron()`:\n\n```python\nasync def run_cron(self, n: datetime, delay: float, num_windows: int = 2) -> None:\n    cron_delay = timedelta(seconds=delay * num_windows)  # ~1 second by default\n    this_hb_cutoff = n + cron_delay\n    \n    for cron_job in self.cron_jobs:\n        if cron_job.next_run is None:\n            if cron_job.run_at_startup:\n                cron_job.next_run = n  # Run immediately\n            else:\n                cron_job.calculate_next(n)  # Calculate next execution\n                continue\n        \n        # If job is due within the next cron_window (0.5-1 second)\n        if cron_job.next_run < this_hb_cutoff:\n            # Generate unique job ID based on cron job name and scheduled time\n            job_id = f'{cron_job.name}:{to_unix_ms(cron_job.next_run)}' if cron_job.unique else None\n            \n            # Enqueue the job to Redis\n            await self.pool.enqueue_job(\n                cron_job.name,\n                _job_id=job_id,\n                _defer_until=cron_job.next_run if in future else None\n            )\n            # Calculate next execution time\n            cron_job.calculate_next(cron_job.next_run)\n```\n\nKey design: uses a small time window (default 1 second) to detect jobs that need to run soon, preventing duplicates across multiple workers since the `unique=True` job_id ensures only one execution.\n\n### 4. **Job Enqueuing to Redis** (`arq/connections.py:119-181`)\n\n`enqueue_job()` stores the job in Redis:\n- Serializes the job with function name and arguments\n- Stores in Redis key `arq:job:{job_id}` with expiration\n- Adds job ID to the queue sorted set `arq:queue` with score = execution timestamp (milliseconds)\n\n```python\njob_key = job_key_prefix + job_id\nscore = to_unix_ms(_defer_until)  # Execution time in ms\npipe.psetex(job_key, expires_ms, serialized_job)  # Store job data\npipe.zadd(_queue_name, {job_id: score})  # Add to queue sorted by execution time\n```\n\n### 5. **Job Polling and Pickup** (`arq/worker.py:373-402`)\n\nDuring each poll iteration:\n- Gets job IDs from Redis where `score <= current_timestamp` (ready to run)\n- Calls `start_jobs()` to initiate execution (`worker.py:387-391`)\n- Sets an \"in progress\" key to prevent duplicate execution\n\n### 6. **Job Execution** (`arq/worker.py:474-672`)\n\nWhen `run_job()` executes a job:\n\n1. Deserializes the job to get function name and arguments\n2. **Looks up the function** in `self.functions` dictionary\n3. **Detects if it's a cron job** by checking for `next_run` attribute:\n   ```python\n   if hasattr(function, 'next_run'):\n       # cron_job\n       keep_in_progress: Optional[float] = keep_cronjob_progress  # 60 seconds\n   ```\n4. **Executes the coroutine**: `await asyncio.wait_for(function.coroutine(ctx, *args, **kwargs), timeout_s)`\n5. **Handles results** based on success/failure, retries, etc.\n\n### 7. **Cron-Specific Handling** (`arq/constants.py:12`)\n\nFor cron jobs, the \"in progress\" key (`arq:in-progress:{job_id}`) is kept for 60 seconds after completion. This prevents the same cron job from being enqueued again if multiple workers try to schedule it simultaneously.\n\n## Key Design Points\n\n1. **Time Window Detection**: The `cron_window_size` (~0.5 seconds, clamped to at least 0.5s) creates a small time buffer where cron jobs are detected as \"due soon\" and enqueued, reducing race conditions across workers.\n\n2. **Unique Job IDs**: When `unique=True` (default), the job ID includes the cron job name and scheduled execution time. Redis enforces uniqueness, so only one worker's enqueue succeeds.\n\n3. **Unified Execution**: Once enqueued, cron jobs are indistinguishable from regular jobs in the queue\u2014they're executed the same way, just identified by the `next_run` attribute in the function registry.\n\n4. **In-Progress Lock**: Cron jobs get a longer \"in progress\" timeout (60s) compared to regular jobs, because their uniqueness is enforced by their execution time ID, and we need to prevent re-execution within a reasonable window.",
+    "transcript_path": "/tmp/archeia-phase4/arq-l1-arq-ask-complex-02-trial1/.archeia-eval/conversation.json"
+  },
+  "code_quality": {
+    "lint": {
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "."
+      ],
+      "cwd": "/tmp/archeia-phase4/arq-l1-arq-ask-complex-02-trial1",
+      "exit_code": 2,
+      "finished_at": "2026-04-10T05:15:12+00:00",
+      "started_at": "2026-04-10T05:15:12+00:00",
+      "stderr": "error: Required uv version `>=0.8.4` does not match the running version `0.7.12`. Update `uv` by running `uv self update`.\n",
+      "stdout": ""
+    },
+    "lint_baseline": {
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "."
+      ],
+      "cwd": "/tmp/archeia-phase4/arq-l1-arq-ask-complex-02-trial1",
+      "exit_code": 2,
+      "finished_at": "2026-04-10T05:09:29+00:00",
+      "started_at": "2026-04-10T05:09:29+00:00",
+      "stderr": "error: Required uv version `>=0.8.4` does not match the running version `0.7.12`. Update `uv` by running `uv self update`.\n",
+      "stdout": ""
+    },
+    "lint_baseline_findings": 1,
+    "lint_delta": 0,
+    "lint_findings": 1,
+    "tests": {
+      "command": [
+        "uv",
+        "run",
+        "pytest"
+      ],
+      "cwd": "/tmp/archeia-phase4/arq-l1-arq-ask-complex-02-trial1",
+      "exit_code": 2,
+      "finished_at": "2026-04-10T05:15:12+00:00",
+      "started_at": "2026-04-10T05:15:11+00:00",
+      "stderr": "error: Required uv version `>=0.8.4` does not match the running version `0.7.12`. Update `uv` by running `uv self update`.\n",
+      "stdout": ""
+    }
+  },
+  "condition_application": {
+    "archeia_output": "evals/archeia-output/arq",
+    "condition_id": "l1",
+    "copied_paths": [
+      ".archeia",
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "kept_existing_docs": false,
+    "removed_paths": [],
+    "repo_id": "arq",
+    "worktree": "/tmp/archeia-phase4/arq-l1-arq-ask-complex-02-trial1"
+  },
+  "condition_commit": {
+    "command": [
+      "git",
+      "commit",
+      "-m",
+      "Apply evaluation condition"
+    ],
+    "cwd": "/tmp/archeia-phase4/arq-l1-arq-ask-complex-02-trial1",
+    "exit_code": 0,
+    "finished_at": "2026-04-10T05:09:29+00:00",
+    "started_at": "2026-04-10T05:09:28+00:00",
+    "stderr": "",
+    "stdout": "[detached HEAD aa727b3] Apply evaluation condition\n 12 files changed, 834 insertions(+)\n create mode 100644 .archeia/Architecture.md\n create mode 100644 .archeia/Components.json\n create mode 100644 .archeia/Containers.json\n create mode 100644 .archeia/DataFlow.json\n create mode 100644 .archeia/Guide.md\n create mode 100644 .archeia/Standards.md\n create mode 100644 .archeia/System.json\n create mode 100644 .archeia/diagrams/containers.md\n create mode 100644 .archeia/diagrams/context.md\n create mode 100644 .archeia/diagrams/sequence-primary.md\n create mode 100644 AGENTS.md\n create mode 100644 CLAUDE.md\n"
+  },
+  "condition_id": "l1",
+  "diff": "",
+  "finished_at": "2026-04-10T05:16:03+00:00",
+  "judge": {
+    "command": [
+      "claude",
+      "--output-format",
+      "json",
+      "-p",
+      "You are judging an Archeia evaluation run.\n\nTask category: ask_complex\nTask id: arq-ask-complex-02\n\nTask prompt:\nRead the codebase and explain how cron scheduling flows through arq, from cron job definition to worker-side execution. Base your answer only on code you actually read.\n\nGround truth / reference:\nExpected outcome:\n- Must describe how cron jobs are defined, scheduled, enqueued, and then executed by the worker. Expected grounding includes arq/cron.py, arq/worker.py, and any CLI or helper surface that exposes scheduling behavior.\n\nMust mention / touch:\n- arq/cron.py\n- arq/worker.py\n- arq/cli.py\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo\n\nAcceptance criteria:\n[\n  \"Explains scheduling, enqueueing, and execution in sequence.\",\n  \"Names the core modules involved in cron support.\",\n  \"Distinguishes cron setup from normal job execution where relevant.\",\n  \"Does not hallucinate external schedulers not present in the repo.\"\n]\n\nAgent response:\nNow I have a complete picture of the cron scheduling flow. Here's how it works end-to-end:\n\n## Cron Scheduling Flow in arq\n\n### 1. **Job Definition** (`arq/cron.py`)\n\nThe `cron()` function creates a `CronJob` dataclass that stores:\n- The coroutine function to execute (`coroutine`)\n- Scheduling parameters: `month`, `day`, `weekday`, `hour`, `minute`, `second`, `microsecond`\n- Execution options: `unique` (prevent duplicates across workers), `job_id`, timeout, retry config\n- A `next_run` attribute to track when it should execute next\n\n```python\n@dataclass\nclass CronJob:\n    name: str\n    coroutine: WorkerCoroutine\n    month: OptionType\n    day: OptionType\n    # ... other timing parameters\n    next_run: Optional[datetime] = None\n```\n\nThe `next_cron()` function calculates the next execution datetime by iteratively checking each time unit (month, day, hour, etc.) against the scheduling parameters (`arq/cron.py:22-89`).\n\n### 2. **Worker Registration** (`arq/worker.py:187-234`)\n\nWhen a Worker is instantiated with `cron_jobs` parameter:\n- CronJob objects are stored in `self.cron_jobs` list\n- They're also added to `self.functions` dictionary (keyed by name) so they can be looked up during execution\n- The first execution time for each cron job is calculated on-demand during the first heartbeat\n\n### 3. **Periodic Scheduling via Heartbeat** (`arq/worker.py:725-765`)\n\nThe worker's main polling loop calls `heart_beat()` on each iteration (`worker.py:361-362`). This triggers `run_cron()`:\n\n```python\nasync def run_cron(self, n: datetime, delay: float, num_windows: int = 2) -> None:\n    cron_delay = timedelta(seconds=delay * num_windows)  # ~1 second by default\n    this_hb_cutoff = n + cron_delay\n    \n    for cron_job in self.cron_jobs:\n        if cron_job.next_run is None:\n            if cron_job.run_at_startup:\n                cron_job.next_run = n  # Run immediately\n            else:\n                cron_job.calculate_next(n)  # Calculate next execution\n                continue\n        \n        # If job is due within the next cron_window (0.5-1 second)\n        if cron_job.next_run < this_hb_cutoff:\n            # Generate unique job ID based on cron job name and scheduled time\n            job_id = f'{cron_job.name}:{to_unix_ms(cron_job.next_run)}' if cron_job.unique else None\n            \n            # Enqueue the job to Redis\n            await self.pool.enqueue_job(\n                cron_job.name,\n                _job_id=job_id,\n                _defer_until=cron_job.next_run if in future else None\n            )\n            # Calculate next execution time\n            cron_job.calculate_next(cron_job.next_run)\n```\n\nKey design: uses a small time window (default 1 second) to detect jobs that need to run soon, preventing duplicates across multiple workers since the `unique=True` job_id ensures only one execution.\n\n### 4. **Job Enqueuing to Redis** (`arq/connections.py:119-181`)\n\n`enqueue_job()` stores the job in Redis:\n- Serializes the job with function name and arguments\n- Stores in Redis key `arq:job:{job_id}` with expiration\n- Adds job ID to the queue sorted set `arq:queue` with score = execution timestamp (milliseconds)\n\n```python\njob_key = job_key_prefix + job_id\nscore = to_unix_ms(_defer_until)  # Execution time in ms\npipe.psetex(job_key, expires_ms, serialized_job)  # Store job data\npipe.zadd(_queue_name, {job_id: score})  # Add to queue sorted by execution time\n```\n\n### 5. **Job Polling and Pickup** (`arq/worker.py:373-402`)\n\nDuring each poll iteration:\n- Gets job IDs from Redis where `score <= current_timestamp` (ready to run)\n- Calls `start_jobs()` to initiate execution (`worker.py:387-391`)\n- Sets an \"in progress\" key to prevent duplicate execution\n\n### 6. **Job Execution** (`arq/worker.py:474-672`)\n\nWhen `run_job()` executes a job:\n\n1. Deserializes the job to get function name and arguments\n2. **Looks up the function** in `self.functions` dictionary\n3. **Detects if it's a cron job** by checking for `next_run` attribute:\n   ```python\n   if hasattr(function, 'next_run'):\n       # cron_job\n       keep_in_progress: Optional[float] = keep_cronjob_progress  # 60 seconds\n   ```\n4. **Executes the coroutine**: `await asyncio.wait_for(function.coroutine(ctx, *args, **kwargs), timeout_s)`\n5. **Handles results** based on success/failure, retries, etc.\n\n### 7. **Cron-Specific Handling** (`arq/constants.py:12`)\n\nFor cron jobs, the \"in progress\" key (`arq:in-progress:{job_id}`) is kept for 60 seconds after completion. This prevents the same cron job from being enqueued again if multiple workers try to schedule it simultaneously.\n\n## Key Design Points\n\n1. **Time Window Detection**: The `cron_window_size` (~0.5 seconds, clamped to at least 0.5s) creates a small time buffer where cron jobs are detected as \"due soon\" and enqueued, reducing race conditions across workers.\n\n2. **Unique Job IDs**: When `unique=True` (default), the job ID includes the cron job name and scheduled execution time. Redis enforces uniqueness, so only one worker's enqueue succeeds.\n\n3. **Unified Execution**: Once enqueued, cron jobs are indistinguishable from regular jobs in the queue\u2014they're executed the same way, just identified by the `next_run` attribute in the function registry.\n\n4. **In-Progress Lock**: Cron jobs get a longer \"in progress\" timeout (60s) compared to regular jobs, because their uniqueness is enforced by their execution time ID, and we need to prevent re-execution within a reasonable window.\n\nGit diff:\n\n\nCode-quality signals:\n{\n  \"lint\": {\n    \"command\": [\n      \"uv\",\n      \"run\",\n      \"ruff\",\n      \"check\",\n      \".\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/arq-l1-arq-ask-complex-02-trial1\",\n    \"exit_code\": 2,\n    \"finished_at\": \"2026-04-10T05:15:12+00:00\",\n    \"started_at\": \"2026-04-10T05:15:12+00:00\",\n    \"stderr\": \"error: Required uv version `>=0.8.4` does not match the running version `0.7.12`. Update `uv` by running `uv self update`.\\n\",\n    \"stdout\": \"\"\n  },\n  \"lint_baseline\": {\n    \"command\": [\n      \"uv\",\n      \"run\",\n      \"ruff\",\n      \"check\",\n      \".\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/arq-l1-arq-ask-complex-02-trial1\",\n    \"exit_code\": 2,\n    \"finished_at\": \"2026-04-10T05:09:29+00:00\",\n    \"started_at\": \"2026-04-10T05:09:29+00:00\",\n    \"stderr\": \"error: Required uv version `>=0.8.4` does not match the running version `0.7.12`. Update `uv` by running `uv self update`.\\n\",\n    \"stdout\": \"\"\n  },\n  \"lint_baseline_findings\": 1,\n  \"lint_delta\": 0,\n  \"lint_findings\": 1,\n  \"tests\": {\n    \"command\": [\n      \"uv\",\n      \"run\",\n      \"pytest\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/arq-l1-arq-ask-complex-02-trial1\",\n    \"exit_code\": 2,\n    \"finished_at\": \"2026-04-10T05:15:12+00:00\",\n    \"started_at\": \"2026-04-10T05:15:11+00:00\",\n    \"stderr\": \"error: Required uv version `>=0.8.4` does not match the running version `0.7.12`. Update `uv` by running `uv self update`.\\n\",\n    \"stdout\": \"\"\n  }\n}\n\nEfficiency signals:\n{\n  \"action_calls\": 0,\n  \"exploration_calls\": 11,\n  \"exploration_to_action_ratio\": null,\n  \"finished_at\": \"2026-04-10T05:14:46.044000+00:00\",\n  \"input_tokens\": 146,\n  \"output_tokens\": 5063,\n  \"started_at\": \"2026-04-10T05:10:48.709000+00:00\",\n  \"time_to_completion_seconds\": 237.335,\n  \"time_to_first_edit_seconds\": null,\n  \"tool_call_count\": 17,\n  \"tool_counts\": {\n    \"bash\": 6,\n    \"grep\": 1,\n    \"read\": 10\n  },\n  \"total_tokens\": 5209\n}\n\nScore the run from 0-100 using four equally weighted 0-25 dimensions:\n1. Correctness: factual accuracy against ground truth.\n2. Completeness: covers all relevant systems and caveats.\n3. Evidence alignment: cites or reflects the repo-grounded flow.\n4. Communication quality: organized, concise, and directly useful.\n\nReturn JSON only with this schema:\n{\n  \"total_score\": 0,\n  \"dimension_scores\": {\n    \"correctness\": 0,\n    \"completeness\": 0,\n    \"convention_fit\": 0,\n    \"verification_or_communication\": 0\n  },\n  \"summary\": \"short paragraph\",\n  \"strengths\": [\"...\"],\n  \"weaknesses\": [\"...\"],\n  \"confidence\": \"low|medium|high\"\n}"
+    ],
+    "confidence": "high",
+    "dimension_scores": {
+      "completeness": 19,
+      "convention_fit": 22,
+      "correctness": 22,
+      "verification_or_communication": 19
+    },
+    "finished_at": "2026-04-10T05:16:03+00:00",
+    "started_at": "2026-04-10T05:15:12+00:00",
+    "status": "completed",
+    "strengths": [
+      "Accurate end-to-end flow covering definition, scheduling, enqueuing, polling, and execution",
+      "Correctly identifies cron-specific handling (unique job IDs, in-progress lock, next_run detection)",
+      "Well-structured with clear sections and code excerpts grounded in actual file reads",
+      "No hallucinated external schedulers or modules",
+      "Highlights key design points like time window detection and unified execution model"
+    ],
+    "summary": "The response provides a thorough, well-structured walkthrough of arq's cron scheduling flow from definition through execution. It correctly identifies arq/cron.py and arq/worker.py as core modules, accurately describes the CronJob dataclass, next_cron() calculation, heartbeat-driven scheduling, Redis enqueuing, and job execution. The explanation distinguishes cron jobs from normal jobs (unique IDs, in-progress lock duration, next_run attribute detection). However, it does not mention arq/cli.py, which the ground truth explicitly requires. The code snippets appear grounded in actual repo reads (11 read calls), and no external schedulers are hallucinated. The response is detailed and well-organized but slightly verbose for an explanation task.",
+    "total_score": 82,
+    "weaknesses": [
+      "Missing arq/cli.py coverage, which is explicitly listed as a required module in the ground truth",
+      "Slightly verbose for the task \u2014 the 'Key Design Points' section repeats information already covered",
+      "Some code snippets appear reconstructed/paraphrased rather than directly quoted, though they are directionally accurate"
+    ]
+  },
+  "metrics": {
+    "action_calls": 0,
+    "exploration_calls": 11,
+    "exploration_to_action_ratio": null,
+    "finished_at": "2026-04-10T05:14:46.044000+00:00",
+    "input_tokens": 146,
+    "output_tokens": 5063,
+    "started_at": "2026-04-10T05:10:48.709000+00:00",
+    "time_to_completion_seconds": 237.335,
+    "time_to_first_edit_seconds": null,
+    "tool_call_count": 17,
+    "tool_counts": {
+      "bash": 6,
+      "grep": 1,
+      "read": 10
+    },
+    "total_tokens": 5209
+  },
+  "repo": {
+    "archeia_output_path": "evals/archeia-output/arq",
+    "baseline_docs": [],
+    "branch": "main",
+    "commands": {
+      "lint": "uv run ruff check .",
+      "test": "uv run pytest"
+    },
+    "commit": "fda407c4cb5ec2e6f2b13c2aa9671f86e7a0f8c5",
+    "complexity": "flat",
+    "id": "arq",
+    "language": "py",
+    "loc": 6000,
+    "notes": [
+      "Negative control for small-repo contamination.",
+      "Expect limited benefit because the codebase fits in context."
+    ],
+    "repo": "python-arq/arq",
+    "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/arq",
+    "tests_available": true
+  },
+  "repo_id": "arq",
+  "result_path": "/Users/hugopeck/conductor/workspaces/archeia/phoenix/evals/results/raw/arq/arq-ask-complex-02/l1/trial-1.json",
+  "started_at": "2026-04-10T05:09:27+00:00",
+  "status": "completed",
+  "task": {
+    "acceptance_criteria": [
+      "Explains scheduling, enqueueing, and execution in sequence.",
+      "Names the core modules involved in cron support.",
+      "Distinguishes cron setup from normal job execution where relevant.",
+      "Does not hallucinate external schedulers not present in the repo."
+    ],
+    "category": "ask_complex",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "expected_modules_read": [
+      "arq/cron.py",
+      "arq/worker.py",
+      "arq/cli.py"
+    ],
+    "ground_truth": "Expected outcome:\n- Must describe how cron jobs are defined, scheduled, enqueued, and then executed by the worker. Expected grounding includes arq/cron.py, arq/worker.py, and any CLI or helper surface that exposes scheduling behavior.\n\nMust mention / touch:\n- arq/cron.py\n- arq/worker.py\n- arq/cli.py\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo",
+    "id": "arq-ask-complex-02",
+    "metadata": {
+      "difficulty": "complex",
+      "doc_sensitivity": "high",
+      "output_type": "explanation",
+      "primary_surface": "cron-flow",
+      "verification_scope": "repo_default"
+    },
+    "prompt": "Read the codebase and explain how cron scheduling flows through arq, from cron job definition to worker-side execution. Base your answer only on code you actually read.",
+    "repo_id": "arq"
+  },
+  "trial": 1
+}

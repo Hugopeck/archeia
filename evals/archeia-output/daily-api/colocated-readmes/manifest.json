@@ -1,0 +1,38 @@
+[
+  {
+    "source": "__tests__/README.md",
+    "target": "__tests__/README.md"
+  },
+  {
+    "source": "bin/README.md",
+    "target": "bin/README.md"
+  },
+  {
+    "source": "src/README.md",
+    "target": "src/README.md"
+  },
+  {
+    "source": "src/common/README.md",
+    "target": "src/common/README.md"
+  },
+  {
+    "source": "src/entity/README.md",
+    "target": "src/entity/README.md"
+  },
+  {
+    "source": "src/integrations/README.md",
+    "target": "src/integrations/README.md"
+  },
+  {
+    "source": "src/routes/README.md",
+    "target": "src/routes/README.md"
+  },
+  {
+    "source": "src/schema/README.md",
+    "target": "src/schema/README.md"
+  },
+  {
+    "source": "src/workers/README.md",
+    "target": "src/workers/README.md"
+  }
+]

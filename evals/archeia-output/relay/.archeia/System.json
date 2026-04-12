@@ -1,0 +1,114 @@
+{
+  "level": 1,
+  "title": "System Context",
+  "system": {
+    "id": "agent-relay",
+    "name": "Agent Relay",
+    "description": "Real-time agent-to-agent communication system for spawning and coordinating AI agents",
+    "technology": "TypeScript / Node.js + Rust",
+    "evidence": ["package.json", "Cargo.toml", "README.md"]
+  },
+  "people": [
+    {
+      "id": "developer",
+      "name": "Developer",
+      "description": "Builds multi-agent applications using the TypeScript or Python SDK",
+      "evidence": ["README.md", "packages/sdk/README.md"]
+    }
+  ],
+  "external_systems": [
+    {
+      "id": "relaycast-cloud",
+      "name": "Relaycast Cloud",
+      "description": "WebSocket relay backbone that brokers messages between agents",
+      "technology": "WebSocket / HTTPS",
+      "evidence": ["package.json", "Cargo.toml"]
+    },
+    {
+      "id": "claude-cli",
+      "name": "Claude CLI",
+      "description": "Anthropic Claude coding agent spawned as a PTY subprocess",
+      "technology": "PTY process",
+      "evidence": ["src/main.rs", "README.md"]
+    },
+    {
+      "id": "codex-cli",
+      "name": "Codex CLI",
+      "description": "OpenAI Codex coding agent spawned as a PTY subprocess",
+      "technology": "PTY process",
+      "evidence": ["src/main.rs", "README.md"]
+    },
+    {
+      "id": "posthog",
+      "name": "PostHog",
+      "description": "Product analytics and telemetry event collection",
+      "technology": "HTTPS",
+      "evidence": ["package.json", ".env.example"]
+    },
+    {
+      "id": "sqlite",
+      "name": "SQLite",
+      "description": "Local persistence for relay state and session data",
+      "technology": "SQLite",
+      "evidence": [".env.example"]
+    },
+    {
+      "id": "fly-io",
+      "name": "Fly.io",
+      "description": "Cloud platform hosting the Agent Relay API and web dashboard",
+      "technology": "HTTPS",
+      "evidence": ["fly.toml"]
+    }
+  ],
+  "relationships": [
+    {
+      "source": "developer",
+      "target": "agent-relay",
+      "description": "Imports SDK and spawns agents via TypeScript or Python API",
+      "technology": "npm / pip",
+      "evidence": ["README.md", "packages/sdk/src/client.ts"]
+    },
+    {
+      "source": "agent-relay",
+      "target": "relaycast-cloud",
+      "description": "Connects via WebSocket to relay messages between agents",
+      "technology": "WebSocket",
+      "evidence": ["Cargo.toml", "package.json"]
+    },
+    {
+      "source": "agent-relay",
+      "target": "claude-cli",
+      "description": "Spawns Claude as a PTY subprocess and injects relay MCP config",
+      "technology": "PTY",
+      "evidence": ["src/main.rs", "packages/sdk/src/client.ts"]
+    },
+    {
+      "source": "agent-relay",
+      "target": "codex-cli",
+      "description": "Spawns Codex as a PTY subprocess and injects relay MCP config",
+      "technology": "PTY",
+      "evidence": ["src/main.rs", "packages/sdk/src/client.ts"]
+    },
+    {
+      "source": "agent-relay",
+      "target": "posthog",
+      "description": "Sends telemetry events for usage tracking",
+      "technology": "HTTPS",
+      "evidence": ["packages/telemetry/src/index.ts", ".env.example"]
+    },
+    {
+      "source": "agent-relay",
+      "target": "sqlite",
+      "description": "Persists relay session state locally",
+      "technology": "SQL",
+      "evidence": [".env.example"]
+    },
+    {
+      "source": "agent-relay",
+      "target": "fly-io",
+      "description": "Cloud API and dashboard deployed to Fly.io",
+      "technology": "HTTPS",
+      "evidence": ["fly.toml"]
+    }
+  ]
+}

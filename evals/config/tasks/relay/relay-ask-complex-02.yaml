@@ -1,0 +1,31 @@
+{
+  "id": "relay-ask-complex-02",
+  "repo_id": "relay",
+  "category": "ask_complex",
+  "prompt": "Read the codebase and explain how relay spawns and manages a PTY-backed session, from CLI entrypoint through session supervision. Base your answer only on code you actually read.",
+  "ground_truth": "Expected outcome:\n- Must connect CLI invocation, spawning, PTY management, and supervision/recovery behavior using real modules. Expected grounding includes src/main.rs, src/cli/, src/pty.rs, src/spawner.rs, and src/supervisor.rs.\n\nMust mention / touch:\n- src/main.rs\n- src/cli/\n- src/pty.rs\n- src/spawner.rs\n- src/supervisor.rs\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo",
+  "acceptance_criteria": [
+    "Explains the lifecycle from CLI entry to managed PTY session.",
+    "Names the modules responsible for spawning, PTY I/O, and supervision.",
+    "Clarifies boundaries between setup and long-lived runtime management.",
+    "Does not hand-wave over the Rust runtime structure."
+  ],
+  "expected_modules_read": [
+    "src/main.rs",
+    "src/cli/",
+    "src/pty.rs",
+    "src/spawner.rs",
+    "src/supervisor.rs"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "explanation",
+    "primary_surface": "pty-lifecycle",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

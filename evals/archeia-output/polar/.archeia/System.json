@@ -1,0 +1,104 @@
+{
+  "system": {
+    "id": "polar",
+    "name": "Polar",
+    "description": "Open source payment infrastructure platform for developers — merchant of record handling billing, subscriptions, digital products, and tax compliance.",
+    "technology": "Python / FastAPI + Next.js",
+    "evidence": ["README.md", "server/pyproject.toml", "clients/package.json"]
+  },
+  "people": [
+    {
+      "id": "merchant",
+      "name": "Merchant",
+      "description": "Developer or organization selling digital products and subscriptions through Polar.",
+      "evidence": ["README.md", "AGENTS.md"]
+    },
+    {
+      "id": "customer",
+      "name": "Customer",
+      "description": "End user purchasing products, subscriptions, or digital benefits from a merchant.",
+      "evidence": ["server/polar/customer/", "server/polar/checkout/"]
+    }
+  ],
+  "external_systems": [
+    {
+      "id": "stripe",
+      "name": "Stripe",
+      "description": "Payment processor handling charges, subscriptions, and payouts.",
+      "technology": "Stripe API v14",
+      "evidence": ["server/pyproject.toml", "AGENTS.md"]
+    },
+    {
+      "id": "github",
+      "name": "GitHub",
+      "description": "Used for OAuth authentication and repository-based benefit grants.",
+      "technology": "GitHub API via githubkit",
+      "evidence": ["server/pyproject.toml", "AGENTS.md"]
+    },
+    {
+      "id": "postgresql",
+      "name": "PostgreSQL",
+      "description": "Primary relational database storing all business entities.",
+      "technology": "PostgreSQL via asyncpg + SQLAlchemy",
+      "evidence": ["server/pyproject.toml", "DEVELOPMENT.md"]
+    },
+    {
+      "id": "redis",
+      "name": "Redis",
+      "description": "Cache and message broker for Dramatiq background job queues.",
+      "technology": "Redis",
+      "evidence": ["server/pyproject.toml", "DEVELOPMENT.md"]
+    },
+    {
+      "id": "s3",
+      "name": "S3-compatible Storage",
+      "description": "Object storage for file uploads, invoices, and downloadable content.",
+      "technology": "AWS S3 / MinIO via boto3",
+      "evidence": ["server/pyproject.toml", "dev/docker/docker-compose.dev.yml"]
+    }
+  ],
+  "relationships": [
+    {
+      "source": "merchant",
+      "target": "polar",
+      "description": "Manages products, subscriptions, and views analytics via the web dashboard.",
+      "evidence": ["AGENTS.md"]
+    },
+    {
+      "source": "customer",
+      "target": "polar",
+      "description": "Purchases products and manages subscriptions via checkout and customer portal.",
+      "evidence": ["server/polar/checkout/", "server/polar/customer_portal/"]
+    },
+    {
+      "source": "polar",
+      "target": "stripe",
+      "description": "Processes payments, manages subscriptions, and handles payouts.",
+      "evidence": ["server/pyproject.toml", "AGENTS.md"]
+    },
+    {
+      "source": "polar",
+      "target": "github",
+      "description": "Authenticates users via OAuth and grants repository access as a benefit.",
+      "evidence": ["server/pyproject.toml", "AGENTS.md"]
+    },
+    {
+      "source": "polar",
+      "target": "postgresql",
+      "description": "Stores and retrieves all business data.",
+      "evidence": ["DEVELOPMENT.md"]
+    },
+    {
+      "source": "polar",
+      "target": "redis",
+      "description": "Queues background jobs and caches transient data.",
+      "evidence": ["DEVELOPMENT.md"]
+    },
+    {
+      "source": "polar",
+      "target": "s3",
+      "description": "Stores uploaded files, invoices, and downloadable content.",
+      "evidence": ["dev/docker/docker-compose.dev.yml"]
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "level": 3,
+  "title": "State Lifecycles",
+  "depends_on": "Entities.json",
+  "state_machines": [
+    {
+      "id": "task-lifecycle",
+      "entity": "task",
+      "entity_name": "Task",
+      "description": "Task workflow from creation through completion or cancellation",
+      "source_type": "enum",
+      "confidence": "high",
+      "initial_state": "pending",
+      "terminal_states": ["done", "cancelled"],
+      "states": [
+        { "name": "pending", "description": "Created but not started", "evidence": ["prisma/schema.prisma"] },
+        { "name": "in_progress", "description": "Actively being worked on", "evidence": ["prisma/schema.prisma"] },
+        { "name": "review", "description": "Submitted for review", "evidence": ["prisma/schema.prisma"] },
+        { "name": "done", "description": "Completed and accepted", "evidence": ["prisma/schema.prisma"] },
+        { "name": "cancelled", "description": "Abandoned before completion", "evidence": ["prisma/schema.prisma"] }
+      ],
+      "transitions": [
+        { "source": "pending", "target": "in_progress", "trigger": "start", "evidence": ["src/services/taskService.ts"] },
+        { "source": "in_progress", "target": "review", "trigger": "submit", "evidence": ["src/services/taskService.ts"] },
+        { "source": "review", "target": "in_progress", "trigger": "request_changes", "evidence": ["src/services/taskService.ts"] },
+        { "source": "review", "target": "done", "trigger": "approve", "evidence": ["src/services/taskService.ts"] },
+        { "source": "pending", "target": "cancelled", "trigger": "cancel", "evidence": ["src/services/taskService.ts"] },
+        { "source": "in_progress", "target": "cancelled", "trigger": "cancel", "evidence": ["src/services/taskService.ts"] }
+      ],
+      "evidence": ["prisma/schema.prisma", "src/services/taskService.ts"]
+    }
+  ]
+}

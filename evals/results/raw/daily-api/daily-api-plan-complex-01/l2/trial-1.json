@@ -1,0 +1,221 @@
+{
+  "agent_run": {
+    "command": [
+      "claude",
+      "--model",
+      "haiku",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--permission-mode",
+      "auto",
+      "--append-system-prompt",
+      "CRITICAL RULE: You MUST use your tools to read files in this repository before answering. Do NOT answer from memory or training data. Start by exploring the project structure with Bash(ls) or Glob, then read the specific files needed to answer the question. Every claim you make must cite a specific file path you actually read in this session. If you answer without reading files first, your response will be scored as zero.",
+      "-p",
+      "Read the codebase and design a referral system that spans user-facing routes, persistence, notifications, and analytics surfaces. Ground your plan in the actual modules and patterns you find."
+    ],
+    "exit_code": 0,
+    "finished_at": "2026-04-10T04:09:45+00:00",
+    "started_at": "2026-04-10T03:55:44+00:00",
+    "status": "completed",
+    "stderr": "",
+    "stdout": "The plan is written to `/Users/hugopeck/.claude/plans/snazzy-hopping-eich.md`. Here's a summary of the full referral system design grounded in the codebase:\n\n---\n\n## What Already Exists (Foundation)\n\n| Asset | Location |\n|---|---|\n| `User.referralId` / `User.referralOrigin` columns | `src/entity/user/User.ts:222-227` |\n| `Invite` entity with token + usage limits | `src/entity/Invite.ts` |\n| `getInviteLink` / `getShortGenericInviteLink` | `src/common/links.ts:141` |\n| `referralCampaign` GraphQL query (count + URL) | `src/schema/users.ts:2458` |\n| `checkReferralReminder` cron (nudge via Alerts) | `src/cron/checkReferralReminder.ts` |\n\n## What the Plan Adds (7 Layers)\n\n### 1. Persistence \u2014 `src/entity/user/UserReferral.ts` (new)\nComposite PK `(referrerId, refereeId)` with `referralOrigin`, JSONB `flags` (for reward metadata), and a `referrerId` index for fast reverse lookups. Includes a migration with a backfill from existing `User.referralId` rows. Also extends `UserTransactionType` with `Referral` and `UserActionType` with `ReferralInviteSent`.\n\n### 2. PubSub Event \u2014 `src/common/typedPubsub.ts`\nAdd `'api.v1.user-referred': { referrerId, refereeId, referralOrigin }` to `PubSubSchema`.\n\n### 3. Workers \u2014 `src/workers/`\n- **`storeUserReferral.ts`** (new) \u2014 subscribes to the existing `api.v1.user-created` topic; upserts `UserReferral`; checks milestone thresholds (1/5/10/25/50) inside a `con.transaction()`; awards cores via `UserTransaction(type: 'referral')`; publishes `api.v1.user-referred`. Modeled after `src/workers/opportunity/storeCandidateOpportunityMatch.ts`.\n- **`notifications/referralCompletedNotification.ts`** (new) \u2014 subscribes to `api.v1.user-referred`; returns `NotificationType.ReferralCompleted` with the referee as the context user. Modeled after `src/workers/notifications/userFollowNotification.ts`.\n\n### 4. Notifications \u2014 4 files\n- `src/notifications/common.ts` \u2014 add `ReferralCompleted = 'referral_completed'` + default settings\n- `src/notifications/types.ts` \u2014 add `NotificationReferralContext`\n- `src/notifications/generate.ts` \u2014 add title: `\"<b>{name}</b> joined daily.dev via your invite!\"`\n- `src/notifications/builder.ts` \u2014 add builder case with referee avatar and profile link\n\n### 5. GraphQL \u2014 `src/schema/users.ts`\n- Extend `ReferralCampaign` type with `nextMilestone` and `nextMilestoneCount`\n- New `referralHistory(first, after): UserConnection!` query via `queryReadReplica`\n- New `generateReferralLink(referralOrigin): String!` mutation \u2014 upserts `Invite`, records `UserAction`, returns short URL via existing `getShortGenericInviteLink`\n\n### 6. Analytics\nThe `user_referral` table is the primary analytics source \u2014 queryable by `referralOrigin`, `createdAt` time-series, and per-referrer counts. Optional ClickHouse event in the storage worker following the pattern in `src/workers/postAnalytics/postAnalyticsUpdate.ts`.\n\n### 7. Public REST API \u2014 `src/routes/public/referral.ts` (new)\n`GET /referral/link` and `GET /referral/stats` delegating to GraphQL via `executeGraphql()`, following `src/routes/public/AGENTS.md` patterns.\n\n---\n\n**18 files total: 10 new, 8 modified.** The plan reuses `triggerTypedEvent`, `whereVordrFilter`, `queryReadReplica`, `updateFlagsStatement`, and all existing invite URL helpers without duplicating them.",
+    "transcript_path": "/tmp/archeia-phase4/daily-api-l2-daily-api-plan-complex-01-trial1/.archeia-eval/conversation.json"
+  },
+  "code_quality": {
+    "lint": {
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "cwd": "/tmp/archeia-phase4/daily-api-l2-daily-api-plan-complex-01-trial1",
+      "exit_code": 1,
+      "finished_at": "2026-04-10T04:10:04+00:00",
+      "started_at": "2026-04-10T04:09:52+00:00",
+      "stderr": "sh: eslint: command not found\n",
+      "stdout": "\n> daily-api@ lint /private/tmp/archeia-phase4/daily-api-l2-daily-api-plan-complex-01-trial1\n> eslint . --ext .js,.ts --max-warnings 0\n\n\u2009ELIFECYCLE\u2009 Command failed.\n\u2009WARN\u2009  Local package.json exists, but node_modules missing, did you mean to install?\n"
+    },
+    "lint_baseline": {
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "cwd": "/tmp/archeia-phase4/daily-api-l2-daily-api-plan-complex-01-trial1",
+      "exit_code": 1,
+      "finished_at": "2026-04-10T03:55:44+00:00",
+      "started_at": "2026-04-10T03:55:43+00:00",
+      "stderr": "sh: eslint: command not found\n",
+      "stdout": "\n> daily-api@ lint /private/tmp/archeia-phase4/daily-api-l2-daily-api-plan-complex-01-trial1\n> eslint . --ext .js,.ts --max-warnings 0\n\n\u2009ELIFECYCLE\u2009 Command failed.\n\u2009WARN\u2009  Local package.json exists, but node_modules missing, did you mean to install?\n"
+    },
+    "lint_baseline_findings": 5,
+    "lint_delta": 0,
+    "lint_findings": 5,
+    "tests": null
+  },
+  "condition_application": {
+    "archeia_output": "evals/archeia-output/daily-api",
+    "condition_id": "l2",
+    "copied_paths": [
+      ".archeia",
+      "AGENTS.md",
+      "CLAUDE.md",
+      "__tests__/README.md",
+      "__tests__/agents.md",
+      "__tests__/claude.md",
+      "bin/README.md",
+      "src/README.md",
+      "src/common/README.md",
+      "src/entity/README.md",
+      "src/entity/agents.md",
+      "src/entity/claude.md",
+      "src/integrations/README.md",
+      "src/routes/README.md",
+      "src/routes/agents.md",
+      "src/routes/claude.md",
+      "src/schema/README.md",
+      "src/workers/README.md"
+    ],
+    "kept_existing_docs": false,
+    "removed_paths": [
+      "AGENTS.md"
+    ],
+    "repo_id": "daily-api",
+    "worktree": "/tmp/archeia-phase4/daily-api-l2-daily-api-plan-complex-01-trial1"
+  },
+  "condition_commit": {
+    "command": [
+      "git",
+      "commit",
+      "-m",
+      "Apply evaluation condition"
+    ],
+    "cwd": "/tmp/archeia-phase4/daily-api-l2-daily-api-plan-complex-01-trial1",
+    "exit_code": 0,
+    "finished_at": "2026-04-10T03:55:43+00:00",
+    "started_at": "2026-04-10T03:55:43+00:00",
+    "stderr": "",
+    "stdout": "[detached HEAD 8ebfce0] Apply evaluation condition\n 31 files changed, 1963 insertions(+)\n create mode 100644 .archeia/Architecture.md\n create mode 100644 .archeia/Components.json\n create mode 100644 .archeia/Containers.json\n create mode 100644 .archeia/DataFlow.json\n create mode 100644 .archeia/Entities.json\n create mode 100644 .archeia/Guide.md\n create mode 100644 .archeia/Standards.md\n create mode 100644 .archeia/System.json\n create mode 100644 .archeia/diagrams/components-api-server.md\n create mode 100644 .archeia/diagrams/components-background-worker.md\n create mode 100644 .archeia/diagrams/components-cron-runner.md\n create mode 100644 .archeia/diagrams/containers.md\n create mode 100644 .archeia/diagrams/context.md\n create mode 100644 .archeia/diagrams/erd.md\n create mode 100644 .archeia/diagrams/sequence-background-event.md\n create mode 100644 .archeia/diagrams/sequence-primary.md\n create mode 100644 __tests__/README.md\n create mode 100644 __tests__/agents.md\n create mode 100644 __tests__/claude.md\n create mode 100644 bin/README.md\n create mode 100644 src/README.md\n create mode 100644 src/common/README.md\n create mode 100644 src/entity/README.md\n create mode 100644 src/entity/agents.md\n create mode 100644 src/entity/claude.md\n create mode 100644 src/integrations/README.md\n create mode 100644 src/routes/README.md\n create mode 100644 src/routes/agents.md\n create mode 100644 src/routes/claude.md\n create mode 100644 src/schema/README.md\n create mode 100644 src/workers/README.md\n"
+  },
+  "condition_id": "l2",
+  "diff": "",
+  "finished_at": "2026-04-10T04:10:42+00:00",
+  "judge": {
+    "command": [
+      "claude",
+      "--output-format",
+      "json",
+      "-p",
+      "You are judging an Archeia evaluation run.\n\nTask category: plan_complex\nTask id: daily-api-plan-complex-01\n\nTask prompt:\nRead the codebase and design a referral system that spans user-facing routes, persistence, notifications, and analytics surfaces. Ground your plan in the actual modules and patterns you find.\n\nGround truth / reference:\nExpected outcome:\n- The plan should map the affected entities, API surfaces, side effects, and test strategy. It should identify how the feature threads through daily-api's existing patterns rather than proposing a parallel subsystem.\n\nMust mention / touch:\n- src/entity/\n- src/routes/\n- src/notifications/\n- src/telemetry/\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path\n\nAcceptance criteria:\n[\n  \"Identifies the right route, entity, notification, and analytics surfaces.\",\n  \"Includes sequencing and contracts between affected areas.\",\n  \"Provides a realistic testing strategy.\",\n  \"Fits existing project conventions.\"\n]\n\nAgent response:\nThe plan is written to `/Users/hugopeck/.claude/plans/snazzy-hopping-eich.md`. Here's a summary of the full referral system design grounded in the codebase:\n\n---\n\n## What Already Exists (Foundation)\n\n| Asset | Location |\n|---|---|\n| `User.referralId` / `User.referralOrigin` columns | `src/entity/user/User.ts:222-227` |\n| `Invite` entity with token + usage limits | `src/entity/Invite.ts` |\n| `getInviteLink` / `getShortGenericInviteLink` | `src/common/links.ts:141` |\n| `referralCampaign` GraphQL query (count + URL) | `src/schema/users.ts:2458` |\n| `checkReferralReminder` cron (nudge via Alerts) | `src/cron/checkReferralReminder.ts` |\n\n## What the Plan Adds (7 Layers)\n\n### 1. Persistence \u2014 `src/entity/user/UserReferral.ts` (new)\nComposite PK `(referrerId, refereeId)` with `referralOrigin`, JSONB `flags` (for reward metadata), and a `referrerId` index for fast reverse lookups. Includes a migration with a backfill from existing `User.referralId` rows. Also extends `UserTransactionType` with `Referral` and `UserActionType` with `ReferralInviteSent`.\n\n### 2. PubSub Event \u2014 `src/common/typedPubsub.ts`\nAdd `'api.v1.user-referred': { referrerId, refereeId, referralOrigin }` to `PubSubSchema`.\n\n### 3. Workers \u2014 `src/workers/`\n- **`storeUserReferral.ts`** (new) \u2014 subscribes to the existing `api.v1.user-created` topic; upserts `UserReferral`; checks milestone thresholds (1/5/10/25/50) inside a `con.transaction()`; awards cores via `UserTransaction(type: 'referral')`; publishes `api.v1.user-referred`. Modeled after `src/workers/opportunity/storeCandidateOpportunityMatch.ts`.\n- **`notifications/referralCompletedNotification.ts`** (new) \u2014 subscribes to `api.v1.user-referred`; returns `NotificationType.ReferralCompleted` with the referee as the context user. Modeled after `src/workers/notifications/userFollowNotification.ts`.\n\n### 4. Notifications \u2014 4 files\n- `src/notifications/common.ts` \u2014 add `ReferralCompleted = 'referral_completed'` + default settings\n- `src/notifications/types.ts` \u2014 add `NotificationReferralContext`\n- `src/notifications/generate.ts` \u2014 add title: `\"<b>{name}</b> joined daily.dev via your invite!\"`\n- `src/notifications/builder.ts` \u2014 add builder case with referee avatar and profile link\n\n### 5. GraphQL \u2014 `src/schema/users.ts`\n- Extend `ReferralCampaign` type with `nextMilestone` and `nextMilestoneCount`\n- New `referralHistory(first, after): UserConnection!` query via `queryReadReplica`\n- New `generateReferralLink(referralOrigin): String!` mutation \u2014 upserts `Invite`, records `UserAction`, returns short URL via existing `getShortGenericInviteLink`\n\n### 6. Analytics\nThe `user_referral` table is the primary analytics source \u2014 queryable by `referralOrigin`, `createdAt` time-series, and per-referrer counts. Optional ClickHouse event in the storage worker following the pattern in `src/workers/postAnalytics/postAnalyticsUpdate.ts`.\n\n### 7. Public REST API \u2014 `src/routes/public/referral.ts` (new)\n`GET /referral/link` and `GET /referral/stats` delegating to GraphQL via `executeGraphql()`, following `src/routes/public/AGENTS.md` patterns.\n\n---\n\n**18 files total: 10 new, 8 modified.** The plan reuses `triggerTypedEvent`, `whereVordrFilter`, `queryReadReplica`, `updateFlagsStatement`, and all existing invite URL helpers without duplicating them.\n\nGit diff:\n\n\nCode-quality signals:\n{\n  \"lint\": {\n    \"command\": [\n      \"pnpm\",\n      \"lint\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/daily-api-l2-daily-api-plan-complex-01-trial1\",\n    \"exit_code\": 1,\n    \"finished_at\": \"2026-04-10T04:10:04+00:00\",\n    \"started_at\": \"2026-04-10T04:09:52+00:00\",\n    \"stderr\": \"sh: eslint: command not found\\n\",\n    \"stdout\": \"\\n> daily-api@ lint /private/tmp/archeia-phase4/daily-api-l2-daily-api-plan-complex-01-trial1\\n> eslint . --ext .js,.ts --max-warnings 0\\n\\n\\u2009ELIFECYCLE\\u2009 Command failed.\\n\\u2009WARN\\u2009  Local package.json exists, but node_modules missing, did you mean to install?\\n\"\n  },\n  \"lint_baseline\": {\n    \"command\": [\n      \"pnpm\",\n      \"lint\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/daily-api-l2-daily-api-plan-complex-01-trial1\",\n    \"exit_code\": 1,\n    \"finished_at\": \"2026-04-10T03:55:44+00:00\",\n    \"started_at\": \"2026-04-10T03:55:43+00:00\",\n    \"stderr\": \"sh: eslint: command not found\\n\",\n    \"stdout\": \"\\n> daily-api@ lint /private/tmp/archeia-phase4/daily-api-l2-daily-api-plan-complex-01-trial1\\n> eslint . --ext .js,.ts --max-warnings 0\\n\\n\\u2009ELIFECYCLE\\u2009 Command failed.\\n\\u2009WARN\\u2009  Local package.json exists, but node_modules missing, did you mean to install?\\n\"\n  },\n  \"lint_baseline_findings\": 5,\n  \"lint_delta\": 0,\n  \"lint_findings\": 5,\n  \"tests\": null\n}\n\nEfficiency signals:\n{\n  \"action_calls\": 1,\n  \"exploration_calls\": 44,\n  \"exploration_to_action_ratio\": 44.0,\n  \"finished_at\": \"2026-04-10T04:09:21.098000+00:00\",\n  \"input_tokens\": 1704,\n  \"output_tokens\": 15466,\n  \"started_at\": \"2026-04-10T03:56:04.475000+00:00\",\n  \"time_to_completion_seconds\": 796.623,\n  \"time_to_first_edit_seconds\": null,\n  \"tool_call_count\": 101,\n  \"tool_counts\": {\n    \"agent\": 3,\n    \"bash\": 47,\n    \"enterplanmode\": 1,\n    \"exitplanmode\": 4,\n    \"glob\": 4,\n    \"grep\": 2,\n    \"read\": 38,\n    \"toolsearch\": 1,\n    \"write\": 1\n  },\n  \"total_tokens\": 68260\n}\n\nScore the run from 0-100 using four equally weighted 0-25 dimensions:\n1. Correctness: technically sound approach.\n2. Completeness: affected modules, sequencing, and risks covered.\n3. Convention fit: follows the repo's apparent patterns.\n4. Actionability: specific enough to implement.\n\nReturn JSON only with this schema:\n{\n  \"total_score\": 0,\n  \"dimension_scores\": {\n    \"correctness\": 0,\n    \"completeness\": 0,\n    \"convention_fit\": 0,\n    \"verification_or_communication\": 0\n  },\n  \"summary\": \"short paragraph\",\n  \"strengths\": [\"...\"],\n  \"weaknesses\": [\"...\"],\n  \"confidence\": \"low|medium|high\"\n}"
+    ],
+    "confidence": "high",
+    "dimension_scores": {
+      "completeness": 22,
+      "convention_fit": 20,
+      "correctness": 22,
+      "verification_or_communication": 18
+    },
+    "finished_at": "2026-04-10T04:10:42+00:00",
+    "started_at": "2026-04-10T04:10:04+00:00",
+    "status": "completed",
+    "strengths": [
+      "Thorough codebase exploration \u2014 44 exploration calls grounding the plan in actual file paths and line numbers",
+      "Correctly identifies and builds on existing referral primitives rather than duplicating them",
+      "Clear sequencing via PubSub events: user-created \u2192 storeUserReferral worker \u2192 user-referred \u2192 notification worker",
+      "Covers all four required module areas: entity, routes, notifications, and analytics",
+      "Specifies contracts between layers (PubSubSchema type, composite PK, milestone thresholds)",
+      "Names specific patterns to follow (e.g., storeCandidateOpportunityMatch, userFollowNotification) showing genuine convention awareness",
+      "Includes migration strategy with backfill from existing data"
+    ],
+    "summary": "A strong, well-grounded plan that identifies existing referral primitives (User.referralId, Invite entity, referralCampaign query, checkReferralReminder cron) and builds on them rather than proposing a parallel subsystem. It covers all four required surfaces \u2014 src/entity/, src/routes/, src/notifications/, src/telemetry/ (via analytics/ClickHouse) \u2014 with concrete file paths, type names, and sequencing through PubSub events and workers. The convention fit is good, citing specific patterns like triggerTypedEvent, queryReadReplica, and modeling new workers after existing ones. The main weaknesses are the lack of an explicit testing strategy (a stated acceptance criterion) and the analytics/telemetry coverage being somewhat thin \u2014 mentioning an 'optional' ClickHouse event rather than a concrete telemetry integration plan.",
+    "total_score": 82,
+    "weaknesses": [
+      "No explicit testing strategy \u2014 the acceptance criteria specifically require a 'realistic testing strategy' and this is absent",
+      "Telemetry/analytics coverage is vague \u2014 'optional ClickHouse event' and 'queryable table' is hand-wavy compared to the depth of other sections",
+      "High tool call count (101) and long runtime (~13 min) for a planning task with no code changes",
+      "The plan was written to an external file rather than presented inline, making review harder for evaluators"
+    ]
+  },
+  "metrics": {
+    "action_calls": 1,
+    "exploration_calls": 44,
+    "exploration_to_action_ratio": 44.0,
+    "finished_at": "2026-04-10T04:09:21.098000+00:00",
+    "input_tokens": 1704,
+    "output_tokens": 15466,
+    "started_at": "2026-04-10T03:56:04.475000+00:00",
+    "time_to_completion_seconds": 796.623,
+    "time_to_first_edit_seconds": null,
+    "tool_call_count": 101,
+    "tool_counts": {
+      "agent": 3,
+      "bash": 47,
+      "enterplanmode": 1,
+      "exitplanmode": 4,
+      "glob": 4,
+      "grep": 2,
+      "read": 38,
+      "toolsearch": 1,
+      "write": 1
+    },
+    "total_tokens": 68260
+  },
+  "repo": {
+    "archeia_output_path": "evals/archeia-output/daily-api",
+    "baseline_docs": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "branch": "main",
+    "commands": {
+      "lint": "pnpm lint",
+      "test": null
+    },
+    "commit": "9752461a184940e947cefadc886cba2010cd87fc",
+    "complexity": "medium",
+    "id": "daily-api",
+    "language": "ts",
+    "loc": 301000,
+    "notes": [
+      "Large TypeScript API with tests.",
+      "Good fit for convention-following implementation tasks."
+    ],
+    "repo": "dailydotdev/daily-api",
+    "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/daily-api",
+    "tests_available": true
+  },
+  "repo_id": "daily-api",
+  "result_path": "/Users/hugopeck/conductor/workspaces/archeia/phoenix/evals/results/raw/daily-api/daily-api-plan-complex-01/l2/trial-1.json",
+  "started_at": "2026-04-10T03:55:43+00:00",
+  "status": "completed",
+  "task": {
+    "acceptance_criteria": [
+      "Identifies the right route, entity, notification, and analytics surfaces.",
+      "Includes sequencing and contracts between affected areas.",
+      "Provides a realistic testing strategy.",
+      "Fits existing project conventions."
+    ],
+    "category": "plan_complex",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "expected_modules_read": [
+      "src/entity/",
+      "src/routes/",
+      "src/notifications/",
+      "src/telemetry/"
+    ],
+    "ground_truth": "Expected outcome:\n- The plan should map the affected entities, API surfaces, side effects, and test strategy. It should identify how the feature threads through daily-api's existing patterns rather than proposing a parallel subsystem.\n\nMust mention / touch:\n- src/entity/\n- src/routes/\n- src/notifications/\n- src/telemetry/\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path",
+    "id": "daily-api-plan-complex-01",
+    "metadata": {
+      "difficulty": "complex",
+      "doc_sensitivity": "high",
+      "output_type": "plan",
+      "primary_surface": "referral-system",
+      "verification_scope": "repo_default"
+    },
+    "prompt": "Read the codebase and design a referral system that spans user-facing routes, persistence, notifications, and analytics surfaces. Ground your plan in the actual modules and patterns you find.",
+    "repo_id": "daily-api"
+  },
+  "trial": 1
+}

@@ -1,0 +1,84 @@
+{
+  "flows": [
+    {
+      "id": "checkout-purchase",
+      "name": "Checkout Purchase Flow",
+      "description": "Customer completes a checkout to purchase a product, resulting in an order and benefit grants.",
+      "primary": true,
+      "participants": [
+        {"id": "customer", "name": "Customer", "type": "person"},
+        {"id": "web-dashboard", "name": "Web Dashboard", "type": "container"},
+        {"id": "api-server", "name": "API Server", "type": "container"},
+        {"id": "postgresql", "name": "PostgreSQL", "type": "external_system"},
+        {"id": "stripe", "name": "Stripe", "type": "external_system"},
+        {"id": "background-worker", "name": "Background Worker", "type": "container"}
+      ],
+      "steps": [
+        {
+          "from": "customer",
+          "to": "web-dashboard",
+          "description": "Opens checkout page for a product",
+          "type": "sync",
+          "protocol": "HTTPS"
+        },
+        {
+          "from": "web-dashboard",
+          "to": "api-server",
+          "description": "Creates or updates checkout session",
+          "type": "sync",
+          "protocol": "HTTPS"
+        },
+        {
+          "from": "api-server",
+          "to": "postgresql",
+          "description": "Persists checkout with product and pricing data",
+          "type": "sync",
+          "protocol": "SQL"
+        },
+        {
+          "from": "api-server",
+          "to": "stripe",
+          "description": "Creates payment intent for the checkout amount",
+          "type": "sync",
+          "protocol": "HTTPS"
+        },
+        {
+          "from": "stripe",
+          "to": "api-server",
+          "description": "Sends payment_intent.succeeded webhook",
+          "type": "async",
+          "protocol": "HTTPS"
+        },
+        {
+          "from": "api-server",
+          "to": "postgresql",
+          "description": "Creates order, order items, and updates checkout status",
+          "type": "sync",
+          "protocol": "SQL"
+        },
+        {
+          "from": "api-server",
+          "to": "background-worker",
+          "description": "Enqueues benefit grant and webhook delivery jobs",
+          "type": "async",
+          "protocol": "Redis"
+        },
+        {
+          "from": "background-worker",
+          "to": "postgresql",
+          "description": "Creates benefit grants and webhook events",
+          "type": "sync",
+          "protocol": "SQL"
+        },
+        {
+          "from": "api-server",
+          "to": "web-dashboard",
+          "description": "Returns checkout confirmation",
+          "type": "response",
+          "protocol": "HTTPS"
+        }
+      ],
+      "evidence": ["server/polar/checkout/", "server/polar/order/", "server/polar/benefit/", "DEVELOPMENT.md"]
+    }
+  ]
+}

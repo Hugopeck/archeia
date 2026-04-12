@@ -1,0 +1,30 @@
+{
+  "id": "daily-api-implement-moderate-02",
+  "repo_id": "daily-api",
+  "category": "implement_moderate",
+  "prompt": "Read the codebase and add a read-only endpoint that returns one bookmark list by ID using the same response shape as the existing bookmark-list APIs. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should add a small read-only bookmark-list route, reuse current bookmark-list schema and response conventions, and include focused tests for lookup behavior and not-found handling.\n\nMust mention / touch:\n- src/routes/public/bookmarks.ts\n- src/routes/public/common.ts\n- src/schema/bookmarks.ts\n- __tests__/\n\nCommon failure modes:\n- Returning a custom shape that drifts from existing bookmark-list responses\n- Implementing the lookup outside the existing bookmark-list route conventions",
+  "acceptance_criteria": [
+    "Adds a read-only bookmark-list detail endpoint by ID.",
+    "Reuses the existing bookmark-list response shape and route patterns.",
+    "Handles missing lists cleanly.",
+    "Includes focused regression coverage."
+  ],
+  "expected_modules_read": [
+    "src/routes/public/bookmarks.ts",
+    "src/routes/public/common.ts",
+    "src/schema/bookmarks.ts",
+    "__tests__/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "moderate",
+    "output_type": "code_change",
+    "primary_surface": "bookmark-list-detail-endpoint",
+    "doc_sensitivity": "medium",
+    "verification_scope": "repo_default"
+  }
+}

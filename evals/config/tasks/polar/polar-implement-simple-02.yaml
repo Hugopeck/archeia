@@ -1,0 +1,29 @@
+{
+  "id": "polar-implement-simple-02",
+  "repo_id": "polar",
+  "category": "implement_simple",
+  "prompt": "Read the codebase and normalize customer names so whitespace-only names are treated as missing instead of being stored as literal spaces. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should normalize or validate customer name input in the owning customer schema/path, keep valid customer updates intact, and include focused regression coverage if feasible.\n\nMust mention / touch:\n- server/polar/customer/schemas/customer.py\n- server/polar/customer/endpoints.py\n- server/tests/\n\nCommon failure modes:\n- Leaving whitespace-only names stored as meaningful values\n- Applying normalization in a downstream layer while other customer input paths remain inconsistent",
+  "acceptance_criteria": [
+    "Treats whitespace-only customer names as missing or invalid at the owning input path.",
+    "Keeps valid customer create and update flows intact.",
+    "Matches existing Polar schema-validation patterns.",
+    "Includes focused regression coverage where feasible."
+  ],
+  "expected_modules_read": [
+    "server/polar/customer/schemas/customer.py",
+    "server/polar/customer/endpoints.py",
+    "server/tests/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "simple",
+    "output_type": "code_change",
+    "primary_surface": "customer-name-normalization",
+    "doc_sensitivity": "medium",
+    "verification_scope": "none"
+  }
+}

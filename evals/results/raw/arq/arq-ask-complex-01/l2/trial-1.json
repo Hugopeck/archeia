@@ -1,0 +1,200 @@
+{
+  "agent_run": {
+    "command": [
+      "claude",
+      "--model",
+      "haiku",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--permission-mode",
+      "auto",
+      "--append-system-prompt",
+      "CRITICAL RULE: You MUST use your tools to read files in this repository before answering. Do NOT answer from memory or training data. Start by exploring the project structure with Bash(ls) or Glob, then read the specific files needed to answer the question. Every claim you make must cite a specific file path you actually read in this session. If you answer without reading files first, your response will be scored as zero.",
+      "-p",
+      "Read the codebase and explain how job retry and backoff work end to end in arq, from enqueueing through worker execution and retry scheduling. Base your answer only on code you actually read."
+    ],
+    "exit_code": 0,
+    "finished_at": "2026-04-10T05:15:20+00:00",
+    "started_at": "2026-04-10T05:09:28+00:00",
+    "status": "completed",
+    "stderr": "",
+    "stdout": "Based on reading the arq codebase, here's how job retry and backoff work end-to-end:\n\n## Enqueueing\n\nWhen a job is enqueued via `ArqRedis.enqueue_job()` in **connections.py:119-181**:\n\n1. A job ID is generated (or provided via `_job_id`)\n2. The job data is serialized via `serialize_job()` with `job_try=None` (or explicitly set via `_job_try`)\n3. The job is stored in Redis at `arq:job:{job_id}` with an expiration time\n4. The job ID is added to a sorted set (default: `arq:queue`) with a score representing when it should execute (now, or deferred via `_defer_until`/`_defer_by`)\n\n## Job Pickup and Try Counter\n\nWhen the worker picks up a job in **worker.py:474-485** (`run_job` method):\n\n1. The worker fetches the job data from Redis\n2. It calls `INCR` on `arq:retry:{job_id}` to atomically increment the try counter, which returns the current `job_try` (1 on first attempt, 2 on first retry, etc.)\n3. This retry counter is stored in Redis with a 24.5-hour expiration\n4. If `job_try > max_tries`, the job fails permanently without execution (**worker.py:545-565**)\n\n## Job Execution\n\nThe job coroutine runs with `ctx['job_try']` available (**worker.py:572-577**). The context is created with:\n```python\njob_ctx = {\n    'job_id': job_id,\n    'job_try': job_try,\n    'enqueue_time': ms_to_datetime(enqueue_time_ms),\n    'score': score,\n}\n```\n\n## Retry Triggering\n\nIf the job raises a `Retry` exception (**worker.py:97-111**, **worker.py:609-614**):\n\n```python\nraise Retry(defer=ctx['job_try'] * 5)  # Example: 5s, 10s, 15s, 20s...\n```\n\nThe worker captures this and sets `incr_score`:\n- If `Retry()` has no defer value: `incr_score = None` (retry immediately)\n- If `Retry(defer=X)`: `incr_score = X + (current_time - original_score)` \n  - This accounts for time already spent waiting in the queue\n\nThe `jobs_retried` counter is incremented (**worker.py:614**), and `finish` remains `False` (don't save a result yet).\n\n## Backoff and Rescheduling\n\nIn **worker.py:678-707** (`finish_job` method), when a retry is triggered:\n\n```python\nelif incr_score:\n    tr.zincrby(self.queue_name, incr_score, job_id)\n```\n\nThis atomically increments the job's score in the sorted set by the defer amount, rescheduling it to run after the backoff delay. The retry counter remains in Redis (not cleared), so the next attempt will have an incremented `job_try`.\n\n## Key Data Structures\n\n- `arq:job:{job_id}` \u2014 serialized job data (function name, args, kwargs, original `job_try` if re-enqueued)\n- `arq:retry:{job_id}` \u2014 integer counter, incremented on each execution attempt\n- `arq:queue` (sorted set) \u2014 job IDs with scores (Unix milliseconds representing execution time)\n- `arq:result:{job_id}` \u2014 serialized result (only stored if job succeeds or max retries exceeded)\n\n## Example Flow\n\nFrom **docs/examples/retry.py**:\n1. Job enqueued with `job_try=None`\n2. First execution (`job_try=1`): raises `Retry(defer=5s)`\n3. Job rescheduled with +5000ms to its score\n4. Second execution (`job_try=2`): raises `Retry(defer=10s)` \n5. Job rescheduled with +10000ms to its score\n6. And so on until max_tries (default 5) is exceeded\n\nThe backoff is entirely controlled by what the job function raises in the `Retry` exception, giving applications fine-grained control over retry timing and patterns.",
+    "transcript_path": "/tmp/archeia-phase4/arq-l2-arq-ask-complex-01-trial1/.archeia-eval/conversation.json"
+  },
+  "code_quality": {
+    "lint": {
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "."
+      ],
+      "cwd": "/tmp/archeia-phase4/arq-l2-arq-ask-complex-01-trial1",
+      "exit_code": 2,
+      "finished_at": "2026-04-10T05:15:22+00:00",
+      "started_at": "2026-04-10T05:15:21+00:00",
+      "stderr": "error: Required uv version `>=0.8.4` does not match the running version `0.7.12`. Update `uv` by running `uv self update`.\n",
+      "stdout": ""
+    },
+    "lint_baseline": {
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "."
+      ],
+      "cwd": "/tmp/archeia-phase4/arq-l2-arq-ask-complex-01-trial1",
+      "exit_code": 2,
+      "finished_at": "2026-04-10T05:09:28+00:00",
+      "started_at": "2026-04-10T05:09:28+00:00",
+      "stderr": "error: Required uv version `>=0.8.4` does not match the running version `0.7.12`. Update `uv` by running `uv self update`.\n",
+      "stdout": ""
+    },
+    "lint_baseline_findings": 1,
+    "lint_delta": 0,
+    "lint_findings": 1,
+    "tests": {
+      "command": [
+        "uv",
+        "run",
+        "pytest"
+      ],
+      "cwd": "/tmp/archeia-phase4/arq-l2-arq-ask-complex-01-trial1",
+      "exit_code": 2,
+      "finished_at": "2026-04-10T05:15:21+00:00",
+      "started_at": "2026-04-10T05:15:21+00:00",
+      "stderr": "error: Required uv version `>=0.8.4` does not match the running version `0.7.12`. Update `uv` by running `uv self update`.\n",
+      "stdout": ""
+    }
+  },
+  "condition_application": {
+    "archeia_output": "evals/archeia-output/arq",
+    "condition_id": "l2",
+    "copied_paths": [
+      ".archeia",
+      "AGENTS.md",
+      "CLAUDE.md",
+      "arq/README.md",
+      "arq/agents.md",
+      "arq/claude.md",
+      "docs/README.md",
+      "docs/examples/README.md",
+      "tests/README.md",
+      "tests/agents.md",
+      "tests/claude.md"
+    ],
+    "kept_existing_docs": false,
+    "removed_paths": [],
+    "repo_id": "arq",
+    "worktree": "/tmp/archeia-phase4/arq-l2-arq-ask-complex-01-trial1"
+  },
+  "condition_commit": {
+    "command": [
+      "git",
+      "commit",
+      "-m",
+      "Apply evaluation condition"
+    ],
+    "cwd": "/tmp/archeia-phase4/arq-l2-arq-ask-complex-01-trial1",
+    "exit_code": 0,
+    "finished_at": "2026-04-10T05:09:28+00:00",
+    "started_at": "2026-04-10T05:09:27+00:00",
+    "stderr": "",
+    "stdout": "[detached HEAD c8b44b9] Apply evaluation condition\n 20 files changed, 1046 insertions(+)\n create mode 100644 .archeia/Architecture.md\n create mode 100644 .archeia/Components.json\n create mode 100644 .archeia/Containers.json\n create mode 100644 .archeia/DataFlow.json\n create mode 100644 .archeia/Guide.md\n create mode 100644 .archeia/Standards.md\n create mode 100644 .archeia/System.json\n create mode 100644 .archeia/diagrams/containers.md\n create mode 100644 .archeia/diagrams/context.md\n create mode 100644 .archeia/diagrams/sequence-primary.md\n create mode 100644 AGENTS.md\n create mode 100644 CLAUDE.md\n create mode 100644 arq/README.md\n create mode 100644 arq/agents.md\n create mode 100644 arq/claude.md\n create mode 100644 docs/README.md\n create mode 100644 docs/examples/README.md\n create mode 100644 tests/README.md\n create mode 100644 tests/agents.md\n create mode 100644 tests/claude.md\n"
+  },
+  "condition_id": "l2",
+  "diff": "",
+  "finished_at": "2026-04-10T05:20:22+00:00",
+  "judge": {
+    "command": [
+      "claude",
+      "--output-format",
+      "json",
+      "-p",
+      "You are judging an Archeia evaluation run.\n\nTask category: ask_complex\nTask id: arq-ask-complex-01\n\nTask prompt:\nRead the codebase and explain how job retry and backoff work end to end in arq, from enqueueing through worker execution and retry scheduling. Base your answer only on code you actually read.\n\nGround truth / reference:\nExpected outcome:\n- Must identify where retry metadata lives, how worker execution decides to reschedule work, and how backoff or delay behavior is represented. Expected grounding includes arq/worker.py, arq/jobs.py, and any supporting connection or utility code involved in scheduling.\n\nMust mention / touch:\n- arq/worker.py\n- arq/jobs.py\n- arq/connections.py\n- arq/utils.py\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo\n\nAcceptance criteria:\n[\n  \"Covers enqueue, execution, failure, and retry scheduling flow in order.\",\n  \"Uses actual module names and retry concepts from arq.\",\n  \"Explains where retry state is stored or computed.\",\n  \"Avoids inventing components outside the repo.\"\n]\n\nAgent response:\nBased on reading the arq codebase, here's how job retry and backoff work end-to-end:\n\n## Enqueueing\n\nWhen a job is enqueued via `ArqRedis.enqueue_job()` in **connections.py:119-181**:\n\n1. A job ID is generated (or provided via `_job_id`)\n2. The job data is serialized via `serialize_job()` with `job_try=None` (or explicitly set via `_job_try`)\n3. The job is stored in Redis at `arq:job:{job_id}` with an expiration time\n4. The job ID is added to a sorted set (default: `arq:queue`) with a score representing when it should execute (now, or deferred via `_defer_until`/`_defer_by`)\n\n## Job Pickup and Try Counter\n\nWhen the worker picks up a job in **worker.py:474-485** (`run_job` method):\n\n1. The worker fetches the job data from Redis\n2. It calls `INCR` on `arq:retry:{job_id}` to atomically increment the try counter, which returns the current `job_try` (1 on first attempt, 2 on first retry, etc.)\n3. This retry counter is stored in Redis with a 24.5-hour expiration\n4. If `job_try > max_tries`, the job fails permanently without execution (**worker.py:545-565**)\n\n## Job Execution\n\nThe job coroutine runs with `ctx['job_try']` available (**worker.py:572-577**). The context is created with:\n```python\njob_ctx = {\n    'job_id': job_id,\n    'job_try': job_try,\n    'enqueue_time': ms_to_datetime(enqueue_time_ms),\n    'score': score,\n}\n```\n\n## Retry Triggering\n\nIf the job raises a `Retry` exception (**worker.py:97-111**, **worker.py:609-614**):\n\n```python\nraise Retry(defer=ctx['job_try'] * 5)  # Example: 5s, 10s, 15s, 20s...\n```\n\nThe worker captures this and sets `incr_score`:\n- If `Retry()` has no defer value: `incr_score = None` (retry immediately)\n- If `Retry(defer=X)`: `incr_score = X + (current_time - original_score)` \n  - This accounts for time already spent waiting in the queue\n\nThe `jobs_retried` counter is incremented (**worker.py:614**), and `finish` remains `False` (don't save a result yet).\n\n## Backoff and Rescheduling\n\nIn **worker.py:678-707** (`finish_job` method), when a retry is triggered:\n\n```python\nelif incr_score:\n    tr.zincrby(self.queue_name, incr_score, job_id)\n```\n\nThis atomically increments the job's score in the sorted set by the defer amount, rescheduling it to run after the backoff delay. The retry counter remains in Redis (not cleared), so the next attempt will have an incremented `job_try`.\n\n## Key Data Structures\n\n- `arq:job:{job_id}` \u2014 serialized job data (function name, args, kwargs, original `job_try` if re-enqueued)\n- `arq:retry:{job_id}` \u2014 integer counter, incremented on each execution attempt\n- `arq:queue` (sorted set) \u2014 job IDs with scores (Unix milliseconds representing execution time)\n- `arq:result:{job_id}` \u2014 serialized result (only stored if job succeeds or max retries exceeded)\n\n## Example Flow\n\nFrom **docs/examples/retry.py**:\n1. Job enqueued with `job_try=None`\n2. First execution (`job_try=1`): raises `Retry(defer=5s)`\n3. Job rescheduled with +5000ms to its score\n4. Second execution (`job_try=2`): raises `Retry(defer=10s)` \n5. Job rescheduled with +10000ms to its score\n6. And so on until max_tries (default 5) is exceeded\n\nThe backoff is entirely controlled by what the job function raises in the `Retry` exception, giving applications fine-grained control over retry timing and patterns.\n\nGit diff:\n\n\nCode-quality signals:\n{\n  \"lint\": {\n    \"command\": [\n      \"uv\",\n      \"run\",\n      \"ruff\",\n      \"check\",\n      \".\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/arq-l2-arq-ask-complex-01-trial1\",\n    \"exit_code\": 2,\n    \"finished_at\": \"2026-04-10T05:15:22+00:00\",\n    \"started_at\": \"2026-04-10T05:15:21+00:00\",\n    \"stderr\": \"error: Required uv version `>=0.8.4` does not match the running version `0.7.12`. Update `uv` by running `uv self update`.\\n\",\n    \"stdout\": \"\"\n  },\n  \"lint_baseline\": {\n    \"command\": [\n      \"uv\",\n      \"run\",\n      \"ruff\",\n      \"check\",\n      \".\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/arq-l2-arq-ask-complex-01-trial1\",\n    \"exit_code\": 2,\n    \"finished_at\": \"2026-04-10T05:09:28+00:00\",\n    \"started_at\": \"2026-04-10T05:09:28+00:00\",\n    \"stderr\": \"error: Required uv version `>=0.8.4` does not match the running version `0.7.12`. Update `uv` by running `uv self update`.\\n\",\n    \"stdout\": \"\"\n  },\n  \"lint_baseline_findings\": 1,\n  \"lint_delta\": 0,\n  \"lint_findings\": 1,\n  \"tests\": {\n    \"command\": [\n      \"uv\",\n      \"run\",\n      \"pytest\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/arq-l2-arq-ask-complex-01-trial1\",\n    \"exit_code\": 2,\n    \"finished_at\": \"2026-04-10T05:15:21+00:00\",\n    \"started_at\": \"2026-04-10T05:15:21+00:00\",\n    \"stderr\": \"error: Required uv version `>=0.8.4` does not match the running version `0.7.12`. Update `uv` by running `uv self update`.\\n\",\n    \"stdout\": \"\"\n  }\n}\n\nEfficiency signals:\n{\n  \"action_calls\": 0,\n  \"exploration_calls\": 14,\n  \"exploration_to_action_ratio\": null,\n  \"finished_at\": \"2026-04-10T05:14:50.529000+00:00\",\n  \"input_tokens\": 146,\n  \"output_tokens\": 4386,\n  \"started_at\": \"2026-04-10T05:10:40.823000+00:00\",\n  \"time_to_completion_seconds\": 249.706,\n  \"time_to_first_edit_seconds\": null,\n  \"tool_call_count\": 17,\n  \"tool_counts\": {\n    \"bash\": 3,\n    \"grep\": 5,\n    \"read\": 9\n  },\n  \"total_tokens\": 4532\n}\n\nScore the run from 0-100 using four equally weighted 0-25 dimensions:\n1. Correctness: factual accuracy against ground truth.\n2. Completeness: covers all relevant systems and caveats.\n3. Evidence alignment: cites or reflects the repo-grounded flow.\n4. Communication quality: organized, concise, and directly useful.\n\nReturn JSON only with this schema:\n{\n  \"total_score\": 0,\n  \"dimension_scores\": {\n    \"correctness\": 0,\n    \"completeness\": 0,\n    \"convention_fit\": 0,\n    \"verification_or_communication\": 0\n  },\n  \"summary\": \"short paragraph\",\n  \"strengths\": [\"...\"],\n  \"weaknesses\": [\"...\"],\n  \"confidence\": \"low|medium|high\"\n}"
+    ],
+    "finished_at": "2026-04-10T05:20:22+00:00",
+    "prompt": "You are judging an Archeia evaluation run.\n\nTask category: ask_complex\nTask id: arq-ask-complex-01\n\nTask prompt:\nRead the codebase and explain how job retry and backoff work end to end in arq, from enqueueing through worker execution and retry scheduling. Base your answer only on code you actually read.\n\nGround truth / reference:\nExpected outcome:\n- Must identify where retry metadata lives, how worker execution decides to reschedule work, and how backoff or delay behavior is represented. Expected grounding includes arq/worker.py, arq/jobs.py, and any supporting connection or utility code involved in scheduling.\n\nMust mention / touch:\n- arq/worker.py\n- arq/jobs.py\n- arq/connections.py\n- arq/utils.py\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo\n\nAcceptance criteria:\n[\n  \"Covers enqueue, execution, failure, and retry scheduling flow in order.\",\n  \"Uses actual module names and retry concepts from arq.\",\n  \"Explains where retry state is stored or computed.\",\n  \"Avoids inventing components outside the repo.\"\n]\n\nAgent response:\nBased on reading the arq codebase, here's how job retry and backoff work end-to-end:\n\n## Enqueueing\n\nWhen a job is enqueued via `ArqRedis.enqueue_job()` in **connections.py:119-181**:\n\n1. A job ID is generated (or provided via `_job_id`)\n2. The job data is serialized via `serialize_job()` with `job_try=None` (or explicitly set via `_job_try`)\n3. The job is stored in Redis at `arq:job:{job_id}` with an expiration time\n4. The job ID is added to a sorted set (default: `arq:queue`) with a score representing when it should execute (now, or deferred via `_defer_until`/`_defer_by`)\n\n## Job Pickup and Try Counter\n\nWhen the worker picks up a job in **worker.py:474-485** (`run_job` method):\n\n1. The worker fetches the job data from Redis\n2. It calls `INCR` on `arq:retry:{job_id}` to atomically increment the try counter, which returns the current `job_try` (1 on first attempt, 2 on first retry, etc.)\n3. This retry counter is stored in Redis with a 24.5-hour expiration\n4. If `job_try > max_tries`, the job fails permanently without execution (**worker.py:545-565**)\n\n## Job Execution\n\nThe job coroutine runs with `ctx['job_try']` available (**worker.py:572-577**). The context is created with:\n```python\njob_ctx = {\n    'job_id': job_id,\n    'job_try': job_try,\n    'enqueue_time': ms_to_datetime(enqueue_time_ms),\n    'score': score,\n}\n```\n\n## Retry Triggering\n\nIf the job raises a `Retry` exception (**worker.py:97-111**, **worker.py:609-614**):\n\n```python\nraise Retry(defer=ctx['job_try'] * 5)  # Example: 5s, 10s, 15s, 20s...\n```\n\nThe worker captures this and sets `incr_score`:\n- If `Retry()` has no defer value: `incr_score = None` (retry immediately)\n- If `Retry(defer=X)`: `incr_score = X + (current_time - original_score)` \n  - This accounts for time already spent waiting in the queue\n\nThe `jobs_retried` counter is incremented (**worker.py:614**), and `finish` remains `False` (don't save a result yet).\n\n## Backoff and Rescheduling\n\nIn **worker.py:678-707** (`finish_job` method), when a retry is triggered:\n\n```python\nelif incr_score:\n    tr.zincrby(self.queue_name, incr_score, job_id)\n```\n\nThis atomically increments the job's score in the sorted set by the defer amount, rescheduling it to run after the backoff delay. The retry counter remains in Redis (not cleared), so the next attempt will have an incremented `job_try`.\n\n## Key Data Structures\n\n- `arq:job:{job_id}` \u2014 serialized job data (function name, args, kwargs, original `job_try` if re-enqueued)\n- `arq:retry:{job_id}` \u2014 integer counter, incremented on each execution attempt\n- `arq:queue` (sorted set) \u2014 job IDs with scores (Unix milliseconds representing execution time)\n- `arq:result:{job_id}` \u2014 serialized result (only stored if job succeeds or max retries exceeded)\n\n## Example Flow\n\nFrom **docs/examples/retry.py**:\n1. Job enqueued with `job_try=None`\n2. First execution (`job_try=1`): raises `Retry(defer=5s)`\n3. Job rescheduled with +5000ms to its score\n4. Second execution (`job_try=2`): raises `Retry(defer=10s)` \n5. Job rescheduled with +10000ms to its score\n6. And so on until max_tries (default 5) is exceeded\n\nThe backoff is entirely controlled by what the job function raises in the `Retry` exception, giving applications fine-grained control over retry timing and patterns.\n\nGit diff:\n\n\nCode-quality signals:\n{\n  \"lint\": {\n    \"command\": [\n      \"uv\",\n      \"run\",\n      \"ruff\",\n      \"check\",\n      \".\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/arq-l2-arq-ask-complex-01-trial1\",\n    \"exit_code\": 2,\n    \"finished_at\": \"2026-04-10T05:15:22+00:00\",\n    \"started_at\": \"2026-04-10T05:15:21+00:00\",\n    \"stderr\": \"error: Required uv version `>=0.8.4` does not match the running version `0.7.12`. Update `uv` by running `uv self update`.\\n\",\n    \"stdout\": \"\"\n  },\n  \"lint_baseline\": {\n    \"command\": [\n      \"uv\",\n      \"run\",\n      \"ruff\",\n      \"check\",\n      \".\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/arq-l2-arq-ask-complex-01-trial1\",\n    \"exit_code\": 2,\n    \"finished_at\": \"2026-04-10T05:09:28+00:00\",\n    \"started_at\": \"2026-04-10T05:09:28+00:00\",\n    \"stderr\": \"error: Required uv version `>=0.8.4` does not match the running version `0.7.12`. Update `uv` by running `uv self update`.\\n\",\n    \"stdout\": \"\"\n  },\n  \"lint_baseline_findings\": 1,\n  \"lint_delta\": 0,\n  \"lint_findings\": 1,\n  \"tests\": {\n    \"command\": [\n      \"uv\",\n      \"run\",\n      \"pytest\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/arq-l2-arq-ask-complex-01-trial1\",\n    \"exit_code\": 2,\n    \"finished_at\": \"2026-04-10T05:15:21+00:00\",\n    \"started_at\": \"2026-04-10T05:15:21+00:00\",\n    \"stderr\": \"error: Required uv version `>=0.8.4` does not match the running version `0.7.12`. Update `uv` by running `uv self update`.\\n\",\n    \"stdout\": \"\"\n  }\n}\n\nEfficiency signals:\n{\n  \"action_calls\": 0,\n  \"exploration_calls\": 14,\n  \"exploration_to_action_ratio\": null,\n  \"finished_at\": \"2026-04-10T05:14:50.529000+00:00\",\n  \"input_tokens\": 146,\n  \"output_tokens\": 4386,\n  \"started_at\": \"2026-04-10T05:10:40.823000+00:00\",\n  \"time_to_completion_seconds\": 249.706,\n  \"time_to_first_edit_seconds\": null,\n  \"tool_call_count\": 17,\n  \"tool_counts\": {\n    \"bash\": 3,\n    \"grep\": 5,\n    \"read\": 9\n  },\n  \"total_tokens\": 4532\n}\n\nScore the run from 0-100 using four equally weighted 0-25 dimensions:\n1. Correctness: factual accuracy against ground truth.\n2. Completeness: covers all relevant systems and caveats.\n3. Evidence alignment: cites or reflects the repo-grounded flow.\n4. Communication quality: organized, concise, and directly useful.\n\nReturn JSON only with this schema:\n{\n  \"total_score\": 0,\n  \"dimension_scores\": {\n    \"correctness\": 0,\n    \"completeness\": 0,\n    \"convention_fit\": 0,\n    \"verification_or_communication\": 0\n  },\n  \"summary\": \"short paragraph\",\n  \"strengths\": [\"...\"],\n  \"weaknesses\": [\"...\"],\n  \"confidence\": \"low|medium|high\"\n}",
+    "reason": "Judge produced empty output",
+    "started_at": "2026-04-10T05:15:22+00:00",
+    "status": "failed",
+    "stderr": ""
+  },
+  "metrics": {
+    "action_calls": 0,
+    "exploration_calls": 14,
+    "exploration_to_action_ratio": null,
+    "finished_at": "2026-04-10T05:14:50.529000+00:00",
+    "input_tokens": 146,
+    "output_tokens": 4386,
+    "started_at": "2026-04-10T05:10:40.823000+00:00",
+    "time_to_completion_seconds": 249.706,
+    "time_to_first_edit_seconds": null,
+    "tool_call_count": 17,
+    "tool_counts": {
+      "bash": 3,
+      "grep": 5,
+      "read": 9
+    },
+    "total_tokens": 4532
+  },
+  "repo": {
+    "archeia_output_path": "evals/archeia-output/arq",
+    "baseline_docs": [],
+    "branch": "main",
+    "commands": {
+      "lint": "uv run ruff check .",
+      "test": "uv run pytest"
+    },
+    "commit": "fda407c4cb5ec2e6f2b13c2aa9671f86e7a0f8c5",
+    "complexity": "flat",
+    "id": "arq",
+    "language": "py",
+    "loc": 6000,
+    "notes": [
+      "Negative control for small-repo contamination.",
+      "Expect limited benefit because the codebase fits in context."
+    ],
+    "repo": "python-arq/arq",
+    "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/arq",
+    "tests_available": true
+  },
+  "repo_id": "arq",
+  "result_path": "/Users/hugopeck/conductor/workspaces/archeia/phoenix/evals/results/raw/arq/arq-ask-complex-01/l2/trial-1.json",
+  "started_at": "2026-04-10T05:09:26+00:00",
+  "status": "completed",
+  "task": {
+    "acceptance_criteria": [
+      "Covers enqueue, execution, failure, and retry scheduling flow in order.",
+      "Uses actual module names and retry concepts from arq.",
+      "Explains where retry state is stored or computed.",
+      "Avoids inventing components outside the repo."
+    ],
+    "category": "ask_complex",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "expected_modules_read": [
+      "arq/worker.py",
+      "arq/jobs.py",
+      "arq/connections.py",
+      "arq/utils.py"
+    ],
+    "ground_truth": "Expected outcome:\n- Must identify where retry metadata lives, how worker execution decides to reschedule work, and how backoff or delay behavior is represented. Expected grounding includes arq/worker.py, arq/jobs.py, and any supporting connection or utility code involved in scheduling.\n\nMust mention / touch:\n- arq/worker.py\n- arq/jobs.py\n- arq/connections.py\n- arq/utils.py\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo",
+    "id": "arq-ask-complex-01",
+    "metadata": {
+      "difficulty": "complex",
+      "doc_sensitivity": "high",
+      "output_type": "explanation",
+      "primary_surface": "retry-backoff",
+      "verification_scope": "repo_default"
+    },
+    "prompt": "Read the codebase and explain how job retry and backoff work end to end in arq, from enqueueing through worker execution and retry scheduling. Base your answer only on code you actually read.",
+    "repo_id": "arq"
+  },
+  "trial": 1
+}

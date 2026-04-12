@@ -1,0 +1,30 @@
+{
+  "id": "mitmproxy-plan-complex-01",
+  "repo_id": "mitmproxy",
+  "category": "plan_complex",
+  "prompt": "Read the codebase and design a new addon that logs JSON API responses whose latency exceeds 500ms to a local SQLite database. Identify the right integration points, data flow, and testing strategy. Ground your plan in the actual modules and patterns you find.",
+  "ground_truth": "Expected outcome:\n- The plan should anchor itself in mitmproxy addon patterns, identify where response timing is available, specify where persistence logic should live, and describe how to validate behavior without cutting across the proxy core unnecessarily. Expected modules include addon registration surfaces, flow/HTTP models, and any persistence helper location the repo patterns suggest.\n\nMust mention / touch:\n- mitmproxy/addons/\n- mitmproxy/http.py\n- mitmproxy/flow.py\n- test/\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path",
+  "acceptance_criteria": [
+    "Identifies concrete integration points in addon and flow handling.",
+    "Separates addon behavior from persistence concerns cleanly.",
+    "Includes a realistic testing strategy using existing mitmproxy patterns.",
+    "Respects current project structure and avoids unnecessary core rewrites."
+  ],
+  "expected_modules_read": [
+    "mitmproxy/addons/",
+    "mitmproxy/http.py",
+    "mitmproxy/flow.py",
+    "test/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "plan",
+    "primary_surface": "addon-design",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

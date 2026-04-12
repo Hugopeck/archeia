@@ -1,0 +1,79 @@
+{
+  "captured_at": "2026-04-09T12:02:56+00:00",
+  "captured_head": "98df9bae772c3cb5b315ed8877c4ec83b05953dd",
+  "colocated_agents": [
+    "server/polar/benefit/agents.md",
+    "server/polar/benefit/claude.md",
+    "server/polar/integrations/agents.md",
+    "server/polar/integrations/claude.md",
+    "server/polar/models/agents.md",
+    "server/polar/models/claude.md",
+    "server/polar/worker/agents.md",
+    "server/polar/worker/claude.md",
+    "server/tinybird/agents.md",
+    "server/tinybird/claude.md"
+  ],
+  "colocated_readmes": [
+    "clients/packages/i18n/README.md",
+    "clients/packages/orbit/README.md",
+    "dev/README.md",
+    "server/README.md",
+    "server/polar/README.md",
+    "server/polar/benefit/README.md",
+    "server/polar/customer_portal/README.md",
+    "server/polar/integrations/README.md",
+    "server/polar/kit/README.md",
+    "server/polar/models/README.md",
+    "server/polar/oauth2/README.md",
+    "server/polar/observability/README.md",
+    "server/polar/transaction/README.md",
+    "server/polar/worker/README.md",
+    "server/scripts/README.md",
+    "server/tests/README.md",
+    "server/tinybird/README.md"
+  ],
+  "copied_archeia_paths": [
+    ".archeia/Architecture.md",
+    ".archeia/Components.json",
+    ".archeia/Containers.json",
+    ".archeia/DataFlow.json",
+    ".archeia/Entities.json",
+    ".archeia/Guide.md",
+    ".archeia/Standards.md",
+    ".archeia/System.json",
+    ".archeia/diagrams"
+  ],
+  "copied_root_docs": [
+    "AGENTS.md",
+    "CLAUDE.md"
+  ],
+  "pinned_commit": "98df9bae772c3cb5b315ed8877c4ec83b05953dd",
+  "pipeline_order": [
+    "archeia-scan-repo",
+    "archeia-scan-git",
+    "archeia-write-tech-docs",
+    "archeia-write-readmes",
+    "archeia-write-agents-docs",
+    "archeia-draw-diagrams"
+  ],
+  "repo_id": "polar",
+  "skipped_outputs": [
+    ".archeia/StateMachine.json"
+  ],
+  "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/polar",
+  "source_repo": "polarsource/polar",
+  "validation": {
+    "command": [
+      "bash",
+      "/Users/hugopeck/conductor/workspaces/archeia/toronto/skills/archeia-write-tech-docs/scripts/validate-evidence.sh",
+      "/tmp/archeia-phase3/polar",
+      "/tmp/archeia-phase3/polar/.archeia",
+      "--include-root-docs"
+    ],
+    "exit_code": 2,
+    "status": "invalid",
+    "stderr": "mode=python\n",
+    "stdout": "{\n  \"mode\": \"python\",\n  \"repo_root\": \"/private/tmp/archeia-phase3/polar\",\n  \"output_dir\": \"/private/tmp/archeia-phase3/polar/.archeia\",\n  \"checked_files\": [\n    \".archeia/Architecture.md\",\n    \".archeia/GitReport.md\",\n    \".archeia/Guide.md\",\n    \".archeia/ScanReport.md\",\n    \".archeia/Standards.md\",\n    \".archeia/Components.json\",\n    \".archeia/Containers.json\",\n    \".archeia/DataFlow.json\",\n    \".archeia/Entities.json\",\n    \".archeia/System.json\",\n    \"AGENTS.md\",\n    \"CLAUDE.md\"\n  ],\n  \"valid_paths\": [\n    \"README.md\",\n    \"AGENTS.md\",\n    \"server/pyproject.toml\",\n    \"DEVELOPMENT.md\",\n    \"dev/docker/docker-compose.dev.yml\",\n    \"server/polar/app.py\",\n    \"server/polar/models\",\n    \"clients/pnpm-workspace.yaml\",\n    \"server/polar/middlewares.py\",\n    \"server/polar/worker\",\n    \"server/polar/auth\",\n    \".nvmrc\",\n    \"package.json\",\n    \"dev/cli\",\n    \"CLAUDE.md\",\n    \"clients/package.json\",\n    \"server/Dockerfile\",\n    \"terraform\",\n    \"docs\",\n    \"clients/.prettierrc.json\",\n    \"clients/apps/app/eslint.config.js\",\n    \"clients/apps/web/eslint.config.mjs\",\n    \"pyrightconfig.json\",\n    \"clients/apps/web/vitest.config.ts\",\n    \"server/polar\",\n    \"clients/apps/web/src\",\n    \"clients/packages/ui/src/components\",\n    \"server/polar/checkout\",\n    \"server/polar/product\",\n    \"server/polar/subscription\",\n    \"server/polar/order\",\n    \"server/polar/customer\",\n    \"server/polar/benefit\",\n    \"server/polar/transaction\",\n    \"server/polar/oauth2\",\n    \"server/polar/webhook\",\n    \"server/polar/integrations\",\n    \"server/polar/kit\",\n    \"clients/apps/web/src/app\",\n    \"clients/packages/client\",\n    \"clients/packages/ui\",\n    \"clients/apps/web\",\n    \"server/polar/backoffice\",\n    \"server/emails\",\n    \"server/polar/postgres.py\",\n    \"server/polar/redis.py\",\n    \"server/polar/models/product.py\",\n    \"server/polar/models/order.py\",\n    \"server/polar/models/customer.py\",\n    \"server/polar/models/subscription.py\",\n    \"server/polar/models/checkout.py\",\n    \"server/polar/models/organization.py\",\n    \"server/polar/models/benefit.py\",\n    \"server/polar/models/transaction.py\",\n    \"server/polar/models/user.py\",\n    \"server/polar/models/product_benefit.py\",\n    \"server/polar/customer_portal\"\n  ],\n  \"invalid_paths\": [\n    \"requires-python = \\\">=3.14.0\\\"\",\n    \"pre_deploy\",\n    \"\\\"packageManager\\\": \\\"pnpm@10.28.1\\\"\"\n  ],\n  \"malformed_evidence\": [\n    {\n      \"file\": \".archeia/Guide.md\",\n      \"reason\": \"placeholder token\",\n      \"value\": \"[tool.taskipy.tasks]\"\n    },\n    {\n      \"file\": \".archeia/Guide.md\",\n      \"reason\": \"placeholder token\",\n      \"value\": \"[tool.taskipy.tasks]\"\n    },\n    {\n      \"file\": \".archeia/Guide.md\",\n      \"reason\": \"placeholder token\",\n      \"value\": \"[tool.taskipy.tasks]\"\n    },\n    {\n      \"file\": \".archeia/Guide.md\",\n      \"reason\": \"placeholder token\",\n      \"value\": \"[tool.taskipy.tasks]\"\n    },\n    {\n      \"file\": \".archeia/Standards.md\",\n      \"reason\": \"placeholder token\",\n      \"value\": \"[tool.ruff]\"\n    },\n    {\n      \"file\": \".archeia/Standards.md\",\n      \"reason\": \"placeholder token\",\n      \"value\": \"[tool.ruff.lint]\"\n    },\n    {\n      \"file\": \".archeia/Standards.md\",\n      \"reason\": \"placeholder token\",\n      \"value\": \"[tool.mypy]\"\n    },\n    {\n      \"file\": \".archeia/Standards.md\",\n      \"reason\": \"placeholder token\",\n      \"value\": \"[tool.pydantic-mypy]\"\n    },\n    {\n      \"file\": \".archeia/Standards.md\",\n      \"reason\": \"placeholder token\",\n      \"value\": \"[tool.pytest.ini_options]\"\n    },\n    {\n      \"file\": \".archeia/Standards.md\",\n      \"reason\": \"placeholder token\",\n      \"value\": \"[tool.coverage.*]\"\n    }\n  ],\n  \"stats\": {\n    \"checked_files\": 12,\n    \"valid_paths\": 57,\n    \"invalid_paths\": 3,\n    \"malformed_evidence\": 10\n  }\n}\n"
+  },
+  "worktree": "/tmp/archeia-phase3/polar"
+}

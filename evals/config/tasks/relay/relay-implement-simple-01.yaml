@@ -1,0 +1,28 @@
+{
+  "id": "relay-implement-simple-01",
+  "repo_id": "relay",
+  "category": "implement_simple",
+  "prompt": "Read the codebase and reject channel configuration values that collapse to an empty subscription list after parsing instead of starting the broker with no usable channels. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should validate parsed channel configuration, reject all-empty results after trimming, preserve valid comma-separated input, and add focused tests.\n\nMust mention / touch:\n- src/config.rs\n- tests/\n\nCommon failure modes:\n- Accepting an empty effective channel list after parsing\n- Duplicating channel parsing logic instead of validating the existing path",
+  "acceptance_criteria": [
+    "Rejects channel configuration that parses down to an empty list.",
+    "Preserves current behavior for valid channel strings.",
+    "Keeps validation in the existing channel parsing/config path.",
+    "Includes focused regression coverage."
+  ],
+  "expected_modules_read": [
+    "src/config.rs",
+    "tests/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "simple",
+    "output_type": "code_change",
+    "primary_surface": "empty-channel-config",
+    "doc_sensitivity": "medium",
+    "verification_scope": "repo_default"
+  }
+}

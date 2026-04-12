@@ -1,0 +1,30 @@
+{
+  "id": "relay-implement-complex-02",
+  "repo_id": "relay",
+  "category": "implement_complex",
+  "prompt": "Read the codebase and create a shared workspace-selector helper used by both agent spawning and multi-workspace session lookup so workspace IDs and aliases resolve consistently in one place. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should extract a real shared workspace-selector helper, use it from multiple runtime paths, preserve current ID and alias semantics, and update tests.\n\nMust mention / touch:\n- src/spawner.rs\n- src/scheduler.rs\n- src/multi_workspace.rs\n- src/supervisor.rs\n\nCommon failure modes:\n- Leaving workspace selector logic split across runtime paths after the extraction\n- Changing current workspace ID or alias resolution semantics",
+  "acceptance_criteria": [
+    "Extracts a shared workspace-selector helper into an appropriate shared surface.",
+    "Uses the helper from at least two existing runtime paths.",
+    "Preserves current workspace ID and alias semantics.",
+    "Adds or updates focused regression coverage."
+  ],
+  "expected_modules_read": [
+    "src/spawner.rs",
+    "src/scheduler.rs",
+    "src/multi_workspace.rs",
+    "src/supervisor.rs"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "code_change",
+    "primary_surface": "shared-workspace-selector",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

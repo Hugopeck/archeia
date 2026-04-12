@@ -1,0 +1,23 @@
+{
+  "skill_name": "archeia-write-tech-docs",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Generate architecture documentation for this repository. It's a Node.js/TypeScript API with Express, Prisma ORM, BullMQ for background jobs, and PostgreSQL + Redis. There's a React frontend in apps/web/.",
+      "expected_output": "Should produce Architecture.md with correct topology (monorepo with API + web app), System.json with PostgreSQL/Redis/Stripe as external systems, Containers.json with api-server/background-worker/web-app containers, Components.json with routes/middleware/services/models components, DataFlow.json with primary request flow, Entities.json from Prisma schema, Standards.md, Guide.md, AGENTS.md, and CLAUDE.md. All claims must cite actual file paths.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Run archeia-write-tech-docs on this Python Django repo. It has a prediction market backend with Celery workers, djmoney for currency handling, and double-entry accounting. The models use django-fsm for state machines on Question and Wager entities.",
+      "expected_output": "Should produce all core docs plus Entities.json (extracting Question, Outcome, Wager, LimitOrder, User models from Django models.py files), StateMachine.json (Question lifecycle and Wager lifecycle with high confidence since django-fsm is detected), and DataFlow.json showing the wager placement flow through API → contrib → order book → settlement. Architecture.md should include Data Model and State Lifecycles conditional sections.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Generate .archeia docs for this Go microservices repo. It has three services in services/ (gateway, auth, orders), each with their own go.mod. No ORM — uses raw SQL with pgx. No state machine library. There's a docker-compose.yml with PostgreSQL, Redis, and NATS.",
+      "expected_output": "Should produce Architecture.md with microservices topology, System.json with three services and external systems (PostgreSQL, Redis, NATS), Containers.json decomposing each service plus the external systems, Components.json for each service's internal structure. Should skip Entities.json (no ORM detected — raw SQL with pgx is too low-confidence) or produce a minimal one from migration files if .sql files are found. Should skip StateMachine.json (no state machine library). DataFlow.json should show inter-service communication via NATS. Architecture.md should NOT include Data Model or State Lifecycles sections.",
+      "files": []
+    }
+  ]
+}

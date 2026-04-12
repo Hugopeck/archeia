@@ -1,0 +1,201 @@
+{
+  "source_type": "typeorm",
+  "entities": [
+    {
+      "id": "user",
+      "name": "User",
+      "description": "Platform user with authentication, preferences, subscription status, streak, and achievement tracking.",
+      "fields": [
+        { "name": "id", "type": "text", "constraints": ["pk"] },
+        { "name": "username", "type": "text", "constraints": ["unique", "not_null"] },
+        { "name": "email", "type": "text", "constraints": ["unique", "nullable"] },
+        { "name": "subscriptionFlags", "type": "jsonb", "constraints": ["nullable"] },
+        { "name": "flags", "type": "jsonb", "constraints": ["nullable"] },
+        { "name": "notificationFlags", "type": "jsonb", "constraints": ["nullable"] }
+      ],
+      "evidence": ["src/entity/user/User.ts"]
+    },
+    {
+      "id": "post",
+      "name": "Post",
+      "description": "Content item in the feed — base class with table inheritance for Article, Share, Freeform, Welcome, Collection, YouTube, and SocialTwitter subtypes.",
+      "fields": [
+        { "name": "id", "type": "text", "constraints": ["pk"] },
+        { "name": "type", "type": "varchar", "constraints": ["not_null", "default:article"] },
+        { "name": "sourceId", "type": "text", "constraints": ["fk:source", "not_null"] },
+        { "name": "authorId", "type": "text", "constraints": ["fk:user", "nullable"] },
+        { "name": "visible", "type": "boolean", "constraints": ["not_null"] },
+        { "name": "flags", "type": "jsonb", "constraints": ["nullable"] }
+      ],
+      "evidence": ["src/entity/posts/Post.ts"]
+    },
+    {
+      "id": "source",
+      "name": "Source",
+      "description": "Content source — machine-curated publisher, user-created Squad, or user source. Uses table inheritance.",
+      "fields": [
+        { "name": "id", "type": "text", "constraints": ["pk"] },
+        { "name": "type", "type": "varchar", "constraints": ["not_null"] },
+        { "name": "name", "type": "text", "constraints": ["not_null"] },
+        { "name": "handle", "type": "text", "constraints": ["unique", "not_null"] },
+        { "name": "active", "type": "boolean", "constraints": ["not_null"] },
+        { "name": "private", "type": "boolean", "constraints": ["not_null"] }
+      ],
+      "evidence": ["src/entity/Source.ts"]
+    },
+    {
+      "id": "comment",
+      "name": "Comment",
+      "description": "Threaded user comment on a post, supporting upvotes, downvotes, nested replies, and award transactions.",
+      "fields": [
+        { "name": "id", "type": "varchar(14)", "constraints": ["pk"] },
+        { "name": "postId", "type": "text", "constraints": ["fk:post", "not_null"] },
+        { "name": "userId", "type": "varchar(36)", "constraints": ["fk:user", "not_null"] },
+        { "name": "parentId", "type": "varchar(14)", "constraints": ["fk:comment", "nullable"] },
+        { "name": "upvotes", "type": "integer", "constraints": ["not_null", "default:0"] },
+        { "name": "content", "type": "text", "constraints": ["not_null"] }
+      ],
+      "evidence": ["src/entity/Comment.ts"]
+    },
+    {
+      "id": "feed",
+      "name": "Feed",
+      "description": "User-owned feed configuration that stores personalization settings and filter preferences.",
+      "fields": [
+        { "name": "id", "type": "text", "constraints": ["pk"] },
+        { "name": "userId", "type": "text", "constraints": ["fk:user", "not_null"] }
+      ],
+      "evidence": ["src/entity/Feed.ts"]
+    },
+    {
+      "id": "source-member",
+      "name": "SourceMember",
+      "description": "Membership record linking a User to a Source (Squad), with role and referral tracking.",
+      "fields": [
+        { "name": "userId", "type": "text", "constraints": ["pk", "fk:user"] },
+        { "name": "sourceId", "type": "text", "constraints": ["pk", "fk:source"] },
+        { "name": "role", "type": "varchar", "constraints": ["not_null"] },
+        { "name": "referralToken", "type": "text", "constraints": ["unique", "nullable"] }
+      ],
+      "evidence": ["src/entity/SourceMember.ts"]
+    },
+    {
+      "id": "bookmark",
+      "name": "Bookmark",
+      "description": "User bookmark linking a User to a saved Post, optionally organized into a BookmarkList.",
+      "fields": [
+        { "name": "userId", "type": "text", "constraints": ["pk", "fk:user"] },
+        { "name": "postId", "type": "text", "constraints": ["pk", "fk:post"] },
+        { "name": "listId", "type": "text", "constraints": ["fk:bookmark-list", "nullable"] },
+        { "name": "createdAt", "type": "timestamp", "constraints": ["not_null"] }
+      ],
+      "evidence": ["src/entity/Bookmark.ts"]
+    },
+    {
+      "id": "user-streak",
+      "name": "UserStreak",
+      "description": "Tracks a user's daily reading streak — current count, max, and last view date for gamification.",
+      "fields": [
+        { "name": "userId", "type": "text", "constraints": ["pk", "fk:user"] },
+        { "name": "currentStreak", "type": "integer", "constraints": ["not_null", "default:0"] },
+        { "name": "maxStreak", "type": "integer", "constraints": ["not_null", "default:0"] },
+        { "name": "lastViewAt", "type": "timestamp", "constraints": ["nullable"] }
+      ],
+      "evidence": ["src/entity/user/UserStreak.ts"]
+    },
+    {
+      "id": "view",
+      "name": "View",
+      "description": "Post view event record used for feed ranking, analytics, and streak calculation.",
+      "fields": [
+        { "name": "userId", "type": "text", "constraints": ["fk:user", "not_null"] },
+        { "name": "postId", "type": "text", "constraints": ["fk:post", "not_null"] },
+        { "name": "timestamp", "type": "timestamp", "constraints": ["not_null"] },
+        { "name": "hidden", "type": "boolean", "constraints": ["not_null", "default:false"] }
+      ],
+      "evidence": ["src/entity/View.ts"]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "user-to-post",
+      "from": "user",
+      "to": "post",
+      "cardinality": "one_to_many",
+      "description": "User authors posts",
+      "evidence": ["src/entity/posts/Post.ts"]
+    },
+    {
+      "id": "source-to-post",
+      "from": "source",
+      "to": "post",
+      "cardinality": "one_to_many",
+      "description": "Source publishes posts",
+      "evidence": ["src/entity/posts/Post.ts"]
+    },
+    {
+      "id": "post-to-comment",
+      "from": "post",
+      "to": "comment",
+      "cardinality": "one_to_many",
+      "description": "Post has many comments",
+      "evidence": ["src/entity/Comment.ts"]
+    },
+    {
+      "id": "user-to-comment",
+      "from": "user",
+      "to": "comment",
+      "cardinality": "one_to_many",
+      "description": "User writes comments",
+      "evidence": ["src/entity/Comment.ts"]
+    },
+    {
+      "id": "comment-to-comment",
+      "from": "comment",
+      "to": "comment",
+      "cardinality": "one_to_many",
+      "description": "Comment has child reply comments",
+      "evidence": ["src/entity/Comment.ts"]
+    },
+    {
+      "id": "user-to-feed",
+      "from": "user",
+      "to": "feed",
+      "cardinality": "one_to_many",
+      "description": "User owns personalized feeds",
+      "evidence": ["src/entity/Feed.ts"]
+    },
+    {
+      "id": "user-to-source-member",
+      "from": "user",
+      "to": "source-member",
+      "cardinality": "one_to_many",
+      "description": "User is member of multiple Sources",
+      "evidence": ["src/entity/SourceMember.ts"]
+    },
+    {
+      "id": "source-to-source-member",
+      "from": "source",
+      "to": "source-member",
+      "cardinality": "one_to_many",
+      "description": "Source has many member users",
+      "evidence": ["src/entity/SourceMember.ts"]
+    },
+    {
+      "id": "user-to-bookmark",
+      "from": "user",
+      "to": "bookmark",
+      "cardinality": "one_to_many",
+      "description": "User bookmarks posts",
+      "evidence": ["src/entity/Bookmark.ts"]
+    },
+    {
+      "id": "user-to-streak",
+      "from": "user",
+      "to": "user-streak",
+      "cardinality": "one_to_one",
+      "description": "User has one streak record",
+      "evidence": ["src/entity/user/UserStreak.ts"]
+    }
+  ]
+}

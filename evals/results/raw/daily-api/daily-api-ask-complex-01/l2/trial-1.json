@@ -1,0 +1,215 @@
+{
+  "agent_run": {
+    "command": [
+      "claude",
+      "--model",
+      "haiku",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--permission-mode",
+      "auto",
+      "--append-system-prompt",
+      "CRITICAL RULE: You MUST use your tools to read files in this repository before answering. Do NOT answer from memory or training data. Start by exploring the project structure with Bash(ls) or Glob, then read the specific files needed to answer the question. Every claim you make must cite a specific file path you actually read in this session. If you answer without reading files first, your response will be scored as zero.",
+      "-p",
+      "Read the codebase and explain how a new post moves through daily-api until it becomes eligible to appear in a personalized feed. Base your answer only on code you actually read."
+    ],
+    "exit_code": 0,
+    "finished_at": "2026-04-10T04:00:59+00:00",
+    "started_at": "2026-04-10T03:54:56+00:00",
+    "status": "completed",
+    "stderr": "",
+    "stdout": "Based on reading the codebase, here's how a new post moves through daily-api until it becomes eligible for personalized feeds:\n\n## Post Creation & Moderation\n\n**1. Initial Submission**\nWhen a user submits a post via mutations like `createSourcePostModeration` (src/schema/posts.ts:2485), it creates a `SourcePostModeration` record in the `pending` state (src/common/post.ts:484). During creation:\n- Vordr content filtering checks are applied (src/entity/posts/hooks.ts:19-48)\n- A deduplication key is generated to prevent duplicate content\n- Warning flags are set if content matches known issues\n\n**2. Moderation & Approval**\nThe CDC (Change Data Capture) worker monitors the SourcePostModeration table (src/workers/cdc/primary.ts:1151). When the status changes to `Approved`, it calls `processApprovedModeratedPost` (src/common/post.ts:951), which creates the actual Post entity based on the post type:\n- **Freeform posts**: `insertFreeformPost` (src/common/post.ts:356) creates with:\n  - `visible: true`\n  - `visibleAt: new Date()` (immediately visible)\n  - `private: [source's privacy setting]`\n  - `origin: PostOrigin.UserGenerated`\n- **Article/External link posts**: `createExternalLink` (src/entity/posts/utils.ts:338) creates with `visible: isVisible` (true if title exists)\n- **Poll posts**: `createPollPost` creates similar to freeform\n\n**3. Vordr & Deduplication Hooks**\nBefore saving, `preparePostForInsert` applies hooks (src/entity/posts/utils.ts:306) that can modify post eligibility:\n- **Vordr hook** (src/entity/posts/hooks.ts:19): If content violates policies, sets:\n  - `banned: true`\n  - `showOnFeed: false`\n  - Flags the post as `vordr: true`\n\n## Feed Eligibility Filtering\n\nFor a post to appear in a personalized feed, it must pass the `applyFeedWhere` filter (src/common/feedGenerator.ts:428):\n\n```\n\u2705 banned = FALSE\n\u2705 showOnFeed = TRUE  \n\u2705 visible = TRUE (implied from post flags)\n\u2705 NOT hidden by user (leftJoin with UserPost where hidden=true)\n```\n\nThe feed query builder (src/common/feedGenerator.ts:678-709) then applies user preferences:\n- **Source filtering**: Include/exclude specific sources\n- **Tag filtering**: Include/exclude keywords via `whereTags`\n- **Private post filtering**: Whether to include private squad posts\n- **Content preferences**: User-blocked keywords, sources, users, and words\n- **Squad visibility**: Respect \"publicThreshold\" for squad posts\n\n## Key Database Properties\n\nThe Post entity (src/entity/posts/Post.ts) has critical fields indexed for feed queries:\n- `visible` (default: true) - Column 273\n- `deleted` (default: false) - Column 263  \n- `banned` (default: false) - Column 260\n- `showOnFeed` (default: true) - Column 289\n- `flags` (JSONB) - Can contain `vordr`, `banned`, `visible`, `deleted` overrides - Column 304\n\nThe indices like `IDX_post_deleted_visible_banned_showonfeed_id_type` (Column 129-136) show how the database optimizes these exact feed filtering queries.\n\n## Summary Flow\n\n```\nUser submits post \n  \u2193\nSourcePostModeration (Pending)\n  \u2193\nVordr & deduplication checks\n  \u2193\nApproved \u2192 Post created (visible=true, showOnFeed=true, banned=false)\n  \u2193\nEligible for feeds (passes applyFeedWhere filters)\n  \u2193\nPersonalized feed includes post (if matches user preferences)\n```",
+    "transcript_path": "/tmp/archeia-phase4/daily-api-l2-daily-api-ask-complex-01-trial1/.archeia-eval/conversation.json"
+  },
+  "code_quality": {
+    "lint": {
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "cwd": "/tmp/archeia-phase4/daily-api-l2-daily-api-ask-complex-01-trial1",
+      "exit_code": 1,
+      "finished_at": "2026-04-10T04:01:04+00:00",
+      "started_at": "2026-04-10T04:00:59+00:00",
+      "stderr": "sh: eslint: command not found\n",
+      "stdout": "\n> daily-api@ lint /private/tmp/archeia-phase4/daily-api-l2-daily-api-ask-complex-01-trial1\n> eslint . --ext .js,.ts --max-warnings 0\n\n\u2009ELIFECYCLE\u2009 Command failed.\n\u2009WARN\u2009  Local package.json exists, but node_modules missing, did you mean to install?\n"
+    },
+    "lint_baseline": {
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "cwd": "/tmp/archeia-phase4/daily-api-l2-daily-api-ask-complex-01-trial1",
+      "exit_code": 1,
+      "finished_at": "2026-04-10T03:54:56+00:00",
+      "started_at": "2026-04-10T03:54:56+00:00",
+      "stderr": "sh: eslint: command not found\n",
+      "stdout": "\n> daily-api@ lint /private/tmp/archeia-phase4/daily-api-l2-daily-api-ask-complex-01-trial1\n> eslint . --ext .js,.ts --max-warnings 0\n\n\u2009ELIFECYCLE\u2009 Command failed.\n\u2009WARN\u2009  Local package.json exists, but node_modules missing, did you mean to install?\n"
+    },
+    "lint_baseline_findings": 5,
+    "lint_delta": 0,
+    "lint_findings": 5,
+    "tests": null
+  },
+  "condition_application": {
+    "archeia_output": "evals/archeia-output/daily-api",
+    "condition_id": "l2",
+    "copied_paths": [
+      ".archeia",
+      "AGENTS.md",
+      "CLAUDE.md",
+      "__tests__/README.md",
+      "__tests__/agents.md",
+      "__tests__/claude.md",
+      "bin/README.md",
+      "src/README.md",
+      "src/common/README.md",
+      "src/entity/README.md",
+      "src/entity/agents.md",
+      "src/entity/claude.md",
+      "src/integrations/README.md",
+      "src/routes/README.md",
+      "src/routes/agents.md",
+      "src/routes/claude.md",
+      "src/schema/README.md",
+      "src/workers/README.md"
+    ],
+    "kept_existing_docs": false,
+    "removed_paths": [
+      "AGENTS.md"
+    ],
+    "repo_id": "daily-api",
+    "worktree": "/tmp/archeia-phase4/daily-api-l2-daily-api-ask-complex-01-trial1"
+  },
+  "condition_commit": {
+    "command": [
+      "git",
+      "commit",
+      "-m",
+      "Apply evaluation condition"
+    ],
+    "cwd": "/tmp/archeia-phase4/daily-api-l2-daily-api-ask-complex-01-trial1",
+    "exit_code": 0,
+    "finished_at": "2026-04-10T03:54:56+00:00",
+    "started_at": "2026-04-10T03:54:56+00:00",
+    "stderr": "",
+    "stdout": "[detached HEAD 63f0c29] Apply evaluation condition\n 31 files changed, 1963 insertions(+)\n create mode 100644 .archeia/Architecture.md\n create mode 100644 .archeia/Components.json\n create mode 100644 .archeia/Containers.json\n create mode 100644 .archeia/DataFlow.json\n create mode 100644 .archeia/Entities.json\n create mode 100644 .archeia/Guide.md\n create mode 100644 .archeia/Standards.md\n create mode 100644 .archeia/System.json\n create mode 100644 .archeia/diagrams/components-api-server.md\n create mode 100644 .archeia/diagrams/components-background-worker.md\n create mode 100644 .archeia/diagrams/components-cron-runner.md\n create mode 100644 .archeia/diagrams/containers.md\n create mode 100644 .archeia/diagrams/context.md\n create mode 100644 .archeia/diagrams/erd.md\n create mode 100644 .archeia/diagrams/sequence-background-event.md\n create mode 100644 .archeia/diagrams/sequence-primary.md\n create mode 100644 __tests__/README.md\n create mode 100644 __tests__/agents.md\n create mode 100644 __tests__/claude.md\n create mode 100644 bin/README.md\n create mode 100644 src/README.md\n create mode 100644 src/common/README.md\n create mode 100644 src/entity/README.md\n create mode 100644 src/entity/agents.md\n create mode 100644 src/entity/claude.md\n create mode 100644 src/integrations/README.md\n create mode 100644 src/routes/README.md\n create mode 100644 src/routes/agents.md\n create mode 100644 src/routes/claude.md\n create mode 100644 src/schema/README.md\n create mode 100644 src/workers/README.md\n"
+  },
+  "condition_id": "l2",
+  "diff": "",
+  "finished_at": "2026-04-10T04:01:37+00:00",
+  "judge": {
+    "command": [
+      "claude",
+      "--output-format",
+      "json",
+      "-p",
+      "You are judging an Archeia evaluation run.\n\nTask category: ask_complex\nTask id: daily-api-ask-complex-01\n\nTask prompt:\nRead the codebase and explain how a new post moves through daily-api until it becomes eligible to appear in a personalized feed. Base your answer only on code you actually read.\n\nGround truth / reference:\nExpected outcome:\n- Must identify the relevant route or ingestion entry surfaces, persistence/entity layers, ranking or selection-related code, and the modules that assemble personalized feed data. Expected grounding includes routes, entity models, graph/query helpers, and feed-related supporting services.\n\nMust mention / touch:\n- src/routes/\n- src/entity/\n- src/graphorm/\n- src/dataLoaderService.ts\n- __tests__/\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo\n\nAcceptance criteria:\n[\n  \"Explains ingestion/persistence and feed-selection flow in order.\",\n  \"Uses real module names from daily-api.\",\n  \"Connects route, entity, and feed-building layers.\",\n  \"Avoids inventing external indexing systems that are not evidenced.\"\n]\n\nAgent response:\nBased on reading the codebase, here's how a new post moves through daily-api until it becomes eligible for personalized feeds:\n\n## Post Creation & Moderation\n\n**1. Initial Submission**\nWhen a user submits a post via mutations like `createSourcePostModeration` (src/schema/posts.ts:2485), it creates a `SourcePostModeration` record in the `pending` state (src/common/post.ts:484). During creation:\n- Vordr content filtering checks are applied (src/entity/posts/hooks.ts:19-48)\n- A deduplication key is generated to prevent duplicate content\n- Warning flags are set if content matches known issues\n\n**2. Moderation & Approval**\nThe CDC (Change Data Capture) worker monitors the SourcePostModeration table (src/workers/cdc/primary.ts:1151). When the status changes to `Approved`, it calls `processApprovedModeratedPost` (src/common/post.ts:951), which creates the actual Post entity based on the post type:\n- **Freeform posts**: `insertFreeformPost` (src/common/post.ts:356) creates with:\n  - `visible: true`\n  - `visibleAt: new Date()` (immediately visible)\n  - `private: [source's privacy setting]`\n  - `origin: PostOrigin.UserGenerated`\n- **Article/External link posts**: `createExternalLink` (src/entity/posts/utils.ts:338) creates with `visible: isVisible` (true if title exists)\n- **Poll posts**: `createPollPost` creates similar to freeform\n\n**3. Vordr & Deduplication Hooks**\nBefore saving, `preparePostForInsert` applies hooks (src/entity/posts/utils.ts:306) that can modify post eligibility:\n- **Vordr hook** (src/entity/posts/hooks.ts:19): If content violates policies, sets:\n  - `banned: true`\n  - `showOnFeed: false`\n  - Flags the post as `vordr: true`\n\n## Feed Eligibility Filtering\n\nFor a post to appear in a personalized feed, it must pass the `applyFeedWhere` filter (src/common/feedGenerator.ts:428):\n\n```\n\u2705 banned = FALSE\n\u2705 showOnFeed = TRUE  \n\u2705 visible = TRUE (implied from post flags)\n\u2705 NOT hidden by user (leftJoin with UserPost where hidden=true)\n```\n\nThe feed query builder (src/common/feedGenerator.ts:678-709) then applies user preferences:\n- **Source filtering**: Include/exclude specific sources\n- **Tag filtering**: Include/exclude keywords via `whereTags`\n- **Private post filtering**: Whether to include private squad posts\n- **Content preferences**: User-blocked keywords, sources, users, and words\n- **Squad visibility**: Respect \"publicThreshold\" for squad posts\n\n## Key Database Properties\n\nThe Post entity (src/entity/posts/Post.ts) has critical fields indexed for feed queries:\n- `visible` (default: true) - Column 273\n- `deleted` (default: false) - Column 263  \n- `banned` (default: false) - Column 260\n- `showOnFeed` (default: true) - Column 289\n- `flags` (JSONB) - Can contain `vordr`, `banned`, `visible`, `deleted` overrides - Column 304\n\nThe indices like `IDX_post_deleted_visible_banned_showonfeed_id_type` (Column 129-136) show how the database optimizes these exact feed filtering queries.\n\n## Summary Flow\n\n```\nUser submits post \n  \u2193\nSourcePostModeration (Pending)\n  \u2193\nVordr & deduplication checks\n  \u2193\nApproved \u2192 Post created (visible=true, showOnFeed=true, banned=false)\n  \u2193\nEligible for feeds (passes applyFeedWhere filters)\n  \u2193\nPersonalized feed includes post (if matches user preferences)\n```\n\nGit diff:\n\n\nCode-quality signals:\n{\n  \"lint\": {\n    \"command\": [\n      \"pnpm\",\n      \"lint\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/daily-api-l2-daily-api-ask-complex-01-trial1\",\n    \"exit_code\": 1,\n    \"finished_at\": \"2026-04-10T04:01:04+00:00\",\n    \"started_at\": \"2026-04-10T04:00:59+00:00\",\n    \"stderr\": \"sh: eslint: command not found\\n\",\n    \"stdout\": \"\\n> daily-api@ lint /private/tmp/archeia-phase4/daily-api-l2-daily-api-ask-complex-01-trial1\\n> eslint . --ext .js,.ts --max-warnings 0\\n\\n\\u2009ELIFECYCLE\\u2009 Command failed.\\n\\u2009WARN\\u2009  Local package.json exists, but node_modules missing, did you mean to install?\\n\"\n  },\n  \"lint_baseline\": {\n    \"command\": [\n      \"pnpm\",\n      \"lint\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/daily-api-l2-daily-api-ask-complex-01-trial1\",\n    \"exit_code\": 1,\n    \"finished_at\": \"2026-04-10T03:54:56+00:00\",\n    \"started_at\": \"2026-04-10T03:54:56+00:00\",\n    \"stderr\": \"sh: eslint: command not found\\n\",\n    \"stdout\": \"\\n> daily-api@ lint /private/tmp/archeia-phase4/daily-api-l2-daily-api-ask-complex-01-trial1\\n> eslint . --ext .js,.ts --max-warnings 0\\n\\n\\u2009ELIFECYCLE\\u2009 Command failed.\\n\\u2009WARN\\u2009  Local package.json exists, but node_modules missing, did you mean to install?\\n\"\n  },\n  \"lint_baseline_findings\": 5,\n  \"lint_delta\": 0,\n  \"lint_findings\": 5,\n  \"tests\": null\n}\n\nEfficiency signals:\n{\n  \"action_calls\": 0,\n  \"exploration_calls\": 20,\n  \"exploration_to_action_ratio\": null,\n  \"finished_at\": \"2026-04-10T04:00:41.943000+00:00\",\n  \"input_tokens\": 379,\n  \"output_tokens\": 8365,\n  \"started_at\": \"2026-04-10T03:55:04.152000+00:00\",\n  \"time_to_completion_seconds\": 337.791,\n  \"time_to_first_edit_seconds\": null,\n  \"tool_call_count\": 46,\n  \"tool_counts\": {\n    \"bash\": 26,\n    \"glob\": 1,\n    \"read\": 19\n  },\n  \"total_tokens\": 8744\n}\n\nScore the run from 0-100 using four equally weighted 0-25 dimensions:\n1. Correctness: factual accuracy against ground truth.\n2. Completeness: covers all relevant systems and caveats.\n3. Evidence alignment: cites or reflects the repo-grounded flow.\n4. Communication quality: organized, concise, and directly useful.\n\nReturn JSON only with this schema:\n{\n  \"total_score\": 0,\n  \"dimension_scores\": {\n    \"correctness\": 0,\n    \"completeness\": 0,\n    \"convention_fit\": 0,\n    \"verification_or_communication\": 0\n  },\n  \"summary\": \"short paragraph\",\n  \"strengths\": [\"...\"],\n  \"weaknesses\": [\"...\"],\n  \"confidence\": \"low|medium|high\"\n}"
+    ],
+    "confidence": "medium",
+    "dimension_scores": {
+      "completeness": 16,
+      "convention_fit": 19,
+      "correctness": 20,
+      "verification_or_communication": 17
+    },
+    "finished_at": "2026-04-10T04:01:37+00:00",
+    "started_at": "2026-04-10T04:01:04+00:00",
+    "status": "completed",
+    "strengths": [
+      "Accurate identification of post creation flow through SourcePostModeration and CDC worker",
+      "Correct identification of feed eligibility flags (banned, showOnFeed, visible) and applyFeedWhere",
+      "Well-organized with clear sequential flow diagram",
+      "Specific file paths and line numbers grounding claims in actual code",
+      "Does not invent external systems not evidenced in the repo"
+    ],
+    "summary": "The response provides a well-structured, mostly accurate walkthrough of post creation through moderation to feed eligibility. It correctly identifies key files like src/common/post.ts, src/entity/posts/Post.ts, src/common/feedGenerator.ts, and src/workers/cdc/primary.ts with specific line references. However, it misses several required layers from the ground truth: src/routes/ is not mentioned, src/graphorm/ is absent, src/dataLoaderService.ts is not discussed, and __tests__/ is not referenced. The response focuses heavily on the moderation/creation path and feed filtering but does not adequately cover the GraphQL/GraphORM query resolution layer or the data loader service that assembles personalized feed data. The content it does cover appears factually grounded with real module names and plausible line numbers.",
+    "total_score": 72,
+    "weaknesses": [
+      "Missing src/routes/ \u2014 no mention of route/ingestion entry surfaces",
+      "Missing src/graphorm/ \u2014 the GraphORM query resolution layer is a key part of feed assembly",
+      "Missing src/dataLoaderService.ts \u2014 important for understanding how feed data is loaded",
+      "No mention of __tests__/ or test coverage",
+      "Feed personalization/ranking description is shallow \u2014 mostly just filter flags rather than the actual selection/ranking logic"
+    ]
+  },
+  "metrics": {
+    "action_calls": 0,
+    "exploration_calls": 20,
+    "exploration_to_action_ratio": null,
+    "finished_at": "2026-04-10T04:00:41.943000+00:00",
+    "input_tokens": 379,
+    "output_tokens": 8365,
+    "started_at": "2026-04-10T03:55:04.152000+00:00",
+    "time_to_completion_seconds": 337.791,
+    "time_to_first_edit_seconds": null,
+    "tool_call_count": 46,
+    "tool_counts": {
+      "bash": 26,
+      "glob": 1,
+      "read": 19
+    },
+    "total_tokens": 8744
+  },
+  "repo": {
+    "archeia_output_path": "evals/archeia-output/daily-api",
+    "baseline_docs": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "branch": "main",
+    "commands": {
+      "lint": "pnpm lint",
+      "test": null
+    },
+    "commit": "9752461a184940e947cefadc886cba2010cd87fc",
+    "complexity": "medium",
+    "id": "daily-api",
+    "language": "ts",
+    "loc": 301000,
+    "notes": [
+      "Large TypeScript API with tests.",
+      "Good fit for convention-following implementation tasks."
+    ],
+    "repo": "dailydotdev/daily-api",
+    "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/daily-api",
+    "tests_available": true
+  },
+  "repo_id": "daily-api",
+  "result_path": "/Users/hugopeck/conductor/workspaces/archeia/phoenix/evals/results/raw/daily-api/daily-api-ask-complex-01/l2/trial-1.json",
+  "started_at": "2026-04-10T03:54:55+00:00",
+  "status": "completed",
+  "task": {
+    "acceptance_criteria": [
+      "Explains ingestion/persistence and feed-selection flow in order.",
+      "Uses real module names from daily-api.",
+      "Connects route, entity, and feed-building layers.",
+      "Avoids inventing external indexing systems that are not evidenced."
+    ],
+    "category": "ask_complex",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "expected_modules_read": [
+      "src/routes/",
+      "src/entity/",
+      "src/graphorm/",
+      "src/dataLoaderService.ts",
+      "__tests__/"
+    ],
+    "ground_truth": "Expected outcome:\n- Must identify the relevant route or ingestion entry surfaces, persistence/entity layers, ranking or selection-related code, and the modules that assemble personalized feed data. Expected grounding includes routes, entity models, graph/query helpers, and feed-related supporting services.\n\nMust mention / touch:\n- src/routes/\n- src/entity/\n- src/graphorm/\n- src/dataLoaderService.ts\n- __tests__/\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo",
+    "id": "daily-api-ask-complex-01",
+    "metadata": {
+      "difficulty": "complex",
+      "doc_sensitivity": "high",
+      "output_type": "explanation",
+      "primary_surface": "feed-lifecycle",
+      "verification_scope": "repo_default"
+    },
+    "prompt": "Read the codebase and explain how a new post moves through daily-api until it becomes eligible to appear in a personalized feed. Base your answer only on code you actually read.",
+    "repo_id": "daily-api"
+  },
+  "trial": 1
+}

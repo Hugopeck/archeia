@@ -1,0 +1,104 @@
+{
+  "flows": [
+    {
+      "id": "enqueue-and-execute",
+      "name": "Enqueue and Execute a Job",
+      "primary": true,
+      "description": "Application code enqueues a job to Redis; the worker picks it up, executes the coroutine, and stores the result.",
+      "participants": [
+        {
+          "id": "developer",
+          "name": "Application Code",
+          "type": "person"
+        },
+        {
+          "id": "arq-client-connections",
+          "name": "ArqRedis (connections)",
+          "type": "component"
+        },
+        {
+          "id": "redis",
+          "name": "Redis",
+          "type": "external_system"
+        },
+        {
+          "id": "arq-worker-worker",
+          "name": "Worker",
+          "type": "component"
+        }
+      ],
+      "steps": [
+        {
+          "from": "developer",
+          "to": "arq-client-connections",
+          "type": "sync",
+          "protocol": "function call",
+          "label": "arq_redis.enqueue_job('fn_name', *args, **kwargs)"
+        },
+        {
+          "from": "arq-client-connections",
+          "to": "redis",
+          "type": "sync",
+          "protocol": "Redis",
+          "label": "ZADD queue-key score serialised(JobDef)"
+        },
+        {
+          "from": "arq-client-connections",
+          "to": "developer",
+          "type": "response",
+          "protocol": "function call",
+          "label": "returns Job(job_id)"
+        },
+        {
+          "from": "arq-worker-worker",
+          "to": "redis",
+          "type": "sync",
+          "protocol": "Redis",
+          "label": "ZRANGEBYSCORE — poll for due jobs"
+        },
+        {
+          "from": "redis",
+          "to": "arq-worker-worker",
+          "type": "response",
+          "protocol": "Redis",
+          "label": "job_id list"
+        },
+        {
+          "from": "arq-worker-worker",
+          "to": "redis",
+          "type": "sync",
+          "protocol": "Redis",
+          "label": "WATCH/MULTI — atomically claim job, set in-progress key"
+        },
+        {
+          "from": "arq-worker-worker",
+          "to": "arq-worker-worker",
+          "type": "sync",
+          "protocol": "function call",
+          "label": "await coroutine(*args, **kwargs)"
+        },
+        {
+          "from": "arq-worker-worker",
+          "to": "redis",
+          "type": "sync",
+          "protocol": "Redis",
+          "label": "SET result-key serialised(JobResult) EX ttl"
+        },
+        {
+          "from": "developer",
+          "to": "arq-client-connections",
+          "type": "sync",
+          "protocol": "function call",
+          "label": "await job.result()"
+        },
+        {
+          "from": "arq-client-connections",
+          "to": "redis",
+          "type": "sync",
+          "protocol": "Redis",
+          "label": "GET result-key"
+        }
+      ]
+    }
+  ]
+}

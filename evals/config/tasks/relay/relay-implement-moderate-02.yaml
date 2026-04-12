@@ -1,0 +1,30 @@
+{
+  "id": "relay-implement-moderate-02",
+  "repo_id": "relay",
+  "category": "implement_moderate",
+  "prompt": "Read the codebase and add a new telemetry or config field that is visible through CLI and shared contracts. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should extend the correct config or telemetry model, propagate it through the needed boundaries, and update package-level or integration-facing types where required.\n\nMust mention / touch:\n- src/cli/\n- packages/contracts/\n- packages/sdk/\n- src/metrics.rs\n\nCommon failure modes:\n- Changing behavior outside the intended scope\n- Skipping regression coverage or verification for the touched path",
+  "acceptance_criteria": [
+    "Adds one focused field through the correct config/contract boundary.",
+    "Propagates it to the intended CLI or SDK-visible surface.",
+    "Updates relevant tests or type coverage.",
+    "Maintains compatibility with existing fields."
+  ],
+  "expected_modules_read": [
+    "src/cli/",
+    "packages/contracts/",
+    "packages/sdk/",
+    "src/metrics.rs"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "moderate",
+    "output_type": "code_change",
+    "primary_surface": "shared-config-field",
+    "doc_sensitivity": "medium",
+    "verification_scope": "repo_default"
+  }
+}

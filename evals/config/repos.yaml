@@ -1,0 +1,134 @@
+{
+  "schema_version": "0.1",
+  "archive_root": "/Users/hugopeck/archeia-archive/packages/experiments/repos",
+  "pinned_lock_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/pinned-lock.json",
+  "archeia_output_root": "evals/archeia-output",
+  "results_root": "evals/results/raw",
+  "primary_repo_ids": [
+    "polar",
+    "daily-api",
+    "mitmproxy",
+    "relay",
+    "arq"
+  ],
+  "pilot_repo_id": "mitmproxy",
+  "repos": [
+    {
+      "id": "polar",
+      "repo": "polarsource/polar",
+      "branch": "main",
+      "commit": "98df9bae772c3cb5b315ed8877c4ec83b05953dd",
+      "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/polar",
+      "archeia_output_path": "evals/archeia-output/polar",
+      "language": "py-ts",
+      "loc": 529000,
+      "tests_available": false,
+      "baseline_docs": [
+        "AGENTS.md",
+        "CLAUDE.md"
+      ],
+      "complexity": "complex",
+      "notes": [
+        "Largest and most complex evaluation repo.",
+        "Best suited for cross-module plan and implement tasks."
+      ],
+      "commands": {
+        "test": null,
+        "lint": null
+      }
+    },
+    {
+      "id": "daily-api",
+      "repo": "dailydotdev/daily-api",
+      "branch": "main",
+      "commit": "9752461a184940e947cefadc886cba2010cd87fc",
+      "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/daily-api",
+      "archeia_output_path": "evals/archeia-output/daily-api",
+      "language": "ts",
+      "loc": 301000,
+      "tests_available": true,
+      "baseline_docs": [
+        "AGENTS.md",
+        "CLAUDE.md"
+      ],
+      "complexity": "medium",
+      "notes": [
+        "Large TypeScript API with tests.",
+        "Good fit for convention-following implementation tasks."
+      ],
+      "commands": {
+        "test": null,
+        "lint": "pnpm lint"
+      }
+    },
+    {
+      "id": "mitmproxy",
+      "repo": "mitmproxy/mitmproxy",
+      "branch": "main",
+      "commit": "2a7bb7ba05a9a1c14b4fd7674d5356bc665a4182",
+      "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/mitmproxy",
+      "archeia_output_path": "evals/archeia-output/mitmproxy",
+      "language": "py-ts",
+      "loc": 160000,
+      "tests_available": true,
+      "baseline_docs": [
+        "AGENTS.md"
+      ],
+      "complexity": "medium",
+      "notes": [
+        "Pilot repo for the first end-to-end study run.",
+        "Strong candidate for ask and implement tasks with test verification."
+      ],
+      "commands": {
+        "test": "uv run pytest",
+        "lint": "uv run ruff check ."
+      }
+    },
+    {
+      "id": "relay",
+      "repo": "AgentWorkforce/relay",
+      "branch": "main",
+      "commit": "231c45da22fee641ef05c2cd03332ca38eeebc7e",
+      "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/relay",
+      "archeia_output_path": "evals/archeia-output/relay",
+      "language": "multi",
+      "loc": 69000,
+      "tests_available": true,
+      "baseline_docs": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "ARCHITECTURE.md"
+      ],
+      "complexity": "medium",
+      "notes": [
+        "Supports the special relay baseline condition.",
+        "Allows Archeia-vs-hand-written-docs comparisons."
+      ],
+      "commands": {
+        "test": "npm test",
+        "lint": "npm run lint"
+      }
+    },
+    {
+      "id": "arq",
+      "repo": "python-arq/arq",
+      "branch": "main",
+      "commit": "fda407c4cb5ec2e6f2b13c2aa9671f86e7a0f8c5",
+      "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/arq",
+      "archeia_output_path": "evals/archeia-output/arq",
+      "language": "py",
+      "loc": 6000,
+      "tests_available": true,
+      "baseline_docs": [],
+      "complexity": "flat",
+      "notes": [
+        "Negative control for small-repo contamination.",
+        "Expect limited benefit because the codebase fits in context."
+      ],
+      "commands": {
+        "test": "uv run pytest",
+        "lint": "uv run ruff check ."
+      }
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "level": 3,
+  "title": "Entity-Relationship Model",
+  "depends_on": "Architecture.md",
+  "source_type": "prisma",
+  "entities": [
+    {
+      "id": "user",
+      "name": "User",
+      "description": "System user account with authentication and profile",
+      "source_file": "prisma/schema.prisma",
+      "fields": [
+        { "name": "id", "type": "UUID", "constraints": ["pk", "not_null"] },
+        { "name": "email", "type": "String", "constraints": ["unique", "not_null"] },
+        { "name": "name", "type": "String", "constraints": [] },
+        { "name": "role", "type": "Role", "constraints": ["not_null", "default:USER"] }
+      ],
+      "evidence": ["prisma/schema.prisma"]
+    },
+    {
+      "id": "project",
+      "name": "Project",
+      "description": "Container for organizing related tasks",
+      "source_file": "prisma/schema.prisma",
+      "fields": [
+        { "name": "id", "type": "UUID", "constraints": ["pk"] },
+        { "name": "name", "type": "String", "constraints": ["not_null"] },
+        { "name": "owner_id", "type": "UUID", "constraints": ["fk:user"] }
+      ],
+      "evidence": ["prisma/schema.prisma"]
+    },
+    {
+      "id": "task",
+      "name": "Task",
+      "description": "Individual work item within a project",
+      "source_file": "prisma/schema.prisma",
+      "fields": [
+        { "name": "id", "type": "UUID", "constraints": ["pk"] },
+        { "name": "title", "type": "String", "constraints": ["not_null"] },
+        { "name": "status", "type": "TaskStatus", "constraints": ["not_null", "default:PENDING"] },
+        { "name": "assignee_id", "type": "UUID", "constraints": ["fk:user", "nullable"] },
+        { "name": "project_id", "type": "UUID", "constraints": ["fk:project"] }
+      ],
+      "evidence": ["prisma/schema.prisma"]
+    }
+  ],
+  "relationships": [
+    {
+      "source": "user",
+      "target": "project",
+      "cardinality": "one_to_many",
+      "description": "User owns projects",
+      "source_field": "owner_id",
+      "evidence": ["prisma/schema.prisma"]
+    },
+    {
+      "source": "project",
+      "target": "task",
+      "cardinality": "one_to_many",
+      "description": "Project contains tasks",
+      "source_field": "project_id",
+      "evidence": ["prisma/schema.prisma"]
+    },
+    {
+      "source": "user",
+      "target": "task",
+      "cardinality": "one_to_many",
+      "description": "User is assigned tasks",
+      "source_field": "assignee_id",
+      "evidence": ["prisma/schema.prisma"]
+    }
+  ]
+}

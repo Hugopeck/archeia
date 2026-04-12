@@ -1,0 +1,42 @@
+[
+  {
+    "source": "server/polar/benefit/agents.md",
+    "target": "server/polar/benefit/agents.md"
+  },
+  {
+    "source": "server/polar/benefit/claude.md",
+    "target": "server/polar/benefit/claude.md"
+  },
+  {
+    "source": "server/polar/integrations/agents.md",
+    "target": "server/polar/integrations/agents.md"
+  },
+  {
+    "source": "server/polar/integrations/claude.md",
+    "target": "server/polar/integrations/claude.md"
+  },
+  {
+    "source": "server/polar/models/agents.md",
+    "target": "server/polar/models/agents.md"
+  },
+  {
+    "source": "server/polar/models/claude.md",
+    "target": "server/polar/models/claude.md"
+  },
+  {
+    "source": "server/polar/worker/agents.md",
+    "target": "server/polar/worker/agents.md"
+  },
+  {
+    "source": "server/polar/worker/claude.md",
+    "target": "server/polar/worker/claude.md"
+  },
+  {
+    "source": "server/tinybird/agents.md",
+    "target": "server/tinybird/agents.md"
+  },
+  {
+    "source": "server/tinybird/claude.md",
+    "target": "server/tinybird/claude.md"
+  }
+]

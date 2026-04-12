@@ -1,0 +1,18 @@
+[
+  {
+    "source": "arq/README.md",
+    "target": "arq/README.md"
+  },
+  {
+    "source": "docs/README.md",
+    "target": "docs/README.md"
+  },
+  {
+    "source": "docs/examples/README.md",
+    "target": "docs/examples/README.md"
+  },
+  {
+    "source": "tests/README.md",
+    "target": "tests/README.md"
+  }
+]

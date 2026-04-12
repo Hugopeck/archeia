@@ -1,0 +1,43 @@
+{
+  "schema_version": "0.1",
+  "doc_sets": {
+    "root_docs": ["AGENTS.md", "CLAUDE.md"],
+    "archeia": [".archeia"],
+    "colocated_readmes": ["colocated-readmes"],
+    "colocated_agents": ["colocated-agents"]
+  },
+  "conditions": [
+    {
+      "id": "l0",
+      "label": "Native Baseline",
+      "description": "Keep the repository's existing docs intact with no Archeia bundle applied.",
+      "include_sets": [],
+      "keep_existing_docs": true,
+      "repo_ids": ["*"],
+      "notes": [
+        "Use this as the default control condition instead of a bare/doc-stripped repo.",
+        "For repos without native agent docs, this naturally collapses to a no-doc baseline."
+      ]
+    },
+    {
+      "id": "l1",
+      "label": "Architecture Bundle",
+      "description": "Apply the architecture-first Archeia bundle: root docs plus .archeia artifacts.",
+      "include_sets": ["root_docs", "archeia"],
+      "keep_existing_docs": false,
+      "repo_ids": ["*"],
+      "notes": [
+        "This replaces the old root-only condition because Archeia's protocol is architecture-first, not root-docs-first."
+      ]
+    },
+    {
+      "id": "l2",
+      "label": "Full Archeia",
+      "description": "Apply the full Archeia bundle including generated colocated READMEs and agent docs.",
+      "include_sets": ["root_docs", "archeia", "colocated_readmes", "colocated_agents"],
+      "keep_existing_docs": false,
+      "repo_ids": ["*"],
+      "notes": []
+    }
+  ]
+}

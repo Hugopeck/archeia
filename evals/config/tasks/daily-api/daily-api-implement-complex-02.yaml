@@ -1,0 +1,30 @@
+{
+  "id": "daily-api-implement-complex-02",
+  "repo_id": "daily-api",
+  "category": "implement_complex",
+  "prompt": "Read the codebase and create a shared paginated-connection response helper used by both feed-style and notification-style public endpoints so the `{data, pagination}` mapping lives in one place. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should extract a real shared helper for turning GraphQL connection responses into the public REST shape, use it from multiple paginated endpoints, preserve existing response contracts, and update tests accordingly.\n\nMust mention / touch:\n- src/routes/public/common.ts\n- src/routes/public/feeds.ts\n- src/routes/public/notifications.ts\n- __tests__/\n\nCommon failure modes:\n- Extracting a helper that only wraps one endpoint or changes the public response schema\n- Skipping regression coverage for affected endpoints",
+  "acceptance_criteria": [
+    "Extracts a shared helper for paginated public REST responses.",
+    "Uses the helper from at least two existing paginated endpoint families.",
+    "Preserves the `{data, pagination}` response contract.",
+    "Adds or updates focused regression coverage."
+  ],
+  "expected_modules_read": [
+    "src/routes/public/common.ts",
+    "src/routes/public/feeds.ts",
+    "src/routes/public/notifications.ts",
+    "__tests__/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "code_change",
+    "primary_surface": "shared-public-pagination-response",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

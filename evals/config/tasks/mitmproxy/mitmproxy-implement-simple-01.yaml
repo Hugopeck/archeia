@@ -1,0 +1,29 @@
+{
+  "id": "mitmproxy-implement-simple-01",
+  "repo_id": "mitmproxy",
+  "category": "implement_simple",
+  "prompt": "Read the codebase and make unterminated quoted command arguments fail with an explicit parse error instead of being silently accepted as partial input. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should make command parsing reject unterminated quoted arguments with a clear error, while preserving existing handling for valid quoted input. It should add focused parser or command-level tests.\n\nMust mention / touch:\n- mitmproxy/command_lexer.py\n- mitmproxy/command.py\n- test/mitmproxy/test_command.py\n\nCommon failure modes:\n- Continuing to treat unterminated quotes as valid partial arguments\n- Breaking valid quoted command parsing while tightening the error path",
+  "acceptance_criteria": [
+    "Rejects unterminated quoted command arguments with an explicit parse error.",
+    "Preserves existing behavior for valid quoted command input.",
+    "Threads the failure through the normal command parsing path.",
+    "Includes focused regression coverage."
+  ],
+  "expected_modules_read": [
+    "mitmproxy/command_lexer.py",
+    "mitmproxy/command.py",
+    "test/mitmproxy/test_command.py"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "simple",
+    "output_type": "code_change",
+    "primary_surface": "unterminated-quote-parse-error",
+    "doc_sensitivity": "medium",
+    "verification_scope": "repo_default"
+  }
+}

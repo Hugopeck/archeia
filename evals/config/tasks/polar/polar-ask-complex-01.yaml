@@ -1,0 +1,30 @@
+{
+  "id": "polar-ask-complex-01",
+  "repo_id": "polar",
+  "category": "ask_complex",
+  "prompt": "Read the codebase and explain the checkout flow in Polar from API entry through payment processing to customer or subscription activation. Base your answer only on code you actually read.",
+  "ground_truth": "Expected outcome:\n- Must connect the public/backend entrypoint to checkout-domain logic, payment handling, and the downstream customer/subscription state updates or events. Expected grounding includes checkout-related modules, customer-session or invoice surfaces, and event-driven follow-on behavior.\n\nMust mention / touch:\n- server/polar/checkout/\n- server/polar/customer_session/\n- server/polar/invoice/\n- server/polar/event/\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo",
+  "acceptance_criteria": [
+    "Explains the end-to-end checkout flow in sequence.",
+    "Uses real Polar module names and domain boundaries.",
+    "Connects payment handling to customer/subscription effects.",
+    "Avoids generic payment-platform descriptions not grounded in the repo."
+  ],
+  "expected_modules_read": [
+    "server/polar/checkout/",
+    "server/polar/customer_session/",
+    "server/polar/invoice/",
+    "server/polar/event/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "explanation",
+    "primary_surface": "checkout-flow",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

@@ -1,0 +1,212 @@
+{
+  "agent_run": {
+    "command": [
+      "claude",
+      "--model",
+      "haiku",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--permission-mode",
+      "auto",
+      "--append-system-prompt",
+      "CRITICAL RULE: You MUST use your tools to read files in this repository before answering. Do NOT answer from memory or training data. Start by exploring the project structure with Bash(ls) or Glob, then read the specific files needed to answer the question. Every claim you make must cite a specific file path you actually read in this session. If you answer without reading files first, your response will be scored as zero.",
+      "-p",
+      "Read the codebase and plan policy-based message filtering and redaction across the broker and SDK surfaces. Ground your plan in the actual modules and patterns you find."
+    ],
+    "exit_code": 0,
+    "finished_at": "2026-04-10T05:04:35+00:00",
+    "started_at": "2026-04-10T05:03:04+00:00",
+    "status": "completed",
+    "stderr": "",
+    "stdout": "Based on my exploration of the codebase, I can see the existing infrastructure and provide a comprehensive plan for policy-based message filtering and redaction. Let me create this plan using the information I gathered from the code:\n\n## Policy-Based Message Filtering & Redaction Plan\n\n### Current State Analysis\n\n**Existing Components:**\n1. **Redaction** (`src/redact.rs`): Basic regex patterns for API keys, tokens, and authorization headers\n2. **Agent Policy Service** (`packages/policy/src/agent-policy.ts`): Comprehensive policy system for spawn/message/tool permissions\n3. **Message Routing** (`src/routing.rs`): Message delivery and agent communication\n4. **Protocol** (`src/protocol.rs`): Core message envelope and frame definitions\n\n### Architecture Overview\n\n```\nMessage Flow:\n  Broker (Rust) \u2500\u2500\u2192 Policy Evaluation \u2500\u2500\u2192 Filtering \u2500\u2500\u2192 Redaction \u2500\u2500\u2192 Routing\n                                    \u2193\n                            SDK (TypeScript)\n```\n\n### Implementation Plan\n\n#### **Phase 1: Core Policy Structures**\n\n**1. Message Policy Types** (`packages/policy/src/message-policy.ts`)\n```typescript\n// Filter policies\ninterface MessageFilterPolicy {\n  name: string;\n  patterns: FilterRule[];\n  actions: 'allow' | 'deny' | 'redact' | 'quarantine';\n}\n\ninterface FilterRule {\n  type: 'sender' | 'recipient' | 'content' | 'metadata';\n  pattern: string | RegExp;\n  match: 'exact' | 'regex' | 'glob';\n}\n\n// Redaction policies\ninterface RedactionPolicy {\n  name: string;\n  rules: RedactionRule[];\n  fallback: 'redact' | 'allow' | 'deny';\n}\n\ninterface RedactionRule {\n  category: 'credential' | 'pii' | 'custom';\n  patterns: string[];\n  redactionTemplate: string; // e.g., \"[REDACTED-{{category}}]\"\n  severity: 'low' | 'medium' | 'high';\n}\n```\n\n**2. Extend AgentPolicy** (`packages/policy/src/agent-policy.ts`)\n```typescript\n// Add to AgentPolicy interface\nfilterPolicy?: string;         // Reference to message filter policy\nredactionPolicy?: string;      // Reference to redaction policy\nmessageQuota?: number;         // Messages per hour\nattachmentFilters?: string[];  // Blocked attachment types\nsensitivityLevel?: 'public' | 'internal' | 'confidential' | 'restricted';\n```\n\n#### **Phase 2: Broker-Side Filtering**\n\n**1. Message Interceptor** (`src/filter.rs`)\n```rust\n// Core filtering module\npub struct MessageFilter {\n  policies: Vec<FilterPolicy>,\n  audit_log: Arc<Mutex<Vec<FilterAuditEntry>>>,\n}\n\nimpl MessageFilter {\n  pub fn evaluate(&self, msg: &Message, sender: &str, recipient: &str) \n    -> FilterResult {\n    // Policy evaluation logic\n    // Returns: Allow | Deny | Quarantine\n  }\n  \n  pub fn filter_content(&self, msg: &mut Message, policy: &str) \n    -> Result<()> {\n    // Apply content filters before routing\n  }\n}\n```\n\n**2. Redaction Engine** (`src/redact.rs` - enhance)\n```rust\npub struct RedactionEngine {\n  policies: HashMap<String, RedactionPolicy>,\n  patterns: LazyLock<Vec<(Regex, String)>>,\n}\n\nimpl RedactionEngine {\n  pub fn redact(&self, content: &str, policy_name: &str) -> String {\n    // Multi-category redaction with policy context\n    // Preserves message structure while redacting sensitive fields\n  }\n  \n  pub fn redact_field(&self, value: &str, field_type: &str) -> String {\n    // Type-aware redaction (email, phone, token, etc.)\n  }\n}\n```\n\n**3. Integration Point** (`src/routing.rs` - enhance)\n```rust\n// Before message is routed:\n1. Load sender/recipient policies\n2. Check message filter policies\n3. Evaluate compatibility\n4. Apply redaction rules\n5. Audit decision\n6. Route or quarantine\n```\n\n#### **Phase 3: SDK-Side Enforcement**\n\n**1. Client-Side Filter** (`packages/sdk/src/message-filter.ts`)\n```typescript\nexport class ClientMessageFilter {\n  async filterInbound(\n    message: Envelope,\n    policy: AgentPolicy\n  ): Promise<FilterResult> {\n    // Validate policy compliance at client\n    // Warn if redacted content is received\n    // Update local policy cache\n  }\n\n  async filterOutbound(\n    message: Envelope,\n    policy: AgentPolicy\n  ): Promise<FilteredMessage | null> {\n    // Pre-flight validation before sending\n    // Reject messages that violate policy\n  }\n}\n```\n\n**2. Integration with Relay Client** (`packages/sdk/src/client.ts`)\n```typescript\n// Wire into message sending:\nasync send(to: string, message: string) {\n  const policy = await this.policyService.getAgentPolicy(this.name);\n  const filtered = await this.messageFilter.filterOutbound(\n    { to, message },\n    policy\n  );\n  \n  if (!filtered) {\n    throw new PolicyViolationError('Message violates policy');\n  }\n  \n  return this.relaycast.send(filtered);\n}\n\n// Wire into message receiving:\nprivate async handleInboundMessage(envelope: Envelope) {\n  const policy = await this.policyService.getAgentPolicy(this.name);\n  const result = await this.messageFilter.filterInbound(envelope, policy);\n  \n  if (result.action === 'quarantine') {\n    this.emit('quarantined-message', { envelope, reason: result.reason });\n    return;\n  }\n  \n  if (result.redacted) {\n    this.emit('message', {\n      ...envelope,\n      message: result.redactedContent,\n      _metadata: { redacted: true, rules: result.appliedRules }\n    });\n  } else {\n    this.emit('message', envelope);\n  }\n}\n```\n\n#### **Phase 4: Policy Configuration**\n\n**1. Workspace Policy Schema** (extend `packages/policy/src/agent-policy.ts`)\n```yaml\n# ~/.config/agent-relay/policies/message-rules.yaml\nname: message-filtering-rules\nversion: 1.0.0\n\nredactionPolicies:\n  strict-redaction:\n    rules:\n      - category: credential\n        patterns:\n          - \"(?i)(api[_-]?key|token|password)\\\\s*[:=]\\\\s*([^\\\\s]+)\"\n          - \"(?i)authorization:\\\\s*bearer\\\\s+([^\\\\s]+)\"\n        redactionTemplate: \"[REDACTED-CREDENTIAL]\"\n        severity: high\n      - category: pii\n        patterns:\n          - \"\\\\b\\\\d{3}-\\\\d{2}-\\\\d{4}\\\\b\"  # SSN\n          - \"\\\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\\\.[A-Z]{2,}\\\\b\"  # Email\n        redactionTemplate: \"[REDACTED-PII]\"\n        severity: medium\n\nmessageFilters:\n  block-external-messages:\n    rules:\n      - type: recipient\n        pattern: \"*@external.com\"\n        match: glob\n    actions: deny\n\nagentRules:\n  - name: DataScientist\n    sensitivityLevel: confidential\n    redactionPolicy: strict-redaction\n    filterPolicy: block-external-messages\n    messageQuota: 1000  # per hour\n    attachmentFilters: [\"exe\", \"dll\", \"sh\"]\n\n  - name: Worker*\n    sensitivityLevel: internal\n    redactionPolicy: strict-redaction\n    messageQuota: 500\n```\n\n#### **Phase 5: Audit & Observability**\n\n**1. Filter Audit Log** (`src/filter-audit.rs`)\n```rust\npub struct FilterAuditEntry {\n  pub timestamp: u64,\n  pub sender: String,\n  pub recipient: String,\n  pub action: FilterAction,\n  pub reason: String,\n  pub redacted_fields: Vec<String>,\n  pub message_id: String,\n}\n\npub enum FilterAction {\n  Allowed,\n  Redacted(Vec<String>),  // which fields were redacted\n  Denied(String),         // reason\n  Quarantined(String),    // quarantine reason\n}\n```\n\n**2. Monitoring Integration** (`packages/telemetry/src/filter-metrics.ts`)\n```typescript\nexport class FilterMetrics {\n  recordFilterAction(\n    action: FilterAction,\n    category: string,\n    severity: string\n  ): void;\n  \n  recordRedaction(\n    fieldType: string,\n    policyName: string\n  ): void;\n  \n  getFilterStats(\n    timeRange: TimeRange\n  ): FilterStatistics;\n}\n```\n\n### Deployment Zones\n\n| Component | Location | Surface |\n|-----------|----------|---------|\n| Core policies | `packages/policy/src/message-policy.ts` | Shared SDK + Broker |\n| Broker filtering | `src/filter.rs` | Rust broker binary |\n| Redaction engine | `src/redact.rs` (enhanced) | Rust broker binary |\n| Client-side filter | `packages/sdk/src/message-filter.ts` | TypeScript SDK |\n| Audit & telemetry | `packages/telemetry/src/` | Both |\n\n### Integration Checklist\n\n- [ ] Extend `AgentPolicy` with filter/redaction fields\n- [ ] Implement `FilterPolicy` and `RedactionPolicy` types\n- [ ] Build broker-side `MessageFilter` + `RedactionEngine`\n- [ ] Wire filtering into routing layer (`routing.rs`)\n- [ ] Build client-side `ClientMessageFilter`\n- [ ] Integrate with `RelayClient.send()` and message handler\n- [ ] Add policy configuration schema + validation\n- [ ] Implement audit logging + metrics\n- [ ] Document policy authoring guide\n- [ ] Add e2e test coverage (broker + SDK roundtrip)\n\n### Key Design Decisions\n\n1. **Broker Enforcement**: Primary filtering happens at broker level (security boundary)\n2. **Client-side Validation**: Pre-flight checks prevent unnecessary roundtrips\n3. **Multi-level Policies**: Agent policies + message policies provide flexible control\n4. **Graceful Degradation**: Unredacted messages still route if policy allows\n5. **Audit Trail**: All filter decisions logged for compliance",
+    "transcript_path": "/tmp/archeia-phase4/relay-l1-relay-plan-complex-02-trial1/.archeia-eval/conversation.json"
+  },
+  "code_quality": {
+    "lint": {
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "cwd": "/tmp/archeia-phase4/relay-l1-relay-plan-complex-02-trial1",
+      "exit_code": 254,
+      "finished_at": "2026-04-10T05:04:38+00:00",
+      "started_at": "2026-04-10T05:04:36+00:00",
+      "stderr": "npm error code ENOENT\nnpm error syscall open\nnpm error path /private/tmp/archeia-phase4/relay-l1-relay-plan-complex-02-trial1/package.json\nnpm error errno -2\nnpm error enoent Could not read package.json: Error: ENOENT: no such file or directory, open '/private/tmp/archeia-phase4/relay-l1-relay-plan-complex-02-trial1/package.json'\nnpm error enoent This is related to npm not being able to find a file.\nnpm error enoent\nnpm error A complete log of this run can be found in: /Users/hugopeck/.npm/_logs/2026-04-10T05_04_36_843Z-debug-0.log\n",
+      "stdout": ""
+    },
+    "lint_baseline": {
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "cwd": "/tmp/archeia-phase4/relay-l1-relay-plan-complex-02-trial1",
+      "exit_code": 127,
+      "finished_at": "2026-04-10T05:03:04+00:00",
+      "started_at": "2026-04-10T05:03:03+00:00",
+      "stderr": "sh: eslint: command not found\n",
+      "stdout": "\n> agent-relay@3.1.19 lint\n> eslint src --ext .ts\n\n"
+    },
+    "lint_baseline_findings": 3,
+    "lint_delta": 5,
+    "lint_findings": 8,
+    "tests": {
+      "command": [
+        "npm",
+        "test"
+      ],
+      "cwd": "/tmp/archeia-phase4/relay-l1-relay-plan-complex-02-trial1",
+      "exit_code": 254,
+      "finished_at": "2026-04-10T05:04:36+00:00",
+      "started_at": "2026-04-10T05:04:35+00:00",
+      "stderr": "npm error code ENOENT\nnpm error syscall open\nnpm error path /private/tmp/archeia-phase4/relay-l1-relay-plan-complex-02-trial1/package.json\nnpm error errno -2\nnpm error enoent Could not read package.json: Error: ENOENT: no such file or directory, open '/private/tmp/archeia-phase4/relay-l1-relay-plan-complex-02-trial1/package.json'\nnpm error enoent This is related to npm not being able to find a file.\nnpm error enoent\nnpm error A complete log of this run can be found in: /Users/hugopeck/.npm/_logs/2026-04-10T05_04_35_808Z-debug-0.log\n",
+      "stdout": ""
+    }
+  },
+  "condition_application": {
+    "archeia_output": "evals/archeia-output/relay",
+    "condition_id": "l1",
+    "copied_paths": [
+      ".archeia",
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "kept_existing_docs": false,
+    "removed_paths": [
+      "AGENTS.md"
+    ],
+    "repo_id": "relay",
+    "worktree": "/tmp/archeia-phase4/relay-l1-relay-plan-complex-02-trial1"
+  },
+  "condition_commit": {
+    "command": [
+      "git",
+      "commit",
+      "-m",
+      "Apply evaluation condition"
+    ],
+    "cwd": "/tmp/archeia-phase4/relay-l1-relay-plan-complex-02-trial1",
+    "exit_code": 0,
+    "finished_at": "2026-04-10T05:03:03+00:00",
+    "started_at": "2026-04-10T05:03:03+00:00",
+    "stderr": "",
+    "stdout": "[detached HEAD 059f6c6] Apply evaluation condition\n 14 files changed, 1207 insertions(+)\n create mode 100644 .archeia/Architecture.md\n create mode 100644 .archeia/Components.json\n create mode 100644 .archeia/Containers.json\n create mode 100644 .archeia/DataFlow.json\n create mode 100644 .archeia/Guide.md\n create mode 100644 .archeia/Standards.md\n create mode 100644 .archeia/System.json\n create mode 100644 .archeia/diagrams/components-broker-binary.md\n create mode 100644 .archeia/diagrams/components-relay-cli.md\n create mode 100644 .archeia/diagrams/components-sdk.md\n create mode 100644 .archeia/diagrams/containers.md\n create mode 100644 .archeia/diagrams/context.md\n create mode 100644 .archeia/diagrams/sequence-primary.md\n"
+  },
+  "condition_id": "l1",
+  "diff": "",
+  "finished_at": "2026-04-10T05:05:12+00:00",
+  "judge": {
+    "command": [
+      "claude",
+      "--output-format",
+      "json",
+      "-p",
+      "You are judging an Archeia evaluation run.\n\nTask category: plan_complex\nTask id: relay-plan-complex-02\n\nTask prompt:\nRead the codebase and plan policy-based message filtering and redaction across the broker and SDK surfaces. Ground your plan in the actual modules and patterns you find.\n\nGround truth / reference:\nExpected outcome:\n- The plan should identify where policy decisions are evaluated, how redaction would apply before delivery, what contracts must change, and how SDK consumers would observe the result. It must connect Rust runtime code with shared package boundaries.\n\nMust mention / touch:\n- src/policy/\n- src/redact.rs\n- packages/sdk/\n- packages/contracts/\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path\n\nAcceptance criteria:\n[\n  \"Maps policy/redaction decisions to real runtime and package surfaces.\",\n  \"Covers contract and SDK implications.\",\n  \"Includes sequencing and compatibility notes.\",\n  \"Fits relay's existing multi-package architecture.\"\n]\n\nAgent response:\nBased on my exploration of the codebase, I can see the existing infrastructure and provide a comprehensive plan for policy-based message filtering and redaction. Let me create this plan using the information I gathered from the code:\n\n## Policy-Based Message Filtering & Redaction Plan\n\n### Current State Analysis\n\n**Existing Components:**\n1. **Redaction** (`src/redact.rs`): Basic regex patterns for API keys, tokens, and authorization headers\n2. **Agent Policy Service** (`packages/policy/src/agent-policy.ts`): Comprehensive policy system for spawn/message/tool permissions\n3. **Message Routing** (`src/routing.rs`): Message delivery and agent communication\n4. **Protocol** (`src/protocol.rs`): Core message envelope and frame definitions\n\n### Architecture Overview\n\n```\nMessage Flow:\n  Broker (Rust) \u2500\u2500\u2192 Policy Evaluation \u2500\u2500\u2192 Filtering \u2500\u2500\u2192 Redaction \u2500\u2500\u2192 Routing\n                                    \u2193\n                            SDK (TypeScript)\n```\n\n### Implementation Plan\n\n#### **Phase 1: Core Policy Structures**\n\n**1. Message Policy Types** (`packages/policy/src/message-policy.ts`)\n```typescript\n// Filter policies\ninterface MessageFilterPolicy {\n  name: string;\n  patterns: FilterRule[];\n  actions: 'allow' | 'deny' | 'redact' | 'quarantine';\n}\n\ninterface FilterRule {\n  type: 'sender' | 'recipient' | 'content' | 'metadata';\n  pattern: string | RegExp;\n  match: 'exact' | 'regex' | 'glob';\n}\n\n// Redaction policies\ninterface RedactionPolicy {\n  name: string;\n  rules: RedactionRule[];\n  fallback: 'redact' | 'allow' | 'deny';\n}\n\ninterface RedactionRule {\n  category: 'credential' | 'pii' | 'custom';\n  patterns: string[];\n  redactionTemplate: string; // e.g., \"[REDACTED-{{category}}]\"\n  severity: 'low' | 'medium' | 'high';\n}\n```\n\n**2. Extend AgentPolicy** (`packages/policy/src/agent-policy.ts`)\n```typescript\n// Add to AgentPolicy interface\nfilterPolicy?: string;         // Reference to message filter policy\nredactionPolicy?: string;      // Reference to redaction policy\nmessageQuota?: number;         // Messages per hour\nattachmentFilters?: string[];  // Blocked attachment types\nsensitivityLevel?: 'public' | 'internal' | 'confidential' | 'restricted';\n```\n\n#### **Phase 2: Broker-Side Filtering**\n\n**1. Message Interceptor** (`src/filter.rs`)\n```rust\n// Core filtering module\npub struct MessageFilter {\n  policies: Vec<FilterPolicy>,\n  audit_log: Arc<Mutex<Vec<FilterAuditEntry>>>,\n}\n\nimpl MessageFilter {\n  pub fn evaluate(&self, msg: &Message, sender: &str, recipient: &str) \n    -> FilterResult {\n    // Policy evaluation logic\n    // Returns: Allow | Deny | Quarantine\n  }\n  \n  pub fn filter_content(&self, msg: &mut Message, policy: &str) \n    -> Result<()> {\n    // Apply content filters before routing\n  }\n}\n```\n\n**2. Redaction Engine** (`src/redact.rs` - enhance)\n```rust\npub struct RedactionEngine {\n  policies: HashMap<String, RedactionPolicy>,\n  patterns: LazyLock<Vec<(Regex, String)>>,\n}\n\nimpl RedactionEngine {\n  pub fn redact(&self, content: &str, policy_name: &str) -> String {\n    // Multi-category redaction with policy context\n    // Preserves message structure while redacting sensitive fields\n  }\n  \n  pub fn redact_field(&self, value: &str, field_type: &str) -> String {\n    // Type-aware redaction (email, phone, token, etc.)\n  }\n}\n```\n\n**3. Integration Point** (`src/routing.rs` - enhance)\n```rust\n// Before message is routed:\n1. Load sender/recipient policies\n2. Check message filter policies\n3. Evaluate compatibility\n4. Apply redaction rules\n5. Audit decision\n6. Route or quarantine\n```\n\n#### **Phase 3: SDK-Side Enforcement**\n\n**1. Client-Side Filter** (`packages/sdk/src/message-filter.ts`)\n```typescript\nexport class ClientMessageFilter {\n  async filterInbound(\n    message: Envelope,\n    policy: AgentPolicy\n  ): Promise<FilterResult> {\n    // Validate policy compliance at client\n    // Warn if redacted content is received\n    // Update local policy cache\n  }\n\n  async filterOutbound(\n    message: Envelope,\n    policy: AgentPolicy\n  ): Promise<FilteredMessage | null> {\n    // Pre-flight validation before sending\n    // Reject messages that violate policy\n  }\n}\n```\n\n**2. Integration with Relay Client** (`packages/sdk/src/client.ts`)\n```typescript\n// Wire into message sending:\nasync send(to: string, message: string) {\n  const policy = await this.policyService.getAgentPolicy(this.name);\n  const filtered = await this.messageFilter.filterOutbound(\n    { to, message },\n    policy\n  );\n  \n  if (!filtered) {\n    throw new PolicyViolationError('Message violates policy');\n  }\n  \n  return this.relaycast.send(filtered);\n}\n\n// Wire into message receiving:\nprivate async handleInboundMessage(envelope: Envelope) {\n  const policy = await this.policyService.getAgentPolicy(this.name);\n  const result = await this.messageFilter.filterInbound(envelope, policy);\n  \n  if (result.action === 'quarantine') {\n    this.emit('quarantined-message', { envelope, reason: result.reason });\n    return;\n  }\n  \n  if (result.redacted) {\n    this.emit('message', {\n      ...envelope,\n      message: result.redactedContent,\n      _metadata: { redacted: true, rules: result.appliedRules }\n    });\n  } else {\n    this.emit('message', envelope);\n  }\n}\n```\n\n#### **Phase 4: Policy Configuration**\n\n**1. Workspace Policy Schema** (extend `packages/policy/src/agent-policy.ts`)\n```yaml\n# ~/.config/agent-relay/policies/message-rules.yaml\nname: message-filtering-rules\nversion: 1.0.0\n\nredactionPolicies:\n  strict-redaction:\n    rules:\n      - category: credential\n        patterns:\n          - \"(?i)(api[_-]?key|token|password)\\\\s*[:=]\\\\s*([^\\\\s]+)\"\n          - \"(?i)authorization:\\\\s*bearer\\\\s+([^\\\\s]+)\"\n        redactionTemplate: \"[REDACTED-CREDENTIAL]\"\n        severity: high\n      - category: pii\n        patterns:\n          - \"\\\\b\\\\d{3}-\\\\d{2}-\\\\d{4}\\\\b\"  # SSN\n          - \"\\\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\\\.[A-Z]{2,}\\\\b\"  # Email\n        redactionTemplate: \"[REDACTED-PII]\"\n        severity: medium\n\nmessageFilters:\n  block-external-messages:\n    rules:\n      - type: recipient\n        pattern: \"*@external.com\"\n        match: glob\n    actions: deny\n\nagentRules:\n  - name: DataScientist\n    sensitivityLevel: confidential\n    redactionPolicy: strict-redaction\n    filterPolicy: block-external-messages\n    messageQuota: 1000  # per hour\n    attachmentFilters: [\"exe\", \"dll\", \"sh\"]\n\n  - name: Worker*\n    sensitivityLevel: internal\n    redactionPolicy: strict-redaction\n    messageQuota: 500\n```\n\n#### **Phase 5: Audit & Observability**\n\n**1. Filter Audit Log** (`src/filter-audit.rs`)\n```rust\npub struct FilterAuditEntry {\n  pub timestamp: u64,\n  pub sender: String,\n  pub recipient: String,\n  pub action: FilterAction,\n  pub reason: String,\n  pub redacted_fields: Vec<String>,\n  pub message_id: String,\n}\n\npub enum FilterAction {\n  Allowed,\n  Redacted(Vec<String>),  // which fields were redacted\n  Denied(String),         // reason\n  Quarantined(String),    // quarantine reason\n}\n```\n\n**2. Monitoring Integration** (`packages/telemetry/src/filter-metrics.ts`)\n```typescript\nexport class FilterMetrics {\n  recordFilterAction(\n    action: FilterAction,\n    category: string,\n    severity: string\n  ): void;\n  \n  recordRedaction(\n    fieldType: string,\n    policyName: string\n  ): void;\n  \n  getFilterStats(\n    timeRange: TimeRange\n  ): FilterStatistics;\n}\n```\n\n### Deployment Zones\n\n| Component | Location | Surface |\n|-----------|----------|---------|\n| Core policies | `packages/policy/src/message-policy.ts` | Shared SDK + Broker |\n| Broker filtering | `src/filter.rs` | Rust broker binary |\n| Redaction engine | `src/redact.rs` (enhanced) | Rust broker binary |\n| Client-side filter | `packages/sdk/src/message-filter.ts` | TypeScript SDK |\n| Audit & telemetry | `packages/telemetry/src/` | Both |\n\n### Integration Checklist\n\n- [ ] Extend `AgentPolicy` with filter/redaction fields\n- [ ] Implement `FilterPolicy` and `RedactionPolicy` types\n- [ ] Build broker-side `MessageFilter` + `RedactionEngine`\n- [ ] Wire filtering into routing layer (`routing.rs`)\n- [ ] Build client-side `ClientMessageFilter`\n- [ ] Integrate with `RelayClient.send()` and message handler\n- [ ] Add policy configuration schema + validation\n- [ ] Implement audit logging + metrics\n- [ ] Document policy authoring guide\n- [ ] Add e2e test coverage (broker + SDK roundtrip)\n\n### Key Design Decisions\n\n1. **Broker Enforcement**: Primary filtering happens at broker level (security boundary)\n2. **Client-side Validation**: Pre-flight checks prevent unnecessary roundtrips\n3. **Multi-level Policies**: Agent policies + message policies provide flexible control\n4. **Graceful Degradation**: Unredacted messages still route if policy allows\n5. **Audit Trail**: All filter decisions logged for compliance\n\nGit diff:\n\n\nCode-quality signals:\n{\n  \"lint\": {\n    \"command\": [\n      \"npm\",\n      \"run\",\n      \"lint\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/relay-l1-relay-plan-complex-02-trial1\",\n    \"exit_code\": 254,\n    \"finished_at\": \"2026-04-10T05:04:38+00:00\",\n    \"started_at\": \"2026-04-10T05:04:36+00:00\",\n    \"stderr\": \"npm error code ENOENT\\nnpm error syscall open\\nnpm error path /private/tmp/archeia-phase4/relay-l1-relay-plan-complex-02-trial1/package.json\\nnpm error errno -2\\nnpm error enoent Could not read package.json: Error: ENOENT: no such file or directory, open '/private/tmp/archeia-phase4/relay-l1-relay-plan-complex-02-trial1/package.json'\\nnpm error enoent This is related to npm not being able to find a file.\\nnpm error enoent\\nnpm error A complete log of this run can be found in: /Users/hugopeck/.npm/_logs/2026-04-10T05_04_36_843Z-debug-0.log\\n\",\n    \"stdout\": \"\"\n  },\n  \"lint_baseline\": {\n    \"command\": [\n      \"npm\",\n      \"run\",\n      \"lint\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/relay-l1-relay-plan-complex-02-trial1\",\n    \"exit_code\": 127,\n    \"finished_at\": \"2026-04-10T05:03:04+00:00\",\n    \"started_at\": \"2026-04-10T05:03:03+00:00\",\n    \"stderr\": \"sh: eslint: command not found\\n\",\n    \"stdout\": \"\\n> agent-relay@3.1.19 lint\\n> eslint src --ext .ts\\n\\n\"\n  },\n  \"lint_baseline_findings\": 3,\n  \"lint_delta\": 5,\n  \"lint_findings\": 8,\n  \"tests\": {\n    \"command\": [\n      \"npm\",\n      \"test\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/relay-l1-relay-plan-complex-02-trial1\",\n    \"exit_code\": 254,\n    \"finished_at\": \"2026-04-10T05:04:36+00:00\",\n    \"started_at\": \"2026-04-10T05:04:35+00:00\",\n    \"stderr\": \"npm error code ENOENT\\nnpm error syscall open\\nnpm error path /private/tmp/archeia-phase4/relay-l1-relay-plan-complex-02-trial1/package.json\\nnpm error errno -2\\nnpm error enoent Could not read package.json: Error: ENOENT: no such file or directory, open '/private/tmp/archeia-phase4/relay-l1-relay-plan-complex-02-trial1/package.json'\\nnpm error enoent This is related to npm not being able to find a file.\\nnpm error enoent\\nnpm error A complete log of this run can be found in: /Users/hugopeck/.npm/_logs/2026-04-10T05_04_35_808Z-debug-0.log\\n\",\n    \"stdout\": \"\"\n  }\n}\n\nEfficiency signals:\n{\n  \"action_calls\": 0,\n  \"exploration_calls\": 6,\n  \"exploration_to_action_ratio\": null,\n  \"finished_at\": \"2026-04-10T05:04:12.037000+00:00\",\n  \"input_tokens\": 162,\n  \"output_tokens\": 5114,\n  \"started_at\": \"2026-04-10T05:03:22.502000+00:00\",\n  \"time_to_completion_seconds\": 49.535,\n  \"time_to_first_edit_seconds\": null,\n  \"tool_call_count\": 19,\n  \"tool_counts\": {\n    \"bash\": 13,\n    \"read\": 6\n  },\n  \"total_tokens\": 5276\n}\n\nScore the run from 0-100 using four equally weighted 0-25 dimensions:\n1. Correctness: technically sound approach.\n2. Completeness: affected modules, sequencing, and risks covered.\n3. Convention fit: follows the repo's apparent patterns.\n4. Actionability: specific enough to implement.\n\nReturn JSON only with this schema:\n{\n  \"total_score\": 0,\n  \"dimension_scores\": {\n    \"correctness\": 0,\n    \"completeness\": 0,\n    \"convention_fit\": 0,\n    \"verification_or_communication\": 0\n  },\n  \"summary\": \"short paragraph\",\n  \"strengths\": [\"...\"],\n  \"weaknesses\": [\"...\"],\n  \"confidence\": \"low|medium|high\"\n}"
+    ],
+    "confidence": "medium",
+    "dimension_scores": {
+      "completeness": 11,
+      "convention_fit": 12,
+      "correctness": 14,
+      "verification_or_communication": 15
+    },
+    "finished_at": "2026-04-10T05:05:12+00:00",
+    "started_at": "2026-04-10T05:04:38+00:00",
+    "status": "completed",
+    "strengths": [
+      "References and enhances existing src/redact.rs rather than replacing it",
+      "Covers both broker-side (Rust) and SDK-side (TypeScript) enforcement",
+      "Detailed code sketches for new types and integration points",
+      "Clear phased sequencing with an implementation checklist",
+      "Identifies the routing layer as the key integration point"
+    ],
+    "summary": "The plan proposes a reasonable multi-phase approach to policy-based filtering and redaction, referencing real files like src/redact.rs, packages/policy/, packages/sdk/, and src/routing.rs. However, it entirely omits packages/contracts/ \u2014 a required module per the ground truth \u2014 and does not address src/policy/ (the Rust-side policy directory), instead only referencing the TypeScript packages/policy/. The plan lacks meaningful compatibility and migration notes for existing SDK consumers. While the phased structure and code sketches are actionable, several proposed new modules (src/filter.rs, packages/telemetry/src/filter-metrics.ts) appear speculative rather than grounded in verified repo patterns, weakening convention fit.",
+    "total_score": 52,
+    "weaknesses": [
+      "Completely omits packages/contracts/ \u2014 a critical required module for shared type definitions",
+      "Does not reference src/policy/ (Rust-side policy), only packages/policy/ (TypeScript)",
+      "No compatibility or migration notes for existing SDK consumers",
+      "Proposes modules like packages/telemetry/ without verifying they exist in the repo",
+      "No discussion of how contract changes would affect versioning or backward compatibility"
+    ]
+  },
+  "metrics": {
+    "action_calls": 0,
+    "exploration_calls": 6,
+    "exploration_to_action_ratio": null,
+    "finished_at": "2026-04-10T05:04:12.037000+00:00",
+    "input_tokens": 162,
+    "output_tokens": 5114,
+    "started_at": "2026-04-10T05:03:22.502000+00:00",
+    "time_to_completion_seconds": 49.535,
+    "time_to_first_edit_seconds": null,
+    "tool_call_count": 19,
+    "tool_counts": {
+      "bash": 13,
+      "read": 6
+    },
+    "total_tokens": 5276
+  },
+  "repo": {
+    "archeia_output_path": "evals/archeia-output/relay",
+    "baseline_docs": [
+      "AGENTS.md",
+      "CLAUDE.md",
+      "ARCHITECTURE.md"
+    ],
+    "branch": "main",
+    "commands": {
+      "lint": "npm run lint",
+      "test": "npm test"
+    },
+    "commit": "231c45da22fee641ef05c2cd03332ca38eeebc7e",
+    "complexity": "medium",
+    "id": "relay",
+    "language": "multi",
+    "loc": 69000,
+    "notes": [
+      "Supports the special relay baseline condition.",
+      "Allows Archeia-vs-hand-written-docs comparisons."
+    ],
+    "repo": "AgentWorkforce/relay",
+    "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/relay",
+    "tests_available": true
+  },
+  "repo_id": "relay",
+  "result_path": "/Users/hugopeck/conductor/workspaces/archeia/phoenix/evals/results/raw/relay/relay-plan-complex-02/l1/trial-1.json",
+  "started_at": "2026-04-10T05:02:59+00:00",
+  "status": "completed",
+  "task": {
+    "acceptance_criteria": [
+      "Maps policy/redaction decisions to real runtime and package surfaces.",
+      "Covers contract and SDK implications.",
+      "Includes sequencing and compatibility notes.",
+      "Fits relay's existing multi-package architecture."
+    ],
+    "category": "plan_complex",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "expected_modules_read": [
+      "src/policy/",
+      "src/redact.rs",
+      "packages/sdk/",
+      "packages/contracts/"
+    ],
+    "ground_truth": "Expected outcome:\n- The plan should identify where policy decisions are evaluated, how redaction would apply before delivery, what contracts must change, and how SDK consumers would observe the result. It must connect Rust runtime code with shared package boundaries.\n\nMust mention / touch:\n- src/policy/\n- src/redact.rs\n- packages/sdk/\n- packages/contracts/\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path",
+    "id": "relay-plan-complex-02",
+    "metadata": {
+      "difficulty": "complex",
+      "doc_sensitivity": "high",
+      "output_type": "plan",
+      "primary_surface": "policy-redaction",
+      "verification_scope": "repo_default"
+    },
+    "prompt": "Read the codebase and plan policy-based message filtering and redaction across the broker and SDK surfaces. Ground your plan in the actual modules and patterns you find.",
+    "repo_id": "relay"
+  },
+  "trial": 1
+}

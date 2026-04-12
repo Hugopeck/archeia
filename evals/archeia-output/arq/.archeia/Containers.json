@@ -1,0 +1,62 @@
+{
+  "system_boundary": {
+    "id": "arq",
+    "name": "arq",
+    "description": "Python asyncio job queue library backed by Redis for distributed background task execution."
+  },
+  "containers": [
+    {
+      "id": "arq-worker",
+      "name": "Worker Process",
+      "type": "worker",
+      "description": "Long-running asyncio event loop that polls Redis for due jobs, executes registered async coroutines, and writes results back to Redis.",
+      "technology": "Python asyncio, arq.worker.Worker",
+      "evidence": ["arq/worker.py", "arq/cli.py"]
+    },
+    {
+      "id": "arq-client",
+      "name": "Application / Client",
+      "type": "api",
+      "description": "Caller process that imports ArqRedis to enqueue jobs and optionally await results. Not shipped as a standalone binary — embedded in the consumer's application.",
+      "technology": "Python asyncio, arq.connections.ArqRedis",
+      "evidence": ["arq/connections.py"]
+    }
+  ],
+  "external_systems": [
+    {
+      "id": "redis",
+      "name": "Redis",
+      "description": "Primary data store; holds job queues (sorted sets), in-progress markers, and job results with TTL.",
+      "technology": "Redis 5/6/7",
+      "evidence": ["pyproject.toml", "tests/conftest.py", "arq/connections.py"]
+    }
+  ],
+  "relationships": [
+    {
+      "source": "arq-client",
+      "target": "redis",
+      "description": "Enqueues jobs by writing serialised JobDef to Redis sorted set; reads JobResult from result key.",
+      "protocol": "Redis",
+      "evidence": ["arq/connections.py", "arq/jobs.py"]
+    },
+    {
+      "source": "arq-worker",
+      "target": "redis",
+      "description": "Polls Redis sorted sets for due jobs, claims them atomically via WATCH/MULTI, executes functions, writes results.",
+      "protocol": "Redis",
+      "evidence": ["arq/worker.py", "arq/connections.py"]
+    }
+  ],
+  "people_container_mappings": [
+    {
+      "person_id": "developer",
+      "container_id": "arq-client",
+      "description": "Developer embeds ArqRedis in application code to enqueue jobs."
+    },
+    {
+      "person_id": "ops",
+      "container_id": "arq-worker",
+      "description": "Operator invokes the arq CLI to start and manage worker processes."
+    }
+  ]
+}

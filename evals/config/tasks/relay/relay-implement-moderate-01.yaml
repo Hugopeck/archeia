@@ -1,0 +1,30 @@
+{
+  "id": "relay-implement-moderate-01",
+  "repo_id": "relay",
+  "category": "implement_moderate",
+  "prompt": "Read the codebase and add a broker ping message that returns the broker and protocol version using the existing request and response envelope patterns. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should add one small protocol message/handler pair, return structured version information through the normal envelope flow, and include focused protocol-level tests.\n\nMust mention / touch:\n- src/protocol.rs\n- src/routing.rs\n- src/events.rs\n- tests/\n\nCommon failure modes:\n- Adding an ad hoc status path that bypasses the protocol envelope conventions\n- Returning unstructured text instead of structured broker/protocol version data",
+  "acceptance_criteria": [
+    "Adds a new protocol message and matching handler using current envelope patterns.",
+    "Returns structured broker and protocol version information.",
+    "Fits existing relay routing and event conventions.",
+    "Includes focused regression coverage."
+  ],
+  "expected_modules_read": [
+    "src/protocol.rs",
+    "src/routing.rs",
+    "src/events.rs",
+    "tests/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "moderate",
+    "output_type": "code_change",
+    "primary_surface": "ping-message",
+    "doc_sensitivity": "medium",
+    "verification_scope": "repo_default"
+  }
+}

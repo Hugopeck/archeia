@@ -1,0 +1,30 @@
+{
+  "id": "arq-ask-complex-01",
+  "repo_id": "arq",
+  "category": "ask_complex",
+  "prompt": "Read the codebase and explain how job retry and backoff work end to end in arq, from enqueueing through worker execution and retry scheduling. Base your answer only on code you actually read.",
+  "ground_truth": "Expected outcome:\n- Must identify where retry metadata lives, how worker execution decides to reschedule work, and how backoff or delay behavior is represented. Expected grounding includes arq/worker.py, arq/jobs.py, and any supporting connection or utility code involved in scheduling.\n\nMust mention / touch:\n- arq/worker.py\n- arq/jobs.py\n- arq/connections.py\n- arq/utils.py\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo",
+  "acceptance_criteria": [
+    "Covers enqueue, execution, failure, and retry scheduling flow in order.",
+    "Uses actual module names and retry concepts from arq.",
+    "Explains where retry state is stored or computed.",
+    "Avoids inventing components outside the repo."
+  ],
+  "expected_modules_read": [
+    "arq/worker.py",
+    "arq/jobs.py",
+    "arq/connections.py",
+    "arq/utils.py"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "explanation",
+    "primary_surface": "retry-backoff",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

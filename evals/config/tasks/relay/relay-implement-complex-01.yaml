@@ -1,0 +1,30 @@
+{
+  "id": "relay-implement-complex-01",
+  "repo_id": "relay",
+  "category": "implement_complex",
+  "prompt": "Read the codebase and include delivery priority in queued, retried, and dropped lifecycle events so replayed dashboard event streams preserve why a delivery was delayed or discarded. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should thread delivery priority through queued and retry/drop lifecycle events, preserve existing queue behavior, and keep replayed dashboard streams informative. It should add or update focused tests.\n\nMust mention / touch:\n- src/protocol.rs\n- src/replay_buffer.rs\n- src/routing.rs\n- src/queue.rs\n\nCommon failure modes:\n- Updating only one lifecycle event and leaving queued/retried/dropped payloads inconsistent\n- Changing queue ordering semantics instead of just surfacing priority context",
+  "acceptance_criteria": [
+    "Includes delivery priority in queued, retried, and dropped lifecycle events.",
+    "Preserves existing queue ordering and overflow behavior.",
+    "Keeps replayed dashboard event streams aligned with live events.",
+    "Adds or updates focused regression coverage."
+  ],
+  "expected_modules_read": [
+    "src/protocol.rs",
+    "src/replay_buffer.rs",
+    "src/routing.rs",
+    "src/queue.rs"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "code_change",
+    "primary_surface": "delivery-priority-events",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

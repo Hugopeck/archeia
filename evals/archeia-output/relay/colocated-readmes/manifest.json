@@ -1,0 +1,34 @@
+[
+  {
+    "source": "docs/README.md",
+    "target": "docs/README.md"
+  },
+  {
+    "source": "openclaw-web/README.md",
+    "target": "openclaw-web/README.md"
+  },
+  {
+    "source": "openclaw-web/app/README.md",
+    "target": "openclaw-web/app/README.md"
+  },
+  {
+    "source": "scripts/README.md",
+    "target": "scripts/README.md"
+  },
+  {
+    "source": "src/README.md",
+    "target": "src/README.md"
+  },
+  {
+    "source": "src/cli/README.md",
+    "target": "src/cli/README.md"
+  },
+  {
+    "source": "tests/benchmarks/README.md",
+    "target": "tests/benchmarks/README.md"
+  },
+  {
+    "source": "tests/parity/README.md",
+    "target": "tests/parity/README.md"
+  }
+]

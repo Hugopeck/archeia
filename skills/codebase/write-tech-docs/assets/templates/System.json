@@ -1,0 +1,85 @@
+{
+  "level": 1,
+  "title": "System Context",
+  "system": {
+    "id": "task-api",
+    "name": "Task Management API",
+    "description": "REST backend for managing tasks and projects",
+    "technology": "Node.js / Express",
+    "evidence": ["package.json", "README.md"]
+  },
+  "people": [
+    {
+      "id": "end-user",
+      "name": "End User",
+      "description": "Manages tasks and projects via the web app",
+      "evidence": ["README.md"]
+    },
+    {
+      "id": "admin",
+      "name": "Administrator",
+      "description": "Manages user accounts and system configuration",
+      "evidence": ["src/middleware/auth.ts"]
+    }
+  ],
+  "external_systems": [
+    {
+      "id": "postgresql",
+      "name": "PostgreSQL",
+      "description": "Primary relational data store",
+      "technology": "PostgreSQL 15",
+      "evidence": ["package.json", "docker-compose.yml"]
+    },
+    {
+      "id": "redis",
+      "name": "Redis",
+      "description": "Session cache and rate limiting",
+      "technology": "Redis 7",
+      "evidence": ["package.json", "docker-compose.yml"]
+    },
+    {
+      "id": "stripe-api",
+      "name": "Stripe API",
+      "description": "Payment processing",
+      "technology": "HTTPS",
+      "evidence": ["package.json"]
+    }
+  ],
+  "relationships": [
+    {
+      "source": "end-user",
+      "target": "task-api",
+      "description": "Creates and manages tasks via HTTPS",
+      "technology": "HTTPS/JSON",
+      "evidence": ["src/routes/tasks.ts"]
+    },
+    {
+      "source": "admin",
+      "target": "task-api",
+      "description": "Administers users and config via HTTPS",
+      "technology": "HTTPS/JSON",
+      "evidence": ["src/routes/admin.ts"]
+    },
+    {
+      "source": "task-api",
+      "target": "postgresql",
+      "description": "Reads and writes task and user records",
+      "technology": "SQL",
+      "evidence": ["src/models/task.ts"]
+    },
+    {
+      "source": "task-api",
+      "target": "redis",
+      "description": "Caches sessions and enforces rate limits",
+      "technology": "Redis protocol",
+      "evidence": ["src/middleware/session.ts"]
+    },
+    {
+      "source": "task-api",
+      "target": "stripe-api",
+      "description": "Processes subscription payments",
+      "technology": "HTTPS/JSON",
+      "evidence": ["src/services/billing.ts"]
+    }
+  ]
+}

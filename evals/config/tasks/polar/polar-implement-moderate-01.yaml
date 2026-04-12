@@ -1,0 +1,30 @@
+{
+  "id": "polar-implement-moderate-01",
+  "repo_id": "polar",
+  "category": "implement_moderate",
+  "prompt": "Read the codebase and expose a customer reference code derived from the existing short customer ID through the customer API response model. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should surface one focused customer field derived from existing model data, thread it through the owning customer schema and API response, and keep current customer behavior intact. Targeted tests should be added where practical.\n\nMust mention / touch:\n- server/polar/models/customer.py\n- server/polar/customer/schemas/customer.py\n- server/polar/customer/endpoints.py\n- server/tests/\n\nCommon failure modes:\n- Recomputing or persisting new identity state instead of exposing the existing short customer identifier\n- Adding the field without making it available through the customer API schema",
+  "acceptance_criteria": [
+    "Adds one focused customer reference field derived from existing model data.",
+    "Propagates the field through the customer API response model.",
+    "Follows current Polar customer schema conventions.",
+    "Keeps the change scoped and targeted."
+  ],
+  "expected_modules_read": [
+    "server/polar/models/customer.py",
+    "server/polar/customer/schemas/customer.py",
+    "server/polar/customer/endpoints.py",
+    "server/tests/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "moderate",
+    "output_type": "code_change",
+    "primary_surface": "customer-short-reference",
+    "doc_sensitivity": "medium",
+    "verification_scope": "none"
+  }
+}

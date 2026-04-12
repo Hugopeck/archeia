@@ -1,0 +1,30 @@
+{
+  "id": "mitmproxy-ask-complex-02",
+  "repo_id": "mitmproxy",
+  "category": "ask_complex",
+  "prompt": "Read the codebase and explain how WebSocket upgrade and interception work in mitmproxy, including where TLS and hook points fit into the flow. Base your answer only on code you actually read.",
+  "ground_truth": "Expected outcome:\n- Must explain the transition from HTTP handling to WebSocket handling, where TLS context matters, and which internal modules govern WebSocket frames and interception behavior. Expected references include mitmproxy/websocket.py, mitmproxy/tls.py, proxy-layer code, and relevant tool/addon surfaces.\n\nMust mention / touch:\n- mitmproxy/websocket.py\n- mitmproxy/tls.py\n- mitmproxy/proxy/\n- mitmproxy/tools/\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo",
+  "acceptance_criteria": [
+    "Explains the HTTP upgrade boundary and subsequent WebSocket handling path.",
+    "Names the modules that own TLS concerns versus WebSocket flow handling.",
+    "Mentions where hooks/addons can observe or mutate behavior.",
+    "Avoids claiming support paths that are not evidenced in the repo."
+  ],
+  "expected_modules_read": [
+    "mitmproxy/websocket.py",
+    "mitmproxy/tls.py",
+    "mitmproxy/proxy/",
+    "mitmproxy/tools/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "explanation",
+    "primary_surface": "websocket-interception",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

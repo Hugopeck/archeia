@@ -1,0 +1,110 @@
+{
+  "level": 2,
+  "title": "Container Diagram",
+  "system_boundary": {
+    "id": "task-api",
+    "name": "Task Management API",
+    "description": "REST backend for managing tasks and projects"
+  },
+  "containers": [
+    {
+      "id": "api-server",
+      "name": "API Server",
+      "technology": "Node.js / Express",
+      "description": "Handles HTTP requests and serves the REST API",
+      "type": "api",
+      "evidence": ["package.json", "src/index.ts"]
+    },
+    {
+      "id": "background-worker",
+      "name": "Background Worker",
+      "technology": "Node.js / BullMQ",
+      "description": "Processes async jobs like email notifications and reports",
+      "type": "worker",
+      "evidence": ["src/worker.ts", "package.json"]
+    },
+    {
+      "id": "web-app",
+      "name": "Web Application",
+      "technology": "React 18",
+      "description": "Single-page app for task management",
+      "type": "webapp",
+      "evidence": ["apps/web/package.json", "apps/web/vite.config.ts"]
+    }
+  ],
+  "external_systems": [
+    {
+      "id": "postgresql",
+      "name": "PostgreSQL",
+      "description": "Primary relational data store"
+    },
+    {
+      "id": "redis",
+      "name": "Redis",
+      "description": "Session cache and rate limiting"
+    },
+    {
+      "id": "stripe-api",
+      "name": "Stripe API",
+      "description": "Payment processing"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "web-app",
+      "target": "api-server",
+      "description": "Sends API requests",
+      "technology": "HTTPS/JSON",
+      "evidence": ["apps/web/src/api/client.ts"]
+    },
+    {
+      "source": "api-server",
+      "target": "postgresql",
+      "description": "Reads and writes task and user records",
+      "technology": "SQL",
+      "evidence": ["src/models/task.ts"]
+    },
+    {
+      "source": "api-server",
+      "target": "redis",
+      "description": "Caches sessions and enforces rate limits",
+      "technology": "Redis protocol",
+      "evidence": ["src/middleware/session.ts"]
+    },
+    {
+      "source": "api-server",
+      "target": "stripe-api",
+      "description": "Processes subscription payments",
+      "technology": "HTTPS/JSON",
+      "evidence": ["src/services/billing.ts"]
+    },
+    {
+      "source": "api-server",
+      "target": "background-worker",
+      "description": "Enqueues async jobs",
+      "technology": "Redis/BullMQ",
+      "evidence": ["src/services/notifications.ts"]
+    },
+    {
+      "source": "background-worker",
+      "target": "postgresql",
+      "description": "Reads data for report generation",
+      "technology": "SQL",
+      "evidence": ["src/jobs/reportJob.ts"]
+    }
+  ],
+  "people_container_mappings": [
+    {
+      "person": "end-user",
+      "container": "web-app",
+      "description": "Manages tasks via browser",
+      "technology": "HTTPS"
+    },
+    {
+      "person": "admin",
+      "container": "web-app",
+      "description": "Administers users via browser",
+      "technology": "HTTPS"
+    }
+  ]
+}

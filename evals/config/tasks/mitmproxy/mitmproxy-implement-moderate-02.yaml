@@ -1,0 +1,29 @@
+{
+  "id": "mitmproxy-implement-moderate-02",
+  "repo_id": "mitmproxy",
+  "category": "implement_moderate",
+  "prompt": "Read the codebase and add support for a small new response-display or contentview behavior following the existing plugin structure. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should live in the contentview/display layer, follow current plugin registration structure, and include tests or fixtures that prove the new rendering behavior. It should not mix presentation logic into proxy-core code.\n\nMust mention / touch:\n- mitmproxy/contentviews/\n- mitmproxy/http.py\n- test/\n\nCommon failure modes:\n- Changing behavior outside the intended scope\n- Skipping regression coverage or verification for the touched path",
+  "acceptance_criteria": [
+    "Implements the feature inside the contentview/display extension surface.",
+    "Follows existing registration and formatting patterns.",
+    "Includes or updates tests/fixtures for the new behavior.",
+    "Keeps proxy-core behavior unchanged unless strictly required."
+  ],
+  "expected_modules_read": [
+    "mitmproxy/contentviews/",
+    "mitmproxy/http.py",
+    "test/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "moderate",
+    "output_type": "code_change",
+    "primary_surface": "contentview",
+    "doc_sensitivity": "medium",
+    "verification_scope": "repo_default"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "arq-implement-complex-02",
+  "repo_id": "arq",
+  "category": "implement_complex",
+  "prompt": "Read the codebase and create a shared cron scheduling helper used by both cron job definition objects and worker-side cron enqueueing so next-run calculation and enqueue timing stay in one place. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should extract a real shared scheduling helper, use it from both cron definition logic and worker-side cron enqueueing, preserve current scheduling behavior, and add or update tests.\n\nMust mention / touch:\n- arq/cron.py\n- arq/worker.py\n- arq/utils.py\n- tests/\n\nCommon failure modes:\n- Moving logic without actually reducing duplication between cron definition and worker scheduling\n- Changing cron timing behavior while extracting the helper",
+  "acceptance_criteria": [
+    "Extracts a shared cron scheduling helper into a sensible utility surface.",
+    "Uses the helper from both cron definition logic and worker-side enqueueing.",
+    "Preserves existing scheduling behavior across affected paths.",
+    "Adds or updates tests to cover the extracted logic."
+  ],
+  "expected_modules_read": [
+    "arq/cron.py",
+    "arq/worker.py",
+    "arq/utils.py",
+    "tests/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "code_change",
+    "primary_surface": "shared-cron-scheduling",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

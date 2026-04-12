@@ -1,0 +1,30 @@
+{
+  "id": "relay-plan-complex-01",
+  "repo_id": "relay",
+  "category": "plan_complex",
+  "prompt": "Read the codebase and design durable retry and acknowledgement behavior for outbound delivery without breaking the current routing model. Ground your plan in the actual modules and patterns you find.",
+  "ground_truth": "Expected outcome:\n- The plan should map how outbound messages are currently routed and buffered, identify where acknowledgement state belongs, and propose changes that preserve current protocol expectations. It should include testing and migration risks.\n\nMust mention / touch:\n- src/relaycast_ws.rs\n- src/replay_buffer.rs\n- src/queue.rs\n- src/routing.rs\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path",
+  "acceptance_criteria": [
+    "Identifies concrete modules for retry, ack state, and delivery changes.",
+    "Preserves current routing/protocol expectations.",
+    "Includes failure-mode handling and tests.",
+    "Avoids speculative redesigns outside the current architecture."
+  ],
+  "expected_modules_read": [
+    "src/relaycast_ws.rs",
+    "src/replay_buffer.rs",
+    "src/queue.rs",
+    "src/routing.rs"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "plan",
+    "primary_surface": "delivery-ack-retry",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

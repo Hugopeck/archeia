@@ -1,0 +1,31 @@
+{
+  "id": "mitmproxy-ask-complex-01",
+  "repo_id": "mitmproxy",
+  "category": "ask_complex",
+  "prompt": "Read the codebase and explain the full HTTP request lifecycle in mitmproxy, starting at the client connection and tracing through proxy layers, hooks, and upstream dispatch until the response is returned. Base your answer only on code you actually read.",
+  "ground_truth": "Expected outcome:\n- Must identify the major stages in the request path and name the core modules involved. Expected coverage includes connection and flow objects, proxy-layer handling, hook dispatch/addon interaction, and where upstream communication is initiated. Should connect the explanation to modules such as mitmproxy/proxy/, mitmproxy/http.py, mitmproxy/master.py, and addon/hook surfaces rather than speaking generically about proxies.\n\nMust mention / touch:\n- mitmproxy/proxy/\n- mitmproxy/http.py\n- mitmproxy/master.py\n- mitmproxy/addons/\n- mitmproxy/hooks.py\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo",
+  "acceptance_criteria": [
+    "Covers client-side ingress, internal request handling, hook/addon dispatch, and upstream dispatch in order.",
+    "Uses real mitmproxy module names and does not invent subsystems.",
+    "Explains where request/response state is represented and mutated.",
+    "Stays focused on the HTTP lifecycle rather than unrelated protocols."
+  ],
+  "expected_modules_read": [
+    "mitmproxy/proxy/",
+    "mitmproxy/http.py",
+    "mitmproxy/master.py",
+    "mitmproxy/addons/",
+    "mitmproxy/hooks.py"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "explanation",
+    "primary_surface": "http-lifecycle",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

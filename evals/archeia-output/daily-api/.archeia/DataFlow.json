@@ -1,0 +1,152 @@
+{
+  "flows": [
+    {
+      "id": "graphql-query",
+      "name": "GraphQL Query Request",
+      "primary": true,
+      "description": "Authenticated user submits a GraphQL query (e.g., feed, post, user profile) through the Fastify/Mercurius stack.",
+      "participants": [
+        { "id": "authenticated-user", "label": "Browser / App Client", "type": "person" },
+        { "id": "api-server", "label": "API Server", "type": "container" },
+        { "id": "api-auth", "label": "Auth Middleware", "type": "component" },
+        { "id": "api-graphql", "label": "GraphQL Schema / Resolvers", "type": "component" },
+        { "id": "api-entity", "label": "Entity Layer (TypeORM)", "type": "component" },
+        { "id": "postgresql", "label": "PostgreSQL", "type": "external_system" },
+        { "id": "redis", "label": "Redis", "type": "external_system" }
+      ],
+      "steps": [
+        {
+          "id": "step-1",
+          "from": "authenticated-user",
+          "to": "api-server",
+          "type": "sync",
+          "protocol": "HTTPS",
+          "label": "POST /graphql with JWT cookie",
+          "evidence": ["src/index.ts"]
+        },
+        {
+          "id": "step-2",
+          "from": "api-server",
+          "to": "api-auth",
+          "type": "sync",
+          "protocol": "function call",
+          "label": "Verify JWT, inject user context",
+          "evidence": ["src/auth.ts"]
+        },
+        {
+          "id": "step-3",
+          "from": "api-auth",
+          "to": "api-graphql",
+          "type": "sync",
+          "protocol": "function call",
+          "label": "Execute resolver with Context",
+          "evidence": ["src/index.ts", "src/Context.ts"]
+        },
+        {
+          "id": "step-4",
+          "from": "api-graphql",
+          "to": "redis",
+          "type": "sync",
+          "protocol": "Redis",
+          "label": "Check Mercurius cache",
+          "evidence": ["src/index.ts", "src/redis.ts"]
+        },
+        {
+          "id": "step-5",
+          "from": "api-graphql",
+          "to": "api-entity",
+          "type": "sync",
+          "protocol": "function call",
+          "label": "Build TypeORM query via GraphORM",
+          "evidence": ["src/graphorm/index.ts"]
+        },
+        {
+          "id": "step-6",
+          "from": "api-entity",
+          "to": "postgresql",
+          "type": "sync",
+          "protocol": "SQL",
+          "label": "Execute SQL against master or read-replica",
+          "evidence": ["src/data-source.ts"]
+        },
+        {
+          "id": "step-7",
+          "from": "postgresql",
+          "to": "api-entity",
+          "type": "response",
+          "protocol": "SQL",
+          "label": "Return entity rows",
+          "evidence": ["src/data-source.ts"]
+        },
+        {
+          "id": "step-8",
+          "from": "api-entity",
+          "to": "api-graphql",
+          "type": "response",
+          "protocol": "function call",
+          "label": "Return serialized resolver data",
+          "evidence": ["src/graphorm/index.ts"]
+        },
+        {
+          "id": "step-9",
+          "from": "api-server",
+          "to": "authenticated-user",
+          "type": "response",
+          "protocol": "HTTPS",
+          "label": "Return GraphQL JSON response",
+          "evidence": ["src/index.ts"]
+        }
+      ]
+    },
+    {
+      "id": "background-event",
+      "name": "Background Event Processing",
+      "primary": false,
+      "description": "API publishes a domain event to Pub/Sub; background worker picks it up and processes it.",
+      "participants": [
+        { "id": "api-server", "label": "API Server", "type": "container" },
+        { "id": "google-pubsub", "label": "Google Cloud Pub/Sub", "type": "external_system" },
+        { "id": "background-worker", "label": "Background Worker", "type": "container" },
+        { "id": "postgresql", "label": "PostgreSQL", "type": "external_system" }
+      ],
+      "steps": [
+        {
+          "id": "bg-step-1",
+          "from": "api-server",
+          "to": "google-pubsub",
+          "type": "async",
+          "protocol": "message queue",
+          "label": "Publish domain event (e.g., post viewed)",
+          "evidence": ["src/background.ts"]
+        },
+        {
+          "id": "bg-step-2",
+          "from": "google-pubsub",
+          "to": "background-worker",
+          "type": "async",
+          "protocol": "message queue",
+          "label": "Deliver message to subscribed worker",
+          "evidence": ["src/background.ts"]
+        },
+        {
+          "id": "bg-step-3",
+          "from": "background-worker",
+          "to": "postgresql",
+          "type": "sync",
+          "protocol": "SQL",
+          "label": "Read/write entities during event processing",
+          "evidence": ["src/background.ts"]
+        },
+        {
+          "id": "bg-step-4",
+          "from": "postgresql",
+          "to": "background-worker",
+          "type": "response",
+          "protocol": "SQL",
+          "label": "Return updated data",
+          "evidence": ["src/data-source.ts"]
+        }
+      ]
+    }
+  ]
+}

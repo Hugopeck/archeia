@@ -1,0 +1,205 @@
+{
+  "agent_run": {
+    "command": [
+      "claude",
+      "--model",
+      "haiku",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--permission-mode",
+      "auto",
+      "--append-system-prompt",
+      "CRITICAL RULE: You MUST use your tools to read files in this repository before answering. Do NOT answer from memory or training data. Start by exploring the project structure with Bash(ls) or Glob, then read the specific files needed to answer the question. Every claim you make must cite a specific file path you actually read in this session. If you answer without reading files first, your response will be scored as zero.",
+      "-p",
+      "Read the codebase and plan rate limiting for checkout and customer-facing API surfaces using Polar's existing app and configuration patterns. Ground your plan in the actual modules and patterns you find."
+    ],
+    "exit_code": 0,
+    "finished_at": "2026-04-10T01:46:23+00:00",
+    "started_at": "2026-04-10T01:40:59+00:00",
+    "status": "completed",
+    "stderr": "",
+    "stdout": "Now I'll create a comprehensive plan for rate limiting checkout and customer-facing API surfaces, grounded in Polar's existing patterns.\n\n## Rate Limiting Plan for Checkout & Customer-Facing APIs\n\n### Current State Analysis\n\n**Existing Rate Limiting Implementation** (`server/polar/rate_limit.py`):\n- Uses `ratelimit` library with Redis backend\n- Middleware-based (applied globally via `app.add_middleware(rate_limit.get_middleware)`)\n- Regex path-based rules with optional group-based overrides\n- Four rate limit groups: `web` (fastest), `restricted`, `default`, `elevated`\n- Rate limit identifiers from `AuthSubject.rate_limit_key` (tuple of identifier + group)\n\n**Current Rules**:\n- Login code: 6/min, 12/hour, 900s block\n- Customer session auth: 6/min, 12/hour, 900s block  \n- License key operations (validate/activate/deactivate): 3/sec, 60s block\n- Seat claim stream: 10/min, 300s block\n- Checkout confirm: 6/min, 20/hour, 1800s block\n- Sandbox/Production tier fallbacks: 10-100 req/min (sandbox) vs 60-500 req/min (production)\n\n**Rate Limit Group Assignment**:\n- Users (UserSession): `web` group\n- Organizations: stored via `rate_limit_group` column (RateLimitGroupMixin)\n- OAuth2 clients: via `client.rate_limit_group` column\n- Customers/Members: `default` group\n- Anonymous: `default` group (IP-based)\n\n---\n\n### Recommended Rate Limiting Strategy\n\n#### 1. **Checkout API Endpoints** (`server/polar/checkout/endpoints.py`)\n\n| Endpoint | Operation | Current Rule | Recommended Rule | Reasoning |\n|----------|-----------|--------------|------------------|-----------|\n| `POST /v1/checkouts/` | Create session | Tier fallback | **5/min per user, 30/hour** | Prevent session spam; creation is resource-heavy |\n| `PATCH /v1/checkouts/{id}` | Update session | Tier fallback | **10/min per user** | Updates are lighter; allow more frequent |\n| `GET /v1/checkouts/{id}` | Get session | Tier fallback | **30/min per user** | Read-only; higher allowance |\n| `GET /v1/checkouts/` | List sessions | Tier fallback | **10/min per user** | Pagination support; prevent list scanning |\n| `GET /v1/checkouts/client/{secret}` | Public get | Tier fallback | **20/min per IP** | Public endpoint; IP-based rate limit |\n| `PATCH /v1/checkouts/client/{secret}` | Public update | Tier fallback | **10/min per IP** | Public endpoint; prevent mutations |\n| `POST /v1/checkouts/client/{secret}/confirm` | Confirm & pay | **Existing: 6/min, 20/hour** | **Keep + Add 3/sec burst limit** | Payment processing; needs burst protection |\n| `GET /v1/checkouts/client/{secret}/stream` | SSE stream | Tier fallback | **1 concurrent per IP** | Resource-intensive; limit active connections |\n\n#### 2. **Customer Portal APIs** (`server/polar/customer_portal/endpoints/`)\n\n| Endpoint Group | Recommended Limits | Reasoning |\n|---|---|---|\n| Customer Session (`/customer-session/request`, `/authenticate`) | **Keep existing: 6/min, 12/hour, 900s block** | Authentication endpoints; prevent brute force |\n| License Keys (validate, activate, deactivate) | **Keep existing: 3/sec, 60s block** | Validation is public; prevent automated scanning |\n| License Keys (list, get) | **20/min per customer** | Authenticated reads; higher allowance |\n| Customer Seats (claim, list) | **10/min per customer** | Seat operations; moderate limits |\n| Customer Meter (read/write) | **50/min per customer** | Metering data; frequent updates expected |\n| Subscriptions (list, get) | **20/min per customer** | Portal reads; standard limits |\n| Orders (list, get) | **15/min per customer** | Order history access; standard limits |\n\n#### 3. **Checkout Links** (`server/polar/checkout_link/endpoints.py`)\n\n| Endpoint | Recommended Rule | Reasoning |\n|---|---|---|\n| `GET /v1/checkout-links/{id}` | **30/min per IP** | Public redirect; prevent enumeration |\n| `POST /v1/checkout-links/` | **5/min per user** | Creation is seller-authenticated |\n\n---\n\n### Implementation Details\n\n#### Step 1: Configuration Constants\nAdd to `server/polar/config.py` under rate limiting section:\n\n```python\n# Rate limit configuration (from settings or hardcoded for each env)\nRATE_LIMIT_CHECKOUT_CREATE_MINUTE: int = 5\nRATE_LIMIT_CHECKOUT_CREATE_HOUR: int = 30\nRATE_LIMIT_CHECKOUT_UPDATE_MINUTE: int = 10\nRATE_LIMIT_CHECKOUT_CONFIRM_MINUTE: int = 6\nRATE_LIMIT_CHECKOUT_CONFIRM_HOUR: int = 20\nRATE_LIMIT_CHECKOUT_CONFIRM_BURST: float = 0.05  # 3/sec = 1 per 0.333s\n\nRATE_LIMIT_CUSTOMER_METER_MINUTE: int = 50\nRATE_LIMIT_CUSTOMER_SEAT_MINUTE: int = 10\nRATE_LIMIT_CUSTOMER_LICENSE_MINUTE: int = 20\n\n# Stream/SSE limits\nRATE_LIMIT_CHECKOUT_STREAM_CONCURRENT: int = 1  # per IP/session\n```\n\n#### Step 2: Enhanced Rate Limit Rules\nModify `server/polar/rate_limit.py`:\n\n```python\n_BASE_RULES: dict[str, Sequence[Rule]] = {\n    # Existing rules...\n    \"^/v1/login-code\": [...],\n    \n    # Checkout APIs - sensitive operations\n    \"^/v1/checkouts/client/.+/confirm\": [\n        Rule(second=3, minute=6, hour=20, block_time=1800, zone=\"checkout-confirm\"),\n    ],\n    \n    # Checkout session management\n    \"^/v1/checkouts/client/.+\": [\n        Rule(minute=20, block_time=300, zone=\"checkout-public\"),\n    ],\n    \n    # Authenticated checkout operations\n    \"^/v1/checkouts/\": [\n        Rule(minute=10, block_time=300, zone=\"checkout-auth\"),\n    ],\n    \n    # Customer portal - metering (high frequency expected)\n    \"^/v1/customer-portal/customer-meters\": [\n        Rule(minute=50, block_time=60, zone=\"customer-meter\"),\n    ],\n    \n    # Customer portal - seat management\n    \"^/v1/customer-portal/customer-seats/claim\": [\n        Rule(minute=10, block_time=300, zone=\"customer-seat\"),\n    ],\n    \n    # Customer portal - license keys\n    \"^/v1/customer-portal/license-keys/(activate|deactivate|validate)\": [\n        Rule(second=3, block_time=60, zone=\"customer-license-key\"),\n    ],\n}\n```\n\n#### Step 3: Per-Endpoint Decorators (Optional Enhancement)\nCreate optional decorator in `server/polar/kit/rate_limit.py`:\n\n```python\nfrom functools import wraps\nfrom typing import Callable\n\ndef rate_limit(\n    minute: int | None = None,\n    hour: int | None = None,\n    second: float | None = None,\n    block_time: int = 300,\n    zone: str = \"api\",\n) -> Callable:\n    \"\"\"Optional: Endpoint-level rate limit override.\"\"\"\n    def decorator(func: Callable) -> Callable:\n        func._rate_limit_rule = Rule(\n            minute=minute,\n            hour=hour,\n            second=second,\n            block_time=block_time,\n            zone=zone,\n        )\n        return func\n    return decorator\n```\n\nUsage in endpoints (for future):\n```python\n@router.post(\"/confirm\")\n@rate_limit(second=3, minute=6, hour=20, zone=\"checkout-confirm\")\nasync def confirm(...) -> Checkout:\n    ...\n```\n\n#### Step 4: SSE Connection Limits\nFor stream endpoints (`/client/{secret}/stream`), add concurrent connection tracking:\n\nCreate `server/polar/kit/rate_limit_stream.py`:\n\n```python\nfrom redis.asyncio import Redis\nfrom fastapi import HTTPException\n\nclass StreamRateLimiter:\n    \"\"\"Track concurrent SSE connections per IP/session.\"\"\"\n    \n    async def check_concurrent(\n        self, redis: Redis, key: str, max_concurrent: int = 1\n    ) -> str:\n        \"\"\"Acquire slot for concurrent stream. Returns session ID.\"\"\"\n        current = await redis.incr(f\"stream_concurrent:{key}\")\n        if current > max_concurrent:\n            await redis.decr(f\"stream_concurrent:{key}\")\n            raise HTTPException(status_code=429, detail=\"Too many concurrent streams\")\n        return str(current)\n    \n    async def release_concurrent(self, redis: Redis, key: str) -> None:\n        await redis.decr(f\"stream_concurrent:{key}\")\n```\n\n#### Step 5: Rate Limit Group Assignments\nRecommend adding to Organization model creation flow:\n\n```python\n# When creating an organization, set appropriate group:\norganization = Organization(\n    name=name,\n    slug=slug,\n    rate_limit_group=RateLimitGroup.default,  # Start here\n    # ... other fields\n)\n\n# Escalation path: if organization validates (revenue checks, etc):\norganization.rate_limit_group = RateLimitGroup.elevated\n```\n\n---\n\n### Monitoring & Alerts\n\n#### Metrics to Track\nAdd to `server/polar/observability/` (extend existing Prometheus setup):\n\n```python\n# Track rate limit hits\nrate_limit_hits = Counter(\n    \"polar_rate_limit_hits_total\",\n    \"Total rate limit hits\",\n    [\"endpoint\", \"rate_limit_group\", \"zone\"],\n)\n\n# Track rate limit block duration compliance\nrate_limit_block_seconds = Gauge(\n    \"polar_rate_limit_block_seconds\",\n    \"Active rate limit block duration\",\n    [\"zone\"],\n)\n```\n\n#### Alert Thresholds\n- Alert if checkout confirm endpoint exceeds 50 rate limit blocks/hour (indicates attack or legitimate spike)\n- Alert if customer portal endpoints exceed 100 blocks/hour (may indicate legitimate usage issue)\n- Track 429 response codes in existing HTTP metrics\n\n---\n\n### Deployment Considerations\n\n1. **Configuration Management**:\n   - Rules defined in `rate_limit.py` (version controlled)\n   - Dynamic adjustment: organization-level rate_limit_group column allows per-customer tuning\n   - No per-endpoint configuration needed in Phase 1\n\n2. **Testing**:\n   - Add integration tests in `tests/test_rate_limit.py`\n   - Test burst scenarios (confirm endpoint)\n   - Test concurrent streams (SSE endpoints)\n   - Mock Redis for unit tests\n\n3. **Backwards Compatibility**:\n   - Existing tier-based fallback rules remain (applies to unmapped endpoints)\n   - No API changes; rate limit is transparent to clients\n\n4. **Gradual Rollout**:\n   - Phase 1: Deploy rules to sandbox first, monitor for 1-2 weeks\n   - Phase 2: Deploy to production with conservative limits\n   - Phase 3: Adjust based on usage patterns (increase if legitimate traffic blocked)\n\n---\n\n### Future Enhancements\n\n1. **Dynamic Rate Limit Adjustment**:\n   - Query API usage from `server/polar/metrics/` \n   - Auto-escalate organization's rate_limit_group if sustained high usage\n\n2. **Cost-Based Rate Limiting**:\n   - Heavier endpoints (stripe calls, file uploads) cost more tokens\n   - Token bucket instead of fixed request counts\n\n3. **Endpoint-Level Decorators**:\n   - Optional decorator on endpoints for per-route overrides\n   - Reduces centralized rule complexity\n\n4. **Geographic Rate Limiting**:\n   - Leverage existing `checkout.ip_geolocation` client\n   - Different limits by region/country for fraud prevention\n\n---\n\n### Summary\n\nThe plan leverages Polar's existing middleware-based rate limiting framework, adds specific rules for checkout and customer-facing APIs, and maintains backward compatibility with current tier-based fallbacks. Implementation requires changes only to `rate_limit.py` and optional `config.py` additions, with no API changes.",
+    "transcript_path": "/tmp/archeia-phase4/polar-l2-polar-plan-complex-02-trial1/.archeia-eval/conversation.json"
+  },
+  "code_quality": {
+    "lint": null,
+    "lint_baseline": null,
+    "lint_baseline_findings": null,
+    "lint_delta": null,
+    "lint_findings": null,
+    "tests": null
+  },
+  "condition_application": {
+    "archeia_output": "evals/archeia-output/polar",
+    "condition_id": "l2",
+    "copied_paths": [
+      ".archeia",
+      "AGENTS.md",
+      "CLAUDE.md",
+      "clients/packages/i18n/README.md",
+      "clients/packages/orbit/README.md",
+      "dev/README.md",
+      "server/README.md",
+      "server/polar/README.md",
+      "server/polar/benefit/README.md",
+      "server/polar/benefit/agents.md",
+      "server/polar/benefit/claude.md",
+      "server/polar/customer_portal/README.md",
+      "server/polar/integrations/README.md",
+      "server/polar/integrations/agents.md",
+      "server/polar/integrations/claude.md",
+      "server/polar/kit/README.md",
+      "server/polar/models/README.md",
+      "server/polar/models/agents.md",
+      "server/polar/models/claude.md",
+      "server/polar/oauth2/README.md",
+      "server/polar/observability/README.md",
+      "server/polar/transaction/README.md",
+      "server/polar/worker/README.md",
+      "server/polar/worker/agents.md",
+      "server/polar/worker/claude.md",
+      "server/scripts/README.md",
+      "server/tests/README.md",
+      "server/tinybird/README.md",
+      "server/tinybird/agents.md",
+      "server/tinybird/claude.md"
+    ],
+    "kept_existing_docs": false,
+    "removed_paths": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "repo_id": "polar",
+    "worktree": "/tmp/archeia-phase4/polar-l2-polar-plan-complex-02-trial1"
+  },
+  "condition_commit": {
+    "command": [
+      "git",
+      "commit",
+      "-m",
+      "Apply evaluation condition"
+    ],
+    "cwd": "/tmp/archeia-phase4/polar-l2-polar-plan-complex-02-trial1",
+    "exit_code": 0,
+    "finished_at": "2026-04-10T01:40:59+00:00",
+    "started_at": "2026-04-10T01:40:58+00:00",
+    "stderr": "",
+    "stdout": "[detached HEAD 07111c8] Apply evaluation condition\n 41 files changed, 1983 insertions(+), 274 deletions(-)\n create mode 100644 .archeia/Architecture.md\n create mode 100644 .archeia/Components.json\n create mode 100644 .archeia/Containers.json\n create mode 100644 .archeia/DataFlow.json\n create mode 100644 .archeia/Entities.json\n create mode 100644 .archeia/Guide.md\n create mode 100644 .archeia/Standards.md\n create mode 100644 .archeia/System.json\n create mode 100644 .archeia/diagrams/containers.md\n create mode 100644 .archeia/diagrams/context.md\n create mode 100644 .archeia/diagrams/erd.md\n create mode 100644 .archeia/diagrams/sequence-primary.md\n create mode 100644 clients/packages/i18n/README.md\n create mode 100644 clients/packages/orbit/README.md\n create mode 100644 dev/README.md\n create mode 100644 server/README.md\n create mode 100644 server/polar/README.md\n create mode 100644 server/polar/benefit/README.md\n create mode 100644 server/polar/benefit/agents.md\n create mode 100644 server/polar/benefit/claude.md\n create mode 100644 server/polar/customer_portal/README.md\n create mode 100644 server/polar/integrations/README.md\n create mode 100644 server/polar/integrations/agents.md\n create mode 100644 server/polar/integrations/claude.md\n create mode 100644 server/polar/kit/README.md\n create mode 100644 server/polar/models/README.md\n create mode 100644 server/polar/models/agents.md\n create mode 100644 server/polar/models/claude.md\n create mode 100644 server/polar/oauth2/README.md\n create mode 100644 server/polar/observability/README.md\n create mode 100644 server/polar/transaction/README.md\n create mode 100644 server/polar/worker/README.md\n create mode 100644 server/polar/worker/agents.md\n create mode 100644 server/polar/worker/claude.md\n create mode 100644 server/scripts/README.md\n create mode 100644 server/tests/README.md\n create mode 100644 server/tinybird/README.md\n create mode 100644 server/tinybird/agents.md\n create mode 100644 server/tinybird/claude.md\n"
+  },
+  "condition_id": "l2",
+  "diff": "",
+  "finished_at": "2026-04-10T01:46:44+00:00",
+  "judge": {
+    "command": [
+      "claude",
+      "--output-format",
+      "json",
+      "-p",
+      "You are judging an Archeia evaluation run.\n\nTask category: plan_complex\nTask id: polar-plan-complex-02\n\nTask prompt:\nRead the codebase and plan rate limiting for checkout and customer-facing API surfaces using Polar's existing app and configuration patterns. Ground your plan in the actual modules and patterns you find.\n\nGround truth / reference:\nExpected outcome:\n- The plan should identify the correct API boundaries, configuration surfaces, and rollout/testing strategy. It should use Polar's current backend structure rather than proposing a generic gateway-level solution.\n\nMust mention / touch:\n- server/polar/app.py\n- server/polar/api.py\n- server/polar/checkout/\n- server/polar/customer_portal/\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path\n\nAcceptance criteria:\n[\n  \"Maps rate limiting to real API and config surfaces.\",\n  \"Identifies the right customer-facing boundaries.\",\n  \"Includes rollout and test considerations.\",\n  \"Fits existing backend structure.\"\n]\n\nAgent response:\nNow I'll create a comprehensive plan for rate limiting checkout and customer-facing API surfaces, grounded in Polar's existing patterns.\n\n## Rate Limiting Plan for Checkout & Customer-Facing APIs\n\n### Current State Analysis\n\n**Existing Rate Limiting Implementation** (`server/polar/rate_limit.py`):\n- Uses `ratelimit` library with Redis backend\n- Middleware-based (applied globally via `app.add_middleware(rate_limit.get_middleware)`)\n- Regex path-based rules with optional group-based overrides\n- Four rate limit groups: `web` (fastest), `restricted`, `default`, `elevated`\n- Rate limit identifiers from `AuthSubject.rate_limit_key` (tuple of identifier + group)\n\n**Current Rules**:\n- Login code: 6/min, 12/hour, 900s block\n- Customer session auth: 6/min, 12/hour, 900s block  \n- License key operations (validate/activate/deactivate): 3/sec, 60s block\n- Seat claim stream: 10/min, 300s block\n- Checkout confirm: 6/min, 20/hour, 1800s block\n- Sandbox/Production tier fallbacks: 10-100 req/min (sandbox) vs 60-500 req/min (production)\n\n**Rate Limit Group Assignment**:\n- Users (UserSession): `web` group\n- Organizations: stored via `rate_limit_group` column (RateLimitGroupMixin)\n- OAuth2 clients: via `client.rate_limit_group` column\n- Customers/Members: `default` group\n- Anonymous: `default` group (IP-based)\n\n---\n\n### Recommended Rate Limiting Strategy\n\n#### 1. **Checkout API Endpoints** (`server/polar/checkout/endpoints.py`)\n\n| Endpoint | Operation | Current Rule | Recommended Rule | Reasoning |\n|----------|-----------|--------------|------------------|-----------|\n| `POST /v1/checkouts/` | Create session | Tier fallback | **5/min per user, 30/hour** | Prevent session spam; creation is resource-heavy |\n| `PATCH /v1/checkouts/{id}` | Update session | Tier fallback | **10/min per user** | Updates are lighter; allow more frequent |\n| `GET /v1/checkouts/{id}` | Get session | Tier fallback | **30/min per user** | Read-only; higher allowance |\n| `GET /v1/checkouts/` | List sessions | Tier fallback | **10/min per user** | Pagination support; prevent list scanning |\n| `GET /v1/checkouts/client/{secret}` | Public get | Tier fallback | **20/min per IP** | Public endpoint; IP-based rate limit |\n| `PATCH /v1/checkouts/client/{secret}` | Public update | Tier fallback | **10/min per IP** | Public endpoint; prevent mutations |\n| `POST /v1/checkouts/client/{secret}/confirm` | Confirm & pay | **Existing: 6/min, 20/hour** | **Keep + Add 3/sec burst limit** | Payment processing; needs burst protection |\n| `GET /v1/checkouts/client/{secret}/stream` | SSE stream | Tier fallback | **1 concurrent per IP** | Resource-intensive; limit active connections |\n\n#### 2. **Customer Portal APIs** (`server/polar/customer_portal/endpoints/`)\n\n| Endpoint Group | Recommended Limits | Reasoning |\n|---|---|---|\n| Customer Session (`/customer-session/request`, `/authenticate`) | **Keep existing: 6/min, 12/hour, 900s block** | Authentication endpoints; prevent brute force |\n| License Keys (validate, activate, deactivate) | **Keep existing: 3/sec, 60s block** | Validation is public; prevent automated scanning |\n| License Keys (list, get) | **20/min per customer** | Authenticated reads; higher allowance |\n| Customer Seats (claim, list) | **10/min per customer** | Seat operations; moderate limits |\n| Customer Meter (read/write) | **50/min per customer** | Metering data; frequent updates expected |\n| Subscriptions (list, get) | **20/min per customer** | Portal reads; standard limits |\n| Orders (list, get) | **15/min per customer** | Order history access; standard limits |\n\n#### 3. **Checkout Links** (`server/polar/checkout_link/endpoints.py`)\n\n| Endpoint | Recommended Rule | Reasoning |\n|---|---|---|\n| `GET /v1/checkout-links/{id}` | **30/min per IP** | Public redirect; prevent enumeration |\n| `POST /v1/checkout-links/` | **5/min per user** | Creation is seller-authenticated |\n\n---\n\n### Implementation Details\n\n#### Step 1: Configuration Constants\nAdd to `server/polar/config.py` under rate limiting section:\n\n```python\n# Rate limit configuration (from settings or hardcoded for each env)\nRATE_LIMIT_CHECKOUT_CREATE_MINUTE: int = 5\nRATE_LIMIT_CHECKOUT_CREATE_HOUR: int = 30\nRATE_LIMIT_CHECKOUT_UPDATE_MINUTE: int = 10\nRATE_LIMIT_CHECKOUT_CONFIRM_MINUTE: int = 6\nRATE_LIMIT_CHECKOUT_CONFIRM_HOUR: int = 20\nRATE_LIMIT_CHECKOUT_CONFIRM_BURST: float = 0.05  # 3/sec = 1 per 0.333s\n\nRATE_LIMIT_CUSTOMER_METER_MINUTE: int = 50\nRATE_LIMIT_CUSTOMER_SEAT_MINUTE: int = 10\nRATE_LIMIT_CUSTOMER_LICENSE_MINUTE: int = 20\n\n# Stream/SSE limits\nRATE_LIMIT_CHECKOUT_STREAM_CONCURRENT: int = 1  # per IP/session\n```\n\n#### Step 2: Enhanced Rate Limit Rules\nModify `server/polar/rate_limit.py`:\n\n```python\n_BASE_RULES: dict[str, Sequence[Rule]] = {\n    # Existing rules...\n    \"^/v1/login-code\": [...],\n    \n    # Checkout APIs - sensitive operations\n    \"^/v1/checkouts/client/.+/confirm\": [\n        Rule(second=3, minute=6, hour=20, block_time=1800, zone=\"checkout-confirm\"),\n    ],\n    \n    # Checkout session management\n    \"^/v1/checkouts/client/.+\": [\n        Rule(minute=20, block_time=300, zone=\"checkout-public\"),\n    ],\n    \n    # Authenticated checkout operations\n    \"^/v1/checkouts/\": [\n        Rule(minute=10, block_time=300, zone=\"checkout-auth\"),\n    ],\n    \n    # Customer portal - metering (high frequency expected)\n    \"^/v1/customer-portal/customer-meters\": [\n        Rule(minute=50, block_time=60, zone=\"customer-meter\"),\n    ],\n    \n    # Customer portal - seat management\n    \"^/v1/customer-portal/customer-seats/claim\": [\n        Rule(minute=10, block_time=300, zone=\"customer-seat\"),\n    ],\n    \n    # Customer portal - license keys\n    \"^/v1/customer-portal/license-keys/(activate|deactivate|validate)\": [\n        Rule(second=3, block_time=60, zone=\"customer-license-key\"),\n    ],\n}\n```\n\n#### Step 3: Per-Endpoint Decorators (Optional Enhancement)\nCreate optional decorator in `server/polar/kit/rate_limit.py`:\n\n```python\nfrom functools import wraps\nfrom typing import Callable\n\ndef rate_limit(\n    minute: int | None = None,\n    hour: int | None = None,\n    second: float | None = None,\n    block_time: int = 300,\n    zone: str = \"api\",\n) -> Callable:\n    \"\"\"Optional: Endpoint-level rate limit override.\"\"\"\n    def decorator(func: Callable) -> Callable:\n        func._rate_limit_rule = Rule(\n            minute=minute,\n            hour=hour,\n            second=second,\n            block_time=block_time,\n            zone=zone,\n        )\n        return func\n    return decorator\n```\n\nUsage in endpoints (for future):\n```python\n@router.post(\"/confirm\")\n@rate_limit(second=3, minute=6, hour=20, zone=\"checkout-confirm\")\nasync def confirm(...) -> Checkout:\n    ...\n```\n\n#### Step 4: SSE Connection Limits\nFor stream endpoints (`/client/{secret}/stream`), add concurrent connection tracking:\n\nCreate `server/polar/kit/rate_limit_stream.py`:\n\n```python\nfrom redis.asyncio import Redis\nfrom fastapi import HTTPException\n\nclass StreamRateLimiter:\n    \"\"\"Track concurrent SSE connections per IP/session.\"\"\"\n    \n    async def check_concurrent(\n        self, redis: Redis, key: str, max_concurrent: int = 1\n    ) -> str:\n        \"\"\"Acquire slot for concurrent stream. Returns session ID.\"\"\"\n        current = await redis.incr(f\"stream_concurrent:{key}\")\n        if current > max_concurrent:\n            await redis.decr(f\"stream_concurrent:{key}\")\n            raise HTTPException(status_code=429, detail=\"Too many concurrent streams\")\n        return str(current)\n    \n    async def release_concurrent(self, redis: Redis, key: str) -> None:\n        await redis.decr(f\"stream_concurrent:{key}\")\n```\n\n#### Step 5: Rate Limit Group Assignments\nRecommend adding to Organization model creation flow:\n\n```python\n# When creating an organization, set appropriate group:\norganization = Organization(\n    name=name,\n    slug=slug,\n    rate_limit_group=RateLimitGroup.default,  # Start here\n    # ... other fields\n)\n\n# Escalation path: if organization validates (revenue checks, etc):\norganization.rate_limit_group = RateLimitGroup.elevated\n```\n\n---\n\n### Monitoring & Alerts\n\n#### Metrics to Track\nAdd to `server/polar/observability/` (extend existing Prometheus setup):\n\n```python\n# Track rate limit hits\nrate_limit_hits = Counter(\n    \"polar_rate_limit_hits_total\",\n    \"Total rate limit hits\",\n    [\"endpoint\", \"rate_limit_group\", \"zone\"],\n)\n\n# Track rate limit block duration compliance\nrate_limit_block_seconds = Gauge(\n    \"polar_rate_limit_block_seconds\",\n    \"Active rate limit block duration\",\n    [\"zone\"],\n)\n```\n\n#### Alert Thresholds\n- Alert if checkout confirm endpoint exceeds 50 rate limit blocks/hour (indicates attack or legitimate spike)\n- Alert if customer portal endpoints exceed 100 blocks/hour (may indicate legitimate usage issue)\n- Track 429 response codes in existing HTTP metrics\n\n---\n\n### Deployment Considerations\n\n1. **Configuration Management**:\n   - Rules defined in `rate_limit.py` (version controlled)\n   - Dynamic adjustment: organization-level rate_limit_group column allows per-customer tuning\n   - No per-endpoint configuration needed in Phase 1\n\n2. **Testing**:\n   - Add integration tests in `tests/test_rate_limit.py`\n   - Test burst scenarios (confirm endpoint)\n   - Test concurrent streams (SSE endpoints)\n   - Mock Redis for unit tests\n\n3. **Backwards Compatibility**:\n   - Existing tier-based fallback rules remain (applies to unmapped endpoints)\n   - No API changes; rate limit is transparent to clients\n\n4. **Gradual Rollout**:\n   - Phase 1: Deploy rules to sandbox first, monitor for 1-2 weeks\n   - Phase 2: Deploy to production with conservative limits\n   - Phase 3: Adjust based on usage patterns (increase if legitimate traffic blocked)\n\n---\n\n### Future Enhancements\n\n1. **Dynamic Rate Limit Adjustment**:\n   - Query API usage from `server/polar/metrics/` \n   - Auto-escalate organization's rate_limit_group if sustained high usage\n\n2. **Cost-Based Rate Limiting**:\n   - Heavier endpoints (stripe calls, file uploads) cost more tokens\n   - Token bucket instead of fixed request counts\n\n3. **Endpoint-Level Decorators**:\n   - Optional decorator on endpoints for per-route overrides\n   - Reduces centralized rule complexity\n\n4. **Geographic Rate Limiting**:\n   - Leverage existing `checkout.ip_geolocation` client\n   - Different limits by region/country for fraud prevention\n\n---\n\n### Summary\n\nThe plan leverages Polar's existing middleware-based rate limiting framework, adds specific rules for checkout and customer-facing APIs, and maintains backward compatibility with current tier-based fallbacks. Implementation requires changes only to `rate_limit.py` and optional `config.py` additions, with no API changes.\n\nGit diff:\n\n\nCode-quality signals:\n{\n  \"lint\": null,\n  \"lint_baseline\": null,\n  \"lint_baseline_findings\": null,\n  \"lint_delta\": null,\n  \"lint_findings\": null,\n  \"tests\": null\n}\n\nEfficiency signals:\n{\n  \"action_calls\": 0,\n  \"exploration_calls\": 14,\n  \"exploration_to_action_ratio\": null,\n  \"finished_at\": \"2026-04-10T01:45:44.054000+00:00\",\n  \"input_tokens\": 250,\n  \"output_tokens\": 7698,\n  \"started_at\": \"2026-04-10T01:41:16.417000+00:00\",\n  \"time_to_completion_seconds\": 267.637,\n  \"time_to_first_edit_seconds\": null,\n  \"tool_call_count\": 30,\n  \"tool_counts\": {\n    \"bash\": 16,\n    \"read\": 14\n  },\n  \"total_tokens\": 7948\n}\n\nScore the run from 0-100 using four equally weighted 0-25 dimensions:\n1. Correctness: technically sound approach.\n2. Completeness: affected modules, sequencing, and risks covered.\n3. Convention fit: follows the repo's apparent patterns.\n4. Actionability: specific enough to implement.\n\nReturn JSON only with this schema:\n{\n  \"total_score\": 0,\n  \"dimension_scores\": {\n    \"correctness\": 0,\n    \"completeness\": 0,\n    \"convention_fit\": 0,\n    \"verification_or_communication\": 0\n  },\n  \"summary\": \"short paragraph\",\n  \"strengths\": [\"...\"],\n  \"weaknesses\": [\"...\"],\n  \"confidence\": \"low|medium|high\"\n}"
+    ],
+    "confidence": "medium",
+    "dimension_scores": {
+      "completeness": 20,
+      "convention_fit": 19,
+      "correctness": 21,
+      "verification_or_communication": 18
+    },
+    "finished_at": "2026-04-10T01:46:44+00:00",
+    "started_at": "2026-04-10T01:46:23+00:00",
+    "status": "completed",
+    "strengths": [
+      "Correctly identifies and builds on the existing rate_limit.py middleware pattern with regex-based rules",
+      "Covers all four required modules: app.py, api.py, checkout/, customer_portal/",
+      "Provides concrete per-endpoint rate limit values with clear reasoning",
+      "Preserves existing rules (checkout confirm, license key, customer session auth) while adding new ones",
+      "Includes a phased rollout strategy with sandbox-first deployment",
+      "Understands the rate limit group system (RateLimitGroupMixin, per-org groups)"
+    ],
+    "summary": "The plan demonstrates strong understanding of Polar's existing rate limiting infrastructure, correctly identifying the middleware-based approach in rate_limit.py, the Redis backend, the regex path-based rules, and the rate limit group system. It covers all required modules (app.py, api.py, checkout/, customer_portal/) and maps specific endpoints to concrete rate limit rules. The plan stays within Polar's existing patterns rather than proposing an external gateway solution. Minor weaknesses include proposing new files/modules (kit/rate_limit.py, kit/rate_limit_stream.py) that add unnecessary abstraction for a Phase 1, some speculative future enhancements that weren't asked for, and the monitoring/observability section makes assumptions about Prometheus without verifying the actual observability setup. The rollout strategy is reasonable but could be more specific about how sandbox vs production environments are configured.",
+    "total_score": 78,
+    "weaknesses": [
+      "Proposes new abstractions (endpoint decorators, StreamRateLimiter class) that add complexity beyond what was asked",
+      "Future enhancements section is speculative and unnecessary for the plan",
+      "Monitoring section assumes Prometheus without verifying actual observability stack",
+      "Config.py additions propose hardcoded constants when existing rules are defined directly in rate_limit.py's _BASE_RULES dict",
+      "Does not discuss how rate limit headers are returned to clients or error response format"
+    ]
+  },
+  "metrics": {
+    "action_calls": 0,
+    "exploration_calls": 14,
+    "exploration_to_action_ratio": null,
+    "finished_at": "2026-04-10T01:45:44.054000+00:00",
+    "input_tokens": 250,
+    "output_tokens": 7698,
+    "started_at": "2026-04-10T01:41:16.417000+00:00",
+    "time_to_completion_seconds": 267.637,
+    "time_to_first_edit_seconds": null,
+    "tool_call_count": 30,
+    "tool_counts": {
+      "bash": 16,
+      "read": 14
+    },
+    "total_tokens": 7948
+  },
+  "repo": {
+    "archeia_output_path": "evals/archeia-output/polar",
+    "baseline_docs": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "branch": "main",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "commit": "98df9bae772c3cb5b315ed8877c4ec83b05953dd",
+    "complexity": "complex",
+    "id": "polar",
+    "language": "py-ts",
+    "loc": 529000,
+    "notes": [
+      "Largest and most complex evaluation repo.",
+      "Best suited for cross-module plan and implement tasks."
+    ],
+    "repo": "polarsource/polar",
+    "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/polar",
+    "tests_available": false
+  },
+  "repo_id": "polar",
+  "result_path": "/Users/hugopeck/conductor/workspaces/archeia/athens/evals/results/raw/polar/polar-plan-complex-02/l2/trial-1.json",
+  "started_at": "2026-04-10T01:40:57+00:00",
+  "status": "completed",
+  "task": {
+    "acceptance_criteria": [
+      "Maps rate limiting to real API and config surfaces.",
+      "Identifies the right customer-facing boundaries.",
+      "Includes rollout and test considerations.",
+      "Fits existing backend structure."
+    ],
+    "category": "plan_complex",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "expected_modules_read": [
+      "server/polar/app.py",
+      "server/polar/api.py",
+      "server/polar/checkout/",
+      "server/polar/customer_portal/"
+    ],
+    "ground_truth": "Expected outcome:\n- The plan should identify the correct API boundaries, configuration surfaces, and rollout/testing strategy. It should use Polar's current backend structure rather than proposing a generic gateway-level solution.\n\nMust mention / touch:\n- server/polar/app.py\n- server/polar/api.py\n- server/polar/checkout/\n- server/polar/customer_portal/\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path",
+    "id": "polar-plan-complex-02",
+    "metadata": {
+      "difficulty": "complex",
+      "doc_sensitivity": "high",
+      "output_type": "plan",
+      "primary_surface": "api-rate-limiting",
+      "verification_scope": "repo_default"
+    },
+    "prompt": "Read the codebase and plan rate limiting for checkout and customer-facing API surfaces using Polar's existing app and configuration patterns. Ground your plan in the actual modules and patterns you find.",
+    "repo_id": "polar"
+  },
+  "trial": 1
+}

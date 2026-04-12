@@ -1,0 +1,30 @@
+{
+  "id": "polar-implement-moderate-02",
+  "repo_id": "polar",
+  "category": "implement_moderate",
+  "prompt": "Read the codebase and add a read-only checkout status endpoint that returns the client-facing status and expiry information for a checkout session without exposing the full checkout payload. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should fit an existing checkout domain module, reuse current API patterns, return a focused read-only payload, and avoid creating a parallel abstraction. If tests are feasible, they should focus on the new status handler behavior.\n\nMust mention / touch:\n- server/polar/checkout/endpoints.py\n- server/polar/checkout/schemas.py\n- server/polar/api.py\n- server/tests/\n\nCommon failure modes:\n- Returning the full checkout payload instead of a focused status view\n- Implementing the handler outside the current checkout API/module boundaries",
+  "acceptance_criteria": [
+    "Implements a small read-only checkout status handler in the existing checkout domain.",
+    "Returns focused client-facing status and expiry data.",
+    "Follows current checkout API patterns and module boundaries.",
+    "Keeps the feature small and focused."
+  ],
+  "expected_modules_read": [
+    "server/polar/checkout/endpoints.py",
+    "server/polar/checkout/schemas.py",
+    "server/polar/api.py",
+    "server/tests/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "moderate",
+    "output_type": "code_change",
+    "primary_surface": "checkout-status-endpoint",
+    "doc_sensitivity": "medium",
+    "verification_scope": "none"
+  }
+}

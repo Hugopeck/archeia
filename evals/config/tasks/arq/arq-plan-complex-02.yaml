@@ -1,0 +1,30 @@
+{
+  "id": "arq-plan-complex-02",
+  "repo_id": "arq",
+  "category": "plan_complex",
+  "prompt": "Read the codebase and plan support for per-job retry caps or circuit-breaking semantics while preserving current worker behavior for existing jobs. Ground your plan in the actual modules and patterns you find.",
+  "ground_truth": "Expected outcome:\n- The plan should locate the appropriate config and runtime decision points, explain compatibility expectations, and describe how retries would stop cleanly. It should distinguish job metadata, worker policy, and public API exposure.\n\nMust mention / touch:\n- arq/worker.py\n- arq/typing.py\n- arq/constants.py\n- tests/test_worker.py\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path",
+  "acceptance_criteria": [
+    "Maps retry-cap policy to real modules and data flow.",
+    "Calls out backward compatibility for existing jobs.",
+    "Includes clear sequencing and test coverage notes.",
+    "Avoids overdesign for a small library."
+  ],
+  "expected_modules_read": [
+    "arq/worker.py",
+    "arq/typing.py",
+    "arq/constants.py",
+    "tests/test_worker.py"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "plan",
+    "primary_surface": "retry-policy",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

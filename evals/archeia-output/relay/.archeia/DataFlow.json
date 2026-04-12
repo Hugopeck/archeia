@@ -1,0 +1,119 @@
+{
+  "flows": [
+    {
+      "id": "spawn-and-message",
+      "name": "Spawn Agents and Send Message",
+      "description": "Developer uses SDK to spawn two agents and send an initial message to start a conversation",
+      "primary": true,
+      "participants": [
+        {
+          "id": "developer",
+          "type": "person",
+          "label": "Developer"
+        },
+        {
+          "id": "sdk-relay",
+          "type": "component",
+          "label": "AgentRelay (SDK)"
+        },
+        {
+          "id": "broker-binary",
+          "type": "container",
+          "label": "Broker Binary"
+        },
+        {
+          "id": "relaycast-cloud",
+          "type": "external_system",
+          "label": "Relaycast Cloud"
+        },
+        {
+          "id": "claude-cli",
+          "type": "external_system",
+          "label": "Claude CLI"
+        }
+      ],
+      "steps": [
+        {
+          "id": 1,
+          "from": "developer",
+          "to": "sdk-relay",
+          "label": "new AgentRelay() + connect()",
+          "type": "sync",
+          "protocol": "function call"
+        },
+        {
+          "id": 2,
+          "from": "sdk-relay",
+          "to": "broker-binary",
+          "label": "spawn broker subprocess",
+          "type": "sync",
+          "protocol": "function call"
+        },
+        {
+          "id": 3,
+          "from": "broker-binary",
+          "to": "relaycast-cloud",
+          "label": "WebSocket connect",
+          "type": "sync",
+          "protocol": "WebSocket"
+        },
+        {
+          "id": 4,
+          "from": "developer",
+          "to": "sdk-relay",
+          "label": "relay.claude.spawn({name, task, channels})",
+          "type": "sync",
+          "protocol": "function call"
+        },
+        {
+          "id": 5,
+          "from": "broker-binary",
+          "to": "claude-cli",
+          "label": "spawn PTY subprocess + inject relay MCP config",
+          "type": "async",
+          "protocol": "function call"
+        },
+        {
+          "id": 6,
+          "from": "developer",
+          "to": "sdk-relay",
+          "label": "relay.system().sendMessage({to: 'PlayerX', text: 'Start.'})",
+          "type": "sync",
+          "protocol": "function call"
+        },
+        {
+          "id": 7,
+          "from": "broker-binary",
+          "to": "claude-cli",
+          "label": "inject message into PTY stdin",
+          "type": "async",
+          "protocol": "function call"
+        },
+        {
+          "id": 8,
+          "from": "claude-cli",
+          "to": "broker-binary",
+          "label": "send reply via relay MCP tool",
+          "type": "async",
+          "protocol": "WebSocket"
+        },
+        {
+          "id": 9,
+          "from": "broker-binary",
+          "to": "relaycast-cloud",
+          "label": "broadcast message to target",
+          "type": "async",
+          "protocol": "WebSocket"
+        },
+        {
+          "id": 10,
+          "from": "sdk-relay",
+          "to": "developer",
+          "label": "onMessageReceived callback",
+          "type": "response",
+          "protocol": "function call"
+        }
+      ]
+    }
+  ]
+}

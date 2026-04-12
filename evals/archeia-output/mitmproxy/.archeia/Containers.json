@@ -1,0 +1,119 @@
+{
+  "level": 2,
+  "title": "Container Diagram",
+  "system_boundary": {
+    "id": "mitmproxy",
+    "name": "mitmproxy",
+    "description": "Interactive, SSL/TLS-capable intercepting proxy for HTTP/1, HTTP/2, WebSockets, TCP, UDP, and DNS"
+  },
+  "containers": [
+    {
+      "id": "proxy-core",
+      "name": "Proxy Core",
+      "technology": "Python 3.12+ / asyncio",
+      "description": "asyncio event loop managing connections, protocol layer pipeline, addon lifecycle, and options",
+      "type": "api",
+      "evidence": ["mitmproxy/master.py", "mitmproxy/proxy/server.py", "pyproject.toml"]
+    },
+    {
+      "id": "console-ui",
+      "name": "Console UI (mitmproxy)",
+      "technology": "Python / urwid",
+      "description": "Interactive terminal interface for inspecting and manipulating flows",
+      "type": "cli",
+      "evidence": ["mitmproxy/tools/main.py", "mitmproxy/tools/console/", "pyproject.toml"]
+    },
+    {
+      "id": "dump-ui",
+      "name": "Dump CLI (mitmdump)",
+      "technology": "Python",
+      "description": "Non-interactive CLI that streams flow records to stdout or a file",
+      "type": "cli",
+      "evidence": ["mitmproxy/tools/main.py", "mitmproxy/tools/dump.py"]
+    },
+    {
+      "id": "web-backend",
+      "name": "Web API Server (mitmweb backend)",
+      "technology": "Python / Tornado",
+      "description": "Tornado HTTP server exposing REST API and WebSocket for the web frontend",
+      "type": "api",
+      "evidence": ["mitmproxy/tools/web/app.py", "mitmproxy/tools/web/master.py"]
+    },
+    {
+      "id": "web-frontend",
+      "name": "Web Frontend (mitmweb)",
+      "technology": "React / TypeScript / Vite",
+      "description": "Single-page application for flow inspection and proxy control, served by the web backend",
+      "type": "webapp",
+      "evidence": ["web/package.json", "web/vite.config.ts", "web/src/"]
+    }
+  ],
+  "external_systems": [
+    {
+      "id": "mitmproxy-rs",
+      "name": "mitmproxy_rs",
+      "description": "Rust extension providing WireGuard transport, local redirect modes, and UDP/DNS handling"
+    },
+    {
+      "id": "target-server",
+      "name": "Target HTTP Server",
+      "description": "The upstream server whose traffic is being intercepted and proxied"
+    },
+    {
+      "id": "client-application",
+      "name": "Client Application",
+      "description": "Browser or HTTP client configured to route traffic through the proxy"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "client-application",
+      "target": "proxy-core",
+      "description": "Routes HTTP/HTTPS/TCP traffic through the proxy",
+      "technology": "TCP/HTTPS",
+      "evidence": ["mitmproxy/proxy/server.py"]
+    },
+    {
+      "source": "proxy-core",
+      "target": "target-server",
+      "description": "Forwards intercepted traffic upstream",
+      "technology": "HTTP/HTTPS",
+      "evidence": ["mitmproxy/proxy/server.py"]
+    },
+    {
+      "source": "proxy-core",
+      "target": "mitmproxy-rs",
+      "description": "Delegates WireGuard, local redirect, and raw UDP/DNS transport",
+      "technology": "Python/Rust FFI",
+      "evidence": ["mitmproxy/proxy/server.py", "pyproject.toml"]
+    },
+    {
+      "source": "console-ui",
+      "target": "proxy-core",
+      "description": "Reads and mutates flows via shared Master instance",
+      "technology": "function call",
+      "evidence": ["mitmproxy/tools/main.py", "mitmproxy/master.py"]
+    },
+    {
+      "source": "dump-ui",
+      "target": "proxy-core",
+      "description": "Registers addons and receives flow events via Master",
+      "technology": "function call",
+      "evidence": ["mitmproxy/tools/dump.py", "mitmproxy/master.py"]
+    },
+    {
+      "source": "web-backend",
+      "target": "proxy-core",
+      "description": "Reads and mutates flows, relays events over WebSocket",
+      "technology": "function call / WebSocket",
+      "evidence": ["mitmproxy/tools/web/app.py", "mitmproxy/tools/web/master.py"]
+    },
+    {
+      "source": "web-frontend",
+      "target": "web-backend",
+      "description": "Fetches flows, sends commands, and streams updates",
+      "technology": "HTTPS/JSON + WebSocket",
+      "evidence": ["web/src/", "mitmproxy/tools/web/app.py"]
+    }
+  ]
+}

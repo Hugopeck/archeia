@@ -1,0 +1,188 @@
+{
+  "system": {
+    "id": "daily-api",
+    "name": "Daily API",
+    "description": "Backend service providing the daily.dev developer news feed, GraphQL API, background event processing, and community engagement layer.",
+    "technology": "Node.js 22 / TypeScript / Fastify / Mercurius GraphQL",
+    "evidence": ["package.json", "src/index.ts", "README.md"]
+  },
+  "people": [
+    {
+      "id": "authenticated-user",
+      "name": "Authenticated User",
+      "description": "Registered daily.dev user accessing the feed, comments, squads, and personalization features.",
+      "evidence": ["src/auth.ts", "src/Context.ts"]
+    },
+    {
+      "id": "anonymous-user",
+      "name": "Anonymous User",
+      "description": "Unauthenticated visitor accessing public feed and post content.",
+      "evidence": ["src/index.ts", "src/routes/public/index.ts"]
+    }
+  ],
+  "external_systems": [
+    {
+      "id": "postgresql",
+      "name": "PostgreSQL",
+      "description": "Primary relational database with master/replica replication for all domain entities.",
+      "technology": "PostgreSQL 18",
+      "evidence": ["src/data-source.ts", "docker-compose.yml"]
+    },
+    {
+      "id": "redis",
+      "name": "Redis",
+      "description": "Cache, Pub/Sub relay, rate limiting, and real-time subscription transport.",
+      "technology": "Redis Stack 7.2",
+      "evidence": ["src/redis.ts", "docker-compose.yml"]
+    },
+    {
+      "id": "google-pubsub",
+      "name": "Google Cloud Pub/Sub",
+      "description": "Async event bus used to dispatch background worker jobs from the API.",
+      "technology": "Google Cloud Pub/Sub",
+      "evidence": ["src/background.ts", "package.json"]
+    },
+    {
+      "id": "clickhouse",
+      "name": "ClickHouse",
+      "description": "Columnar database for post analytics events and user profile analytics.",
+      "technology": "ClickHouse",
+      "evidence": ["clickhouse/migrations/1756316678212_post_analytics.up.sql", "package.json"]
+    },
+    {
+      "id": "temporal",
+      "name": "Temporal",
+      "description": "Durable workflow orchestration for notification delivery workflows.",
+      "technology": "Temporal 1.14",
+      "evidence": ["src/temporal/notifications/index.ts", "package.json"]
+    },
+    {
+      "id": "cloudinary",
+      "name": "Cloudinary",
+      "description": "Cloud image storage, transformation, and CDN delivery.",
+      "technology": "Cloudinary",
+      "evidence": ["package.json"]
+    },
+    {
+      "id": "customer-io",
+      "name": "Customer.io",
+      "description": "Transactional and marketing email delivery for user events.",
+      "technology": "Customer.io",
+      "evidence": ["src/cio.ts", "package.json"]
+    },
+    {
+      "id": "onesignal",
+      "name": "OneSignal",
+      "description": "Mobile and web push notification delivery.",
+      "technology": "OneSignal",
+      "evidence": ["src/onesignal.ts", "package.json"]
+    },
+    {
+      "id": "growthbook",
+      "name": "GrowthBook",
+      "description": "Feature flagging and A/B experiment allocation.",
+      "technology": "GrowthBook",
+      "evidence": ["src/growthbook.ts", "package.json"]
+    },
+    {
+      "id": "paddle",
+      "name": "Paddle",
+      "description": "Subscription billing and payment processing for Plus plans.",
+      "technology": "Paddle",
+      "evidence": ["src/paddle.ts", "package.json"]
+    },
+    {
+      "id": "meilisearch",
+      "name": "MeiliSearch",
+      "description": "Full-text search engine (used in local development).",
+      "technology": "MeiliSearch v1.9",
+      "evidence": ["docker-compose.yml"]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "user-to-daily-api",
+      "source": "authenticated-user",
+      "target": "daily-api",
+      "description": "Sends GraphQL queries and mutations over HTTPS",
+      "evidence": ["src/index.ts"]
+    },
+    {
+      "id": "anon-to-daily-api",
+      "source": "anonymous-user",
+      "target": "daily-api",
+      "description": "Reads public feed and posts over HTTPS",
+      "evidence": ["src/routes/public/index.ts"]
+    },
+    {
+      "id": "daily-api-to-postgresql",
+      "source": "daily-api",
+      "target": "postgresql",
+      "description": "Reads and writes all domain data via TypeORM",
+      "evidence": ["src/data-source.ts"]
+    },
+    {
+      "id": "daily-api-to-redis",
+      "source": "daily-api",
+      "target": "redis",
+      "description": "Caches query results, manages rate limits, and relays GraphQL subscriptions",
+      "evidence": ["src/redis.ts"]
+    },
+    {
+      "id": "daily-api-to-pubsub",
+      "source": "daily-api",
+      "target": "google-pubsub",
+      "description": "Publishes domain events to trigger background workers",
+      "evidence": ["src/background.ts"]
+    },
+    {
+      "id": "daily-api-to-clickhouse",
+      "source": "daily-api",
+      "target": "clickhouse",
+      "description": "Writes post view and analytics events",
+      "evidence": ["package.json"]
+    },
+    {
+      "id": "daily-api-to-temporal",
+      "source": "daily-api",
+      "target": "temporal",
+      "description": "Schedules and monitors notification delivery workflows",
+      "evidence": ["src/temporal/client.ts"]
+    },
+    {
+      "id": "daily-api-to-cloudinary",
+      "source": "daily-api",
+      "target": "cloudinary",
+      "description": "Uploads and transforms post and user images",
+      "evidence": ["package.json"]
+    },
+    {
+      "id": "daily-api-to-customer-io",
+      "source": "daily-api",
+      "target": "customer-io",
+      "description": "Syncs user events and triggers transactional emails",
+      "evidence": ["src/cio.ts"]
+    },
+    {
+      "id": "daily-api-to-onesignal",
+      "source": "daily-api",
+      "target": "onesignal",
+      "description": "Sends push notifications to mobile and web clients",
+      "evidence": ["src/onesignal.ts"]
+    },
+    {
+      "id": "daily-api-to-growthbook",
+      "source": "daily-api",
+      "target": "growthbook",
+      "description": "Evaluates feature flags and A/B experiment variants per request",
+      "evidence": ["src/growthbook.ts"]
+    },
+    {
+      "id": "daily-api-to-paddle",
+      "source": "daily-api",
+      "target": "paddle",
+      "description": "Processes subscription events and billing webhooks",
+      "evidence": ["src/paddle.ts"]
+    }
+  ]
+}

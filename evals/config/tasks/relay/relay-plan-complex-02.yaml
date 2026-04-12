@@ -1,0 +1,30 @@
+{
+  "id": "relay-plan-complex-02",
+  "repo_id": "relay",
+  "category": "plan_complex",
+  "prompt": "Read the codebase and plan policy-based message filtering and redaction across the broker and SDK surfaces. Ground your plan in the actual modules and patterns you find.",
+  "ground_truth": "Expected outcome:\n- The plan should identify where policy decisions are evaluated, how redaction would apply before delivery, what contracts must change, and how SDK consumers would observe the result. It must connect Rust runtime code with shared package boundaries.\n\nMust mention / touch:\n- src/policy/\n- src/redact.rs\n- packages/sdk/\n- packages/contracts/\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path",
+  "acceptance_criteria": [
+    "Maps policy/redaction decisions to real runtime and package surfaces.",
+    "Covers contract and SDK implications.",
+    "Includes sequencing and compatibility notes.",
+    "Fits relay's existing multi-package architecture."
+  ],
+  "expected_modules_read": [
+    "src/policy/",
+    "src/redact.rs",
+    "packages/sdk/",
+    "packages/contracts/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "plan",
+    "primary_surface": "policy-redaction",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

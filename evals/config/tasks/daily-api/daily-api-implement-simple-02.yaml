@@ -1,0 +1,29 @@
+{
+  "id": "daily-api-implement-simple-02",
+  "repo_id": "daily-api",
+  "category": "implement_simple",
+  "prompt": "Read the codebase and add validation so creating or renaming a bookmark list rejects names that are empty after trimming whitespace. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should validate bookmark list names at the owning input path, reject whitespace-only names, keep valid list creation and rename flows intact, and add focused regression coverage.\n\nMust mention / touch:\n- src/routes/public/bookmarks.ts\n- src/schema/bookmarks.ts\n- __tests__/\n\nCommon failure modes:\n- Validating in the wrong layer and leaving one bookmark-list mutation path uncovered\n- Accepting whitespace-only names after normalization",
+  "acceptance_criteria": [
+    "Rejects bookmark list names that are empty after trimming whitespace.",
+    "Covers both creation and rename flows at the owning input path.",
+    "Keeps valid bookmark list operations intact.",
+    "Includes focused regression coverage."
+  ],
+  "expected_modules_read": [
+    "src/routes/public/bookmarks.ts",
+    "src/schema/bookmarks.ts",
+    "__tests__/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "simple",
+    "output_type": "code_change",
+    "primary_surface": "bookmark-list-name-validation",
+    "doc_sensitivity": "medium",
+    "verification_scope": "repo_default"
+  }
+}

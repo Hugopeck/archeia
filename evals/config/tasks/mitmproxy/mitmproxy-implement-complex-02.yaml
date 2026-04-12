@@ -1,0 +1,29 @@
+{
+  "id": "mitmproxy-implement-complex-02",
+  "repo_id": "mitmproxy",
+  "category": "implement_complex",
+  "prompt": "Read the codebase and create a shared helper for the common flow bookkeeping fields used by flow state snapshots and backup and revert paths so that state handling lives in one place. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should extract real shared flow-state bookkeeping logic into a sensible helper, use it from multiple flow state paths, preserve serialization and backup behavior, and update tests.\n\nMust mention / touch:\n- mitmproxy/flow.py\n- mitmproxy/utils/\n- test/mitmproxy/test_flow.py\n\nCommon failure modes:\n- Moving code without actually consolidating the shared bookkeeping logic\n- Changing serialized state or backup/revert behavior while extracting the helper",
+  "acceptance_criteria": [
+    "Extracts shared bookkeeping logic from multiple flow state paths.",
+    "Uses the helper from both snapshot and backup/revert-related code.",
+    "Preserves existing flow serialization behavior.",
+    "Adds or updates focused regression coverage."
+  ],
+  "expected_modules_read": [
+    "mitmproxy/flow.py",
+    "mitmproxy/utils/",
+    "test/mitmproxy/test_flow.py"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "code_change",
+    "primary_surface": "shared-flow-state-helper",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "level": 1,
+  "title": "System Context",
+  "system": {
+    "id": "mitmproxy",
+    "name": "mitmproxy",
+    "description": "Interactive, SSL/TLS-capable intercepting proxy for HTTP/1, HTTP/2, WebSockets, TCP, UDP, and DNS",
+    "technology": "Python 3.12+ / asyncio",
+    "evidence": ["pyproject.toml", "README.md"]
+  },
+  "people": [
+    {
+      "id": "developer",
+      "name": "Developer / Security Researcher",
+      "description": "Uses mitmproxy to intercept, inspect, modify, and replay network traffic for debugging or security testing",
+      "evidence": ["README.md"]
+    },
+    {
+      "id": "addon-author",
+      "name": "Addon Author",
+      "description": "Writes Python scripts using the mitmproxy addon API to automate traffic manipulation",
+      "evidence": ["examples/README.md", "mitmproxy/addonmanager.py"]
+    }
+  ],
+  "external_systems": [
+    {
+      "id": "mitmproxy-rs",
+      "name": "mitmproxy_rs",
+      "description": "Rust extension providing WireGuard transport, local redirect modes, and UDP/DNS handling",
+      "technology": "Rust (PyO3)",
+      "evidence": ["pyproject.toml", "mitmproxy/proxy/server.py"]
+    },
+    {
+      "id": "target-server",
+      "name": "Target HTTP Server",
+      "description": "The upstream server whose traffic is being intercepted and proxied",
+      "technology": "HTTP/HTTPS",
+      "evidence": ["mitmproxy/proxy/server.py", "README.md"]
+    },
+    {
+      "id": "client-application",
+      "name": "Client Application",
+      "description": "Browser or HTTP client configured to route traffic through the proxy",
+      "technology": "HTTP/HTTPS",
+      "evidence": ["mitmproxy/proxy/mode_specs.py", "README.md"]
+    }
+  ],
+  "relationships": [
+    {
+      "source": "developer",
+      "target": "mitmproxy",
+      "description": "Controls proxy via console UI, CLI, or web browser interface",
+      "technology": "CLI / HTTPS",
+      "evidence": ["mitmproxy/tools/main.py", "mitmproxy/tools/web/app.py"]
+    },
+    {
+      "source": "addon-author",
+      "target": "mitmproxy",
+      "description": "Registers Python addon scripts that hook into the request/response lifecycle",
+      "technology": "Python API",
+      "evidence": ["mitmproxy/addonmanager.py", "examples/README.md"]
+    },
+    {
+      "source": "client-application",
+      "target": "mitmproxy",
+      "description": "Routes HTTP/HTTPS traffic through the proxy",
+      "technology": "HTTP/HTTPS/TCP",
+      "evidence": ["mitmproxy/proxy/server.py"]
+    },
+    {
+      "source": "mitmproxy",
+      "target": "target-server",
+      "description": "Forwards intercepted traffic to the upstream server",
+      "technology": "HTTP/HTTPS",
+      "evidence": ["mitmproxy/proxy/server.py"]
+    },
+    {
+      "source": "mitmproxy",
+      "target": "mitmproxy-rs",
+      "description": "Delegates WireGuard, local redirect, and raw UDP/DNS transport to Rust extension",
+      "technology": "Python/Rust FFI",
+      "evidence": ["mitmproxy/proxy/server.py", "pyproject.toml"]
+    }
+  ]
+}

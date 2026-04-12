@@ -1,0 +1,30 @@
+{
+  "id": "arq-plan-complex-01",
+  "repo_id": "arq",
+  "category": "plan_complex",
+  "prompt": "Read the codebase and design dead-letter queue support for arq with minimal disruption to the current public API and worker behavior. Ground your plan in the actual modules and patterns you find.",
+  "ground_truth": "Expected outcome:\n- The plan should identify where failed-job disposition belongs, how DLQ configuration would be expressed, what worker paths change, and how tests should be structured. It should fit the small-library architecture rather than introducing a heavyweight new subsystem.\n\nMust mention / touch:\n- arq/worker.py\n- arq/jobs.py\n- arq/connections.py\n- tests/test_worker.py\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path",
+  "acceptance_criteria": [
+    "Identifies the correct worker/job/config surfaces to change.",
+    "Minimizes public API disruption.",
+    "Includes a realistic testing strategy.",
+    "Respects arq's current lightweight architecture."
+  ],
+  "expected_modules_read": [
+    "arq/worker.py",
+    "arq/jobs.py",
+    "arq/connections.py",
+    "tests/test_worker.py"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "plan",
+    "primary_surface": "dead-letter-queue",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

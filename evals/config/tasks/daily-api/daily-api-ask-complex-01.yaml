@@ -1,0 +1,31 @@
+{
+  "id": "daily-api-ask-complex-01",
+  "repo_id": "daily-api",
+  "category": "ask_complex",
+  "prompt": "Read the codebase and explain how a new post moves through daily-api until it becomes eligible to appear in a personalized feed. Base your answer only on code you actually read.",
+  "ground_truth": "Expected outcome:\n- Must identify the relevant route or ingestion entry surfaces, persistence/entity layers, ranking or selection-related code, and the modules that assemble personalized feed data. Expected grounding includes routes, entity models, graph/query helpers, and feed-related supporting services.\n\nMust mention / touch:\n- src/routes/\n- src/entity/\n- src/graphorm/\n- src/dataLoaderService.ts\n- __tests__/\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo",
+  "acceptance_criteria": [
+    "Explains ingestion/persistence and feed-selection flow in order.",
+    "Uses real module names from daily-api.",
+    "Connects route, entity, and feed-building layers.",
+    "Avoids inventing external indexing systems that are not evidenced."
+  ],
+  "expected_modules_read": [
+    "src/routes/",
+    "src/entity/",
+    "src/graphorm/",
+    "src/dataLoaderService.ts",
+    "__tests__/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "explanation",
+    "primary_surface": "feed-lifecycle",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

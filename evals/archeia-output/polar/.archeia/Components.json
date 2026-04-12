@@ -1,0 +1,192 @@
+{
+  "containers": [
+    {
+      "id": "api-server",
+      "name": "API Server",
+      "components": [
+        {
+          "id": "api-server-checkout",
+          "name": "Checkout Module",
+          "description": "Handles checkout flow creation, validation, payment processing, and completion.",
+          "type": "module",
+          "technology": "FastAPI",
+          "evidence": ["server/polar/checkout/"]
+        },
+        {
+          "id": "api-server-product",
+          "name": "Product Module",
+          "description": "Product catalog management including pricing, benefits, and custom fields.",
+          "type": "module",
+          "technology": "FastAPI",
+          "evidence": ["server/polar/product/"]
+        },
+        {
+          "id": "api-server-subscription",
+          "name": "Subscription Module",
+          "description": "Subscription lifecycle management with recurring billing and metered usage.",
+          "type": "module",
+          "technology": "FastAPI",
+          "evidence": ["server/polar/subscription/"]
+        },
+        {
+          "id": "api-server-order",
+          "name": "Order Module",
+          "description": "Order processing, payment locks, and fulfillment tracking.",
+          "type": "module",
+          "technology": "FastAPI",
+          "evidence": ["server/polar/order/"]
+        },
+        {
+          "id": "api-server-customer",
+          "name": "Customer Module",
+          "description": "Customer identity management and profile data.",
+          "type": "module",
+          "technology": "FastAPI",
+          "evidence": ["server/polar/customer/"]
+        },
+        {
+          "id": "api-server-benefit",
+          "name": "Benefit Module",
+          "description": "Manages digital benefits: license keys, file downloads, GitHub repo access, Discord access.",
+          "type": "module",
+          "technology": "FastAPI",
+          "evidence": ["server/polar/benefit/"]
+        },
+        {
+          "id": "api-server-transaction",
+          "name": "Transaction Module",
+          "description": "Financial transaction recording, payment processing, and payout management.",
+          "type": "module",
+          "technology": "FastAPI",
+          "evidence": ["server/polar/transaction/"]
+        },
+        {
+          "id": "api-server-oauth2",
+          "name": "OAuth2 Module",
+          "description": "OAuth2 authorization server: client management, authorization codes, tokens, and grants.",
+          "type": "module",
+          "technology": "FastAPI / Authlib",
+          "evidence": ["server/polar/oauth2/"]
+        },
+        {
+          "id": "api-server-auth",
+          "name": "Auth Module",
+          "description": "Authentication middleware, AuthSubject resolution, scope enforcement, and session management.",
+          "type": "middleware",
+          "technology": "FastAPI",
+          "evidence": ["server/polar/auth/"]
+        },
+        {
+          "id": "api-server-webhook",
+          "name": "Webhook Module",
+          "description": "Outbound webhook delivery to merchant endpoints with retry logic.",
+          "type": "module",
+          "technology": "FastAPI",
+          "evidence": ["server/polar/webhook/"]
+        },
+        {
+          "id": "api-server-integrations",
+          "name": "Integrations Module",
+          "description": "Third-party integration adapters for GitHub, Stripe, Discord, and others.",
+          "type": "module",
+          "technology": "FastAPI",
+          "evidence": ["server/polar/integrations/"]
+        },
+        {
+          "id": "api-server-kit",
+          "name": "Kit (Shared Library)",
+          "description": "Shared utilities: database helpers, CORS config, JWT handling, pagination, and custom SQLAlchemy types.",
+          "type": "library",
+          "technology": "Python",
+          "evidence": ["server/polar/kit/"]
+        }
+      ]
+    },
+    {
+      "id": "web-dashboard",
+      "name": "Web Dashboard",
+      "components": [
+        {
+          "id": "web-dashboard-pages",
+          "name": "Dashboard Pages",
+          "description": "Next.js pages for the merchant dashboard including product management, analytics, and settings.",
+          "type": "module",
+          "technology": "Next.js / React",
+          "evidence": ["clients/apps/web/src/app/"]
+        },
+        {
+          "id": "web-dashboard-api-client",
+          "name": "API Client",
+          "description": "Auto-generated TypeScript client from the backend OpenAPI schema.",
+          "type": "library",
+          "technology": "TypeScript / openapi-typescript",
+          "evidence": ["clients/packages/client/"]
+        },
+        {
+          "id": "web-dashboard-ui",
+          "name": "UI Component Library",
+          "description": "Shared React components built on Radix UI primitives with Tailwind CSS styling.",
+          "type": "library",
+          "technology": "React / Radix UI / Tailwind CSS",
+          "evidence": ["clients/packages/ui/"]
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "source": "api-server-checkout",
+      "target": "api-server-product",
+      "description": "Resolves product and pricing during checkout creation.",
+      "evidence": ["server/polar/checkout/"]
+    },
+    {
+      "source": "api-server-checkout",
+      "target": "api-server-order",
+      "description": "Creates orders after successful payment.",
+      "evidence": ["server/polar/checkout/"]
+    },
+    {
+      "source": "api-server-order",
+      "target": "api-server-benefit",
+      "description": "Grants digital benefits after order completion.",
+      "evidence": ["server/polar/order/"]
+    },
+    {
+      "source": "api-server-subscription",
+      "target": "api-server-order",
+      "description": "Creates renewal orders for recurring subscriptions.",
+      "evidence": ["server/polar/subscription/"]
+    },
+    {
+      "source": "api-server-auth",
+      "target": "api-server-oauth2",
+      "description": "Validates OAuth2 tokens during API authentication.",
+      "evidence": ["server/polar/auth/"]
+    },
+    {
+      "source": "api-server-integrations",
+      "target": "stripe",
+      "description": "Communicates with Stripe for payment processing.",
+      "evidence": ["server/polar/integrations/"]
+    },
+    {
+      "source": "api-server-integrations",
+      "target": "github",
+      "description": "Communicates with GitHub for OAuth and repository management.",
+      "evidence": ["server/polar/integrations/"]
+    },
+    {
+      "source": "web-dashboard-pages",
+      "target": "web-dashboard-api-client",
+      "description": "Uses generated client for all API calls.",
+      "evidence": ["clients/apps/web/"]
+    },
+    {
+      "source": "web-dashboard-pages",
+      "target": "web-dashboard-ui",
+      "description": "Renders UI using shared component library.",
+      "evidence": ["clients/apps/web/"]
+    }
+  ]
+}

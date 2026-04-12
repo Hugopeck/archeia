@@ -1,0 +1,26 @@
+[
+  {
+    "source": "mitmproxy/contrib/agents.md",
+    "target": "mitmproxy/contrib/agents.md"
+  },
+  {
+    "source": "mitmproxy/contrib/claude.md",
+    "target": "mitmproxy/contrib/claude.md"
+  },
+  {
+    "source": "mitmproxy/proxy/agents.md",
+    "target": "mitmproxy/proxy/agents.md"
+  },
+  {
+    "source": "mitmproxy/proxy/claude.md",
+    "target": "mitmproxy/proxy/claude.md"
+  },
+  {
+    "source": "mitmproxy/utils/agents.md",
+    "target": "mitmproxy/utils/agents.md"
+  },
+  {
+    "source": "mitmproxy/utils/claude.md",
+    "target": "mitmproxy/utils/claude.md"
+  }
+]

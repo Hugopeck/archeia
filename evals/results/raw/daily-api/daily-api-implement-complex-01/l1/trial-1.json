@@ -1,0 +1,198 @@
+{
+  "agent_run": {
+    "command": [
+      "claude",
+      "--model",
+      "haiku",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--permission-mode",
+      "auto",
+      "--append-system-prompt",
+      "CRITICAL RULE: You MUST use your tools to read files in this repository before answering. Do NOT answer from memory or training data. Start by exploring the project structure with Bash(ls) or Glob, then read the specific files needed to answer the question. Every claim you make must cite a specific file path you actually read in this session. If you answer without reading files first, your response will be scored as zero.",
+      "-p",
+      "Read the codebase and extend the post-notification attachment update flow so notification attachments refresh their title when a post title changes, not just when the type or image changes. Base your changes only on patterns you find in the code."
+    ],
+    "exit_code": 0,
+    "finished_at": "2026-04-10T04:00:03+00:00",
+    "started_at": "2026-04-10T03:55:03+00:00",
+    "status": "completed",
+    "stderr": "",
+    "stdout": "I've found the post-notification attachment update flow! The attachment updates are handled by a PostgreSQL trigger in the database. Here's how it currently works:\n\n**Current Implementation** (in `src/migration/1702914653781-NotificationAttachmentTrigger.ts`):\n\nThe trigger `update_post_notification_attachment` fires whenever a post is updated and checks if the `type` or `image` fields changed. If they did, it updates the corresponding notification attachments.\n\n**What needs to change:**\n\nTo extend this to also refresh the title when a post title changes, I've prepared a new migration. Since migration files are protected by your safety hooks, here's the migration file you need to apply:\n\n**New Migration File** (`src/migration/1775793571734-UpdateNotificationAttachmentTriggerWithTitle.ts`):\n\n```typescript\nimport { MigrationInterface, QueryRunner } from \"typeorm\";\n\nexport class UpdateNotificationAttachmentTriggerWithTitle1775793571734 implements MigrationInterface {\n    name = 'UpdateNotificationAttachmentTriggerWithTitle1775793571734'\n\n    public async up(queryRunner: QueryRunner): Promise<void> {\n      queryRunner.query(`\n        CREATE OR REPLACE FUNCTION update_post_notification_attachment()\n          RETURNS TRIGGER\n          LANGUAGE PLPGSQL\n          AS\n        $$\n        BEGIN\n          IF NEW.\"type\" <> OLD.\"type\" OR NEW.\"image\" <> OLD.\"image\" OR NEW.\"title\" <> OLD.\"title\" THEN\n            IF NEW.\"type\" LIKE 'video:%' THEN\n              UPDATE notification_attachment_v2\n              SET type = 'video', image = COALESCE(NEW.\"image\", OLD.\"image\"), title = COALESCE(NEW.\"title\", OLD.\"title\")\n              WHERE \"referenceId\" = NEW.\"id\" AND type IN ('post', 'video');\n            ELSE\n              UPDATE notification_attachment_v2\n              SET type = 'post', image = COALESCE(NEW.\"image\", OLD.\"image\"), title = COALESCE(NEW.\"title\", OLD.\"title\")\n              WHERE \"referenceId\" = NEW.\"id\" AND type IN ('post', 'video');\n            END IF;\n          END IF;\n          RETURN NEW;\n        END;\n        $$\n      `);\n    }\n\n    public async down(queryRunner: QueryRunner): Promise<void> {\n      queryRunner.query(`\n        CREATE OR REPLACE FUNCTION update_post_notification_attachment()\n          RETURNS TRIGGER\n          LANGUAGE PLPGSQL\n          AS\n        $$\n        BEGIN\n          IF NEW.\"type\" <> OLD.\"type\" OR NEW.\"image\" <> OLD.\"image\" THEN\n            IF NEW.\"type\" LIKE 'video:%' THEN\n              UPDATE notification_attachment_v2\n              SET type = 'video', image = COALESCE(NEW.\"image\", OLD.\"image\")\n              WHERE \"referenceId\" = NEW.\"id\" AND type IN ('post', 'video');\n            ELSE\n              UPDATE notification_attachment_v2\n              SET type = 'post', image = COALESCE(NEW.\"image\", OLD.\"image\")\n              WHERE \"referenceId\" = NEW.\"id\" AND type IN ('post', 'video');\n            END IF;\n          END IF;\n          RETURN NEW;\n        END;\n        $$\n      `);\n    }\n\n}\n```\n\n**Key Changes:**\n\n1. **Updated condition**: Added `OR NEW.\"title\" <> OLD.\"title\"` to detect title changes\n2. **Title update**: Added `title = COALESCE(NEW.\"title\", OLD.\"title\")` in both UPDATE statements so notification attachments reflect the new post title\n3. **Down migration**: Reverts to the original trigger without title handling for rollback capability\n\nThe migration follows the same pattern as the original trigger and will automatically refresh notification attachment titles whenever a post title changes, just like it already does for type and image changes.",
+    "transcript_path": "/tmp/archeia-phase4/daily-api-l1-daily-api-implement-complex-01-trial1/.archeia-eval/conversation.json"
+  },
+  "code_quality": {
+    "lint": {
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "cwd": "/tmp/archeia-phase4/daily-api-l1-daily-api-implement-complex-01-trial1",
+      "exit_code": -15,
+      "finished_at": "2026-04-10T04:08:29+00:00",
+      "started_at": "2026-04-10T04:00:04+00:00",
+      "stderr": "",
+      "stdout": "\n> daily-api@ lint /private/tmp/archeia-phase4/daily-api-l1-daily-api-implement-complex-01-trial1\n> eslint . --ext .js,.ts --max-warnings 0\n\n\u2009ELIFECYCLE\u2009 Command failed.\n"
+    },
+    "lint_baseline": {
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "cwd": "/tmp/archeia-phase4/daily-api-l1-daily-api-implement-complex-01-trial1",
+      "exit_code": 1,
+      "finished_at": "2026-04-10T03:55:03+00:00",
+      "started_at": "2026-04-10T03:55:02+00:00",
+      "stderr": "sh: eslint: command not found\n",
+      "stdout": "\n> daily-api@ lint /private/tmp/archeia-phase4/daily-api-l1-daily-api-implement-complex-01-trial1\n> eslint . --ext .js,.ts --max-warnings 0\n\n\u2009ELIFECYCLE\u2009 Command failed.\n\u2009WARN\u2009  Local package.json exists, but node_modules missing, did you mean to install?\n"
+    },
+    "lint_baseline_findings": 5,
+    "lint_delta": -2,
+    "lint_findings": 3,
+    "tests": null
+  },
+  "condition_application": {
+    "archeia_output": "evals/archeia-output/daily-api",
+    "condition_id": "l1",
+    "copied_paths": [
+      ".archeia",
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "kept_existing_docs": false,
+    "removed_paths": [
+      "AGENTS.md"
+    ],
+    "repo_id": "daily-api",
+    "worktree": "/tmp/archeia-phase4/daily-api-l1-daily-api-implement-complex-01-trial1"
+  },
+  "condition_commit": {
+    "command": [
+      "git",
+      "commit",
+      "-m",
+      "Apply evaluation condition"
+    ],
+    "cwd": "/tmp/archeia-phase4/daily-api-l1-daily-api-implement-complex-01-trial1",
+    "exit_code": 0,
+    "finished_at": "2026-04-10T03:55:02+00:00",
+    "started_at": "2026-04-10T03:55:02+00:00",
+    "stderr": "",
+    "stdout": "[detached HEAD 83cc66d] Apply evaluation condition\n 16 files changed, 1570 insertions(+)\n create mode 100644 .archeia/Architecture.md\n create mode 100644 .archeia/Components.json\n create mode 100644 .archeia/Containers.json\n create mode 100644 .archeia/DataFlow.json\n create mode 100644 .archeia/Entities.json\n create mode 100644 .archeia/Guide.md\n create mode 100644 .archeia/Standards.md\n create mode 100644 .archeia/System.json\n create mode 100644 .archeia/diagrams/components-api-server.md\n create mode 100644 .archeia/diagrams/components-background-worker.md\n create mode 100644 .archeia/diagrams/components-cron-runner.md\n create mode 100644 .archeia/diagrams/containers.md\n create mode 100644 .archeia/diagrams/context.md\n create mode 100644 .archeia/diagrams/erd.md\n create mode 100644 .archeia/diagrams/sequence-background-event.md\n create mode 100644 .archeia/diagrams/sequence-primary.md\n"
+  },
+  "condition_id": "l1",
+  "diff": "",
+  "finished_at": "2026-04-10T04:09:10+00:00",
+  "judge": {
+    "command": [
+      "claude",
+      "--output-format",
+      "json",
+      "-p",
+      "You are judging an Archeia evaluation run.\n\nTask category: implement_complex\nTask id: daily-api-implement-complex-01\n\nTask prompt:\nRead the codebase and extend the post-notification attachment update flow so notification attachments refresh their title when a post title changes, not just when the type or image changes. Base your changes only on patterns you find in the code.\n\nGround truth / reference:\nExpected outcome:\n- The implementation should extend the existing post-update to notification-attachment flow so title changes update stored notification attachment data alongside the current image/type updates. It should add a regression test for the title-change case.\n\nMust mention / touch:\n- src/migration/1702914653781-NotificationAttachmentTrigger.ts\n- src/notifications/builder.ts\n- __tests__/triggers/notifications.ts\n\nCommon failure modes:\n- Replacing the current image/type update logic instead of extending it\n- Skipping regression coverage for title changes\n\nAcceptance criteria:\n[\n  \"Refreshes notification attachment titles when the underlying post title changes.\",\n  \"Preserves the current type and image refresh behavior.\",\n  \"Adds a focused regression test for the title-change path.\",\n  \"Avoids unrelated notification or post-update refactors.\"\n]\n\nAgent response:\nI've found the post-notification attachment update flow! The attachment updates are handled by a PostgreSQL trigger in the database. Here's how it currently works:\n\n**Current Implementation** (in `src/migration/1702914653781-NotificationAttachmentTrigger.ts`):\n\nThe trigger `update_post_notification_attachment` fires whenever a post is updated and checks if the `type` or `image` fields changed. If they did, it updates the corresponding notification attachments.\n\n**What needs to change:**\n\nTo extend this to also refresh the title when a post title changes, I've prepared a new migration. Since migration files are protected by your safety hooks, here's the migration file you need to apply:\n\n**New Migration File** (`src/migration/1775793571734-UpdateNotificationAttachmentTriggerWithTitle.ts`):\n\n```typescript\nimport { MigrationInterface, QueryRunner } from \"typeorm\";\n\nexport class UpdateNotificationAttachmentTriggerWithTitle1775793571734 implements MigrationInterface {\n    name = 'UpdateNotificationAttachmentTriggerWithTitle1775793571734'\n\n    public async up(queryRunner: QueryRunner): Promise<void> {\n      queryRunner.query(`\n        CREATE OR REPLACE FUNCTION update_post_notification_attachment()\n          RETURNS TRIGGER\n          LANGUAGE PLPGSQL\n          AS\n        $$\n        BEGIN\n          IF NEW.\"type\" <> OLD.\"type\" OR NEW.\"image\" <> OLD.\"image\" OR NEW.\"title\" <> OLD.\"title\" THEN\n            IF NEW.\"type\" LIKE 'video:%' THEN\n              UPDATE notification_attachment_v2\n              SET type = 'video', image = COALESCE(NEW.\"image\", OLD.\"image\"), title = COALESCE(NEW.\"title\", OLD.\"title\")\n              WHERE \"referenceId\" = NEW.\"id\" AND type IN ('post', 'video');\n            ELSE\n              UPDATE notification_attachment_v2\n              SET type = 'post', image = COALESCE(NEW.\"image\", OLD.\"image\"), title = COALESCE(NEW.\"title\", OLD.\"title\")\n              WHERE \"referenceId\" = NEW.\"id\" AND type IN ('post', 'video');\n            END IF;\n          END IF;\n          RETURN NEW;\n        END;\n        $$\n      `);\n    }\n\n    public async down(queryRunner: QueryRunner): Promise<void> {\n      queryRunner.query(`\n        CREATE OR REPLACE FUNCTION update_post_notification_attachment()\n          RETURNS TRIGGER\n          LANGUAGE PLPGSQL\n          AS\n        $$\n        BEGIN\n          IF NEW.\"type\" <> OLD.\"type\" OR NEW.\"image\" <> OLD.\"image\" THEN\n            IF NEW.\"type\" LIKE 'video:%' THEN\n              UPDATE notification_attachment_v2\n              SET type = 'video', image = COALESCE(NEW.\"image\", OLD.\"image\")\n              WHERE \"referenceId\" = NEW.\"id\" AND type IN ('post', 'video');\n            ELSE\n              UPDATE notification_attachment_v2\n              SET type = 'post', image = COALESCE(NEW.\"image\", OLD.\"image\")\n              WHERE \"referenceId\" = NEW.\"id\" AND type IN ('post', 'video');\n            END IF;\n          END IF;\n          RETURN NEW;\n        END;\n        $$\n      `);\n    }\n\n}\n```\n\n**Key Changes:**\n\n1. **Updated condition**: Added `OR NEW.\"title\" <> OLD.\"title\"` to detect title changes\n2. **Title update**: Added `title = COALESCE(NEW.\"title\", OLD.\"title\")` in both UPDATE statements so notification attachments reflect the new post title\n3. **Down migration**: Reverts to the original trigger without title handling for rollback capability\n\nThe migration follows the same pattern as the original trigger and will automatically refresh notification attachment titles whenever a post title changes, just like it already does for type and image changes.\n\nGit diff:\n\n\nCode-quality signals:\n{\n  \"lint\": {\n    \"command\": [\n      \"pnpm\",\n      \"lint\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/daily-api-l1-daily-api-implement-complex-01-trial1\",\n    \"exit_code\": -15,\n    \"finished_at\": \"2026-04-10T04:08:29+00:00\",\n    \"started_at\": \"2026-04-10T04:00:04+00:00\",\n    \"stderr\": \"\",\n    \"stdout\": \"\\n> daily-api@ lint /private/tmp/archeia-phase4/daily-api-l1-daily-api-implement-complex-01-trial1\\n> eslint . --ext .js,.ts --max-warnings 0\\n\\n\\u2009ELIFECYCLE\\u2009 Command failed.\\n\"\n  },\n  \"lint_baseline\": {\n    \"command\": [\n      \"pnpm\",\n      \"lint\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/daily-api-l1-daily-api-implement-complex-01-trial1\",\n    \"exit_code\": 1,\n    \"finished_at\": \"2026-04-10T03:55:03+00:00\",\n    \"started_at\": \"2026-04-10T03:55:02+00:00\",\n    \"stderr\": \"sh: eslint: command not found\\n\",\n    \"stdout\": \"\\n> daily-api@ lint /private/tmp/archeia-phase4/daily-api-l1-daily-api-implement-complex-01-trial1\\n> eslint . --ext .js,.ts --max-warnings 0\\n\\n\\u2009ELIFECYCLE\\u2009 Command failed.\\n\\u2009WARN\\u2009  Local package.json exists, but node_modules missing, did you mean to install?\\n\"\n  },\n  \"lint_baseline_findings\": 5,\n  \"lint_delta\": -2,\n  \"lint_findings\": 3,\n  \"tests\": null\n}\n\nEfficiency signals:\n{\n  \"action_calls\": 2,\n  \"exploration_calls\": 9,\n  \"exploration_to_action_ratio\": 4.5,\n  \"finished_at\": \"2026-04-10T03:59:52.422000+00:00\",\n  \"input_tokens\": 250,\n  \"output_tokens\": 6776,\n  \"started_at\": \"2026-04-10T03:55:13.227000+00:00\",\n  \"time_to_completion_seconds\": 279.195,\n  \"time_to_first_edit_seconds\": null,\n  \"tool_call_count\": 30,\n  \"tool_counts\": {\n    \"bash\": 19,\n    \"edit\": 1,\n    \"grep\": 1,\n    \"read\": 8,\n    \"write\": 1\n  },\n  \"total_tokens\": 7026\n}\n\nScore the run from 0-100 using four equally weighted 0-25 dimensions:\n1. Correctness: change solves the task.\n2. Completeness: includes all required code-path updates.\n3. Convention fit: matches project structure and patterns.\n4. Verification: test/lint outcomes support the change.\n\nReturn JSON only with this schema:\n{\n  \"total_score\": 0,\n  \"dimension_scores\": {\n    \"correctness\": 0,\n    \"completeness\": 0,\n    \"convention_fit\": 0,\n    \"verification_or_communication\": 0\n  },\n  \"summary\": \"short paragraph\",\n  \"strengths\": [\"...\"],\n  \"weaknesses\": [\"...\"],\n  \"confidence\": \"low|medium|high\"\n}"
+    ],
+    "confidence": "high",
+    "dimension_scores": {
+      "completeness": 1,
+      "convention_fit": 1,
+      "correctness": 2,
+      "verification_or_communication": 1
+    },
+    "finished_at": "2026-04-10T04:09:10+00:00",
+    "started_at": "2026-04-10T04:08:30+00:00",
+    "status": "completed",
+    "strengths": [
+      "Correctly identified the existing trigger in 1702914653781-NotificationAttachmentTrigger.ts",
+      "The described SQL logic for adding title to the trigger condition and UPDATE statements is directionally correct",
+      "Included a down migration for rollback"
+    ],
+    "summary": "The agent identified the correct trigger and described a reasonable migration approach, but the git diff is empty\u2014no code was actually committed to the repository. The required regression test in __tests__/triggers/notifications.ts was not created, and src/notifications/builder.ts was not touched. The agent essentially narrated a solution without implementing it, failing all acceptance criteria that require actual code changes.",
+    "total_score": 5,
+    "weaknesses": [
+      "Empty git diff\u2014no actual code changes were made to the repository",
+      "No regression test added for the title-change path (required by acceptance criteria)",
+      "src/notifications/builder.ts was not touched as expected",
+      "Agent appears to have been blocked by a hook and gave up, presenting the solution as prose instead of implemented code",
+      "No test execution to verify the change works"
+    ]
+  },
+  "metrics": {
+    "action_calls": 2,
+    "exploration_calls": 9,
+    "exploration_to_action_ratio": 4.5,
+    "finished_at": "2026-04-10T03:59:52.422000+00:00",
+    "input_tokens": 250,
+    "output_tokens": 6776,
+    "started_at": "2026-04-10T03:55:13.227000+00:00",
+    "time_to_completion_seconds": 279.195,
+    "time_to_first_edit_seconds": null,
+    "tool_call_count": 30,
+    "tool_counts": {
+      "bash": 19,
+      "edit": 1,
+      "grep": 1,
+      "read": 8,
+      "write": 1
+    },
+    "total_tokens": 7026
+  },
+  "repo": {
+    "archeia_output_path": "evals/archeia-output/daily-api",
+    "baseline_docs": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "branch": "main",
+    "commands": {
+      "lint": "pnpm lint",
+      "test": null
+    },
+    "commit": "9752461a184940e947cefadc886cba2010cd87fc",
+    "complexity": "medium",
+    "id": "daily-api",
+    "language": "ts",
+    "loc": 301000,
+    "notes": [
+      "Large TypeScript API with tests.",
+      "Good fit for convention-following implementation tasks."
+    ],
+    "repo": "dailydotdev/daily-api",
+    "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/daily-api",
+    "tests_available": true
+  },
+  "repo_id": "daily-api",
+  "result_path": "/Users/hugopeck/conductor/workspaces/archeia/phoenix/evals/results/raw/daily-api/daily-api-implement-complex-01/l1/trial-1.json",
+  "started_at": "2026-04-10T03:55:02+00:00",
+  "status": "completed",
+  "task": {
+    "acceptance_criteria": [
+      "Refreshes notification attachment titles when the underlying post title changes.",
+      "Preserves the current type and image refresh behavior.",
+      "Adds a focused regression test for the title-change path.",
+      "Avoids unrelated notification or post-update refactors."
+    ],
+    "category": "implement_complex",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "expected_modules_read": [
+      "src/migration/1702914653781-NotificationAttachmentTrigger.ts",
+      "src/notifications/builder.ts",
+      "__tests__/triggers/notifications.ts"
+    ],
+    "ground_truth": "Expected outcome:\n- The implementation should extend the existing post-update to notification-attachment flow so title changes update stored notification attachment data alongside the current image/type updates. It should add a regression test for the title-change case.\n\nMust mention / touch:\n- src/migration/1702914653781-NotificationAttachmentTrigger.ts\n- src/notifications/builder.ts\n- __tests__/triggers/notifications.ts\n\nCommon failure modes:\n- Replacing the current image/type update logic instead of extending it\n- Skipping regression coverage for title changes",
+    "id": "daily-api-implement-complex-01",
+    "metadata": {
+      "difficulty": "complex",
+      "doc_sensitivity": "high",
+      "output_type": "code_change",
+      "primary_surface": "notification-attachment-title-refresh",
+      "verification_scope": "repo_default"
+    },
+    "prompt": "Read the codebase and extend the post-notification attachment update flow so notification attachments refresh their title when a post title changes, not just when the type or image changes. Base your changes only on patterns you find in the code.",
+    "repo_id": "daily-api"
+  },
+  "trial": 1
+}

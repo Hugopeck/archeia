@@ -1,0 +1,30 @@
+{
+  "id": "arq-implement-simple-01",
+  "repo_id": "arq",
+  "category": "implement_simple",
+  "prompt": "Read the codebase and add a per-job retry cap so callers can set a maximum number of tries when enqueueing one job without changing the worker-wide default. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should add a focused enqueue-time retry limit, propagate it through job serialization, honor it during worker retry checks, and add targeted regression coverage. It should not change existing worker defaults for jobs that do not opt in.\n\nMust mention / touch:\n- arq/jobs.py\n- arq/worker.py\n- tests/test_jobs.py\n- tests/test_worker.py\n\nCommon failure modes:\n- Changing the worker-wide retry policy instead of adding a per-job override\n- Skipping regression coverage for enqueueing and execution paths",
+  "acceptance_criteria": [
+    "Adds a per-job retry cap at an enqueue-facing API.",
+    "Propagates the value through serialized job metadata and worker retry checks.",
+    "Includes targeted tests for enqueueing and execution behavior.",
+    "Keeps existing worker defaults backward compatible."
+  ],
+  "expected_modules_read": [
+    "arq/jobs.py",
+    "arq/worker.py",
+    "tests/test_jobs.py",
+    "tests/test_worker.py"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "simple",
+    "output_type": "code_change",
+    "primary_surface": "per-job-retry-cap",
+    "doc_sensitivity": "medium",
+    "verification_scope": "repo_default"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "skill_name": "archeia-draw-diagrams",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Generate architecture diagrams for this repository. archeia-write-tech-docs has already been run — the .archeia/ directory has System.json, Containers.json, Components.json, DataFlow.json, Entities.json, and StateMachine.json. It's a Node.js/TypeScript API with Express, Prisma, BullMQ, PostgreSQL, Redis, and a React frontend.",
+      "expected_output": "Should produce all 6 diagram types: context.md (system boundary with API, 2 people, 3 external systems), containers.md (3 containers inside boundary + external systems + people), sequence-primary.md (6-step create-task flow), erd.md (User/Project/Task entities with cardinality), state-task.md (5-state task lifecycle with initial/terminal markers), and at least one components-*.md if 3+ containers have components. All nodes must trace to JSON entities. All edges must have labels. Node limits must be respected.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Draw diagrams for this Python Django prediction market. The .archeia/ directory has System.json, Containers.json, Components.json, DataFlow.json, Entities.json (12 entities from Django models), and StateMachine.json (2 state machines: question-lifecycle and wager-lifecycle). There are 4 containers with components.",
+      "expected_output": "Should produce context.md, containers.md, sequence-primary.md, erd.md (12 entities max with cardinality symbols), state-question.md AND state-wager.md (separate files per state machine), and components-*.md for each of the 4 containers (since 4 >= 3 threshold). ERD should use correct cardinality mapping. State diagrams should show [*] initial/terminal markers and PascalCase state names.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Generate diagrams for this Go microservices repo. The .archeia/ has System.json, Containers.json, Components.json, and DataFlow.json. No Entities.json (raw SQL, no ORM). No StateMachine.json (no state machines detected). Only 2 containers have components.",
+      "expected_output": "Should produce only the 3 always-present diagrams: context.md, containers.md, sequence-primary.md. Should skip erd.md (no Entities.json), skip state diagrams (no StateMachine.json), and skip component diagrams (fewer than 3 containers have components). Report should list all skipped diagrams with reasons.",
+      "files": []
+    }
+  ]
+}

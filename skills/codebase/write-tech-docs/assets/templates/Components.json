@@ -1,0 +1,134 @@
+{
+  "level": 3,
+  "title": "Component Diagram",
+  "containers": [
+    {
+      "id": "api-server",
+      "name": "API Server",
+      "components": [
+        {
+          "id": "api-routes",
+          "name": "Routes",
+          "technology": "Express Router",
+          "description": "HTTP request handling and input validation",
+          "type": "controller",
+          "evidence": ["src/routes/"]
+        },
+        {
+          "id": "api-middleware",
+          "name": "Middleware",
+          "technology": "Express",
+          "description": "Auth, logging, rate limiting, and error handling",
+          "type": "middleware",
+          "evidence": ["src/middleware/"]
+        },
+        {
+          "id": "api-services",
+          "name": "Services",
+          "technology": "TypeScript",
+          "description": "Business logic for tasks, users, and billing",
+          "type": "service",
+          "evidence": ["src/services/"]
+        },
+        {
+          "id": "api-models",
+          "name": "Models",
+          "technology": "Prisma ORM",
+          "description": "Data access and database queries",
+          "type": "repository",
+          "evidence": ["src/models/", "prisma/schema.prisma"]
+        }
+      ]
+    },
+    {
+      "id": "background-worker",
+      "name": "Background Worker",
+      "components": [
+        {
+          "id": "worker-jobs",
+          "name": "Job Handlers",
+          "technology": "BullMQ",
+          "description": "Processes email, report, and cleanup jobs",
+          "type": "handler",
+          "evidence": ["src/jobs/"]
+        },
+        {
+          "id": "worker-config",
+          "name": "Queue Config",
+          "technology": "BullMQ",
+          "description": "Queue definitions, retry policies, and concurrency settings",
+          "type": "config",
+          "evidence": ["src/worker.ts"]
+        }
+      ]
+    }
+  ],
+  "external_systems": [
+    {
+      "id": "postgresql",
+      "name": "PostgreSQL",
+      "description": "Primary relational data store"
+    },
+    {
+      "id": "redis",
+      "name": "Redis",
+      "description": "Session cache and rate limiting"
+    },
+    {
+      "id": "stripe-api",
+      "name": "Stripe API",
+      "description": "Payment processing"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "api-routes",
+      "target": "api-middleware",
+      "description": "Passes requests through middleware chain",
+      "technology": "Express middleware",
+      "evidence": ["src/index.ts"]
+    },
+    {
+      "source": "api-routes",
+      "target": "api-services",
+      "description": "Delegates business logic",
+      "technology": "function call",
+      "evidence": ["src/routes/tasks.ts"]
+    },
+    {
+      "source": "api-services",
+      "target": "api-models",
+      "description": "Queries and persists data",
+      "technology": "Prisma client",
+      "evidence": ["src/services/taskService.ts"]
+    },
+    {
+      "source": "api-models",
+      "target": "postgresql",
+      "description": "Executes SQL queries",
+      "technology": "SQL",
+      "evidence": ["prisma/schema.prisma"]
+    },
+    {
+      "source": "api-middleware",
+      "target": "redis",
+      "description": "Reads session data and rate limit counters",
+      "technology": "Redis protocol",
+      "evidence": ["src/middleware/session.ts"]
+    },
+    {
+      "source": "api-services",
+      "target": "stripe-api",
+      "description": "Creates charges and manages subscriptions",
+      "technology": "HTTPS/JSON",
+      "evidence": ["src/services/billing.ts"]
+    },
+    {
+      "source": "worker-jobs",
+      "target": "postgresql",
+      "description": "Reads data for report generation",
+      "technology": "SQL",
+      "evidence": ["src/jobs/reportJob.ts"]
+    }
+  ]
+}

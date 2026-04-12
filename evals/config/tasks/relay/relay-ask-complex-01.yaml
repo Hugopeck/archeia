@@ -1,0 +1,30 @@
+{
+  "id": "relay-ask-complex-01",
+  "repo_id": "relay",
+  "category": "ask_complex",
+  "prompt": "Read the codebase and explain the message-routing architecture in relay from message ingestion through queueing or routing decisions to final delivery. Base your answer only on code you actually read.",
+  "ground_truth": "Expected outcome:\n- Must trace the major routing stages across the broker/runtime, identify where protocol objects are interpreted, and explain where delivery paths diverge. Expected grounding includes src/routing.rs, src/queue.rs, src/protocol.rs, and relaycast WebSocket delivery surfaces.\n\nMust mention / touch:\n- src/routing.rs\n- src/queue.rs\n- src/protocol.rs\n- src/relaycast_ws.rs\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo",
+  "acceptance_criteria": [
+    "Explains ingress, routing, buffering/queueing, and delivery in order.",
+    "Uses real relay module names and boundaries.",
+    "Mentions protocol interpretation and transport concerns where relevant.",
+    "Avoids inventing services or queues not present in the codebase."
+  ],
+  "expected_modules_read": [
+    "src/routing.rs",
+    "src/queue.rs",
+    "src/protocol.rs",
+    "src/relaycast_ws.rs"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "explanation",
+    "primary_surface": "message-routing",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

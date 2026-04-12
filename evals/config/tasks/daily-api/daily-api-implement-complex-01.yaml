@@ -1,0 +1,29 @@
+{
+  "id": "daily-api-implement-complex-01",
+  "repo_id": "daily-api",
+  "category": "implement_complex",
+  "prompt": "Read the codebase and extend the post-notification attachment update flow so notification attachments refresh their title when a post title changes, not just when the type or image changes. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should extend the existing post-update to notification-attachment flow so title changes update stored notification attachment data alongside the current image/type updates. It should add a regression test for the title-change case.\n\nMust mention / touch:\n- src/migration/1702914653781-NotificationAttachmentTrigger.ts\n- src/notifications/builder.ts\n- __tests__/triggers/notifications.ts\n\nCommon failure modes:\n- Replacing the current image/type update logic instead of extending it\n- Skipping regression coverage for title changes",
+  "acceptance_criteria": [
+    "Refreshes notification attachment titles when the underlying post title changes.",
+    "Preserves the current type and image refresh behavior.",
+    "Adds a focused regression test for the title-change path.",
+    "Avoids unrelated notification or post-update refactors."
+  ],
+  "expected_modules_read": [
+    "src/migration/1702914653781-NotificationAttachmentTrigger.ts",
+    "src/notifications/builder.ts",
+    "__tests__/triggers/notifications.ts"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "code_change",
+    "primary_surface": "notification-attachment-title-refresh",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

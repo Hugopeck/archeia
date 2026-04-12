@@ -1,0 +1,29 @@
+{
+  "id": "polar-implement-simple-01",
+  "repo_id": "polar",
+  "category": "implement_simple",
+  "prompt": "Read the codebase and add validation so granting account credit rejects zero or negative amounts before mutating account balances. Base your changes only on patterns you find in the code.",
+  "ground_truth": "Expected outcome:\n- The implementation should add a localized validation guard for account-credit grants, prevent zero or negative grants from mutating balances, preserve valid grant flows, and include focused regression coverage.\n\nMust mention / touch:\n- server/polar/account_credit/service.py\n- server/polar/account_credit/schemas.py\n- server/tests/\n\nCommon failure modes:\n- Allowing invalid grant amounts to reach balance mutation logic\n- Expanding the change into unrelated account-credit business rules",
+  "acceptance_criteria": [
+    "Rejects zero or negative account-credit grants before balances are mutated.",
+    "Keeps valid account-credit grant flows intact.",
+    "Places validation in the owning account-credit path.",
+    "Includes focused regression coverage."
+  ],
+  "expected_modules_read": [
+    "server/polar/account_credit/service.py",
+    "server/polar/account_credit/schemas.py",
+    "server/tests/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "simple",
+    "output_type": "code_change",
+    "primary_surface": "account-credit-amount-validation",
+    "doc_sensitivity": "medium",
+    "verification_scope": "none"
+  }
+}

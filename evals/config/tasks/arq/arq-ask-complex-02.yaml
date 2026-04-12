@@ -1,0 +1,29 @@
+{
+  "id": "arq-ask-complex-02",
+  "repo_id": "arq",
+  "category": "ask_complex",
+  "prompt": "Read the codebase and explain how cron scheduling flows through arq, from cron job definition to worker-side execution. Base your answer only on code you actually read.",
+  "ground_truth": "Expected outcome:\n- Must describe how cron jobs are defined, scheduled, enqueued, and then executed by the worker. Expected grounding includes arq/cron.py, arq/worker.py, and any CLI or helper surface that exposes scheduling behavior.\n\nMust mention / touch:\n- arq/cron.py\n- arq/worker.py\n- arq/cli.py\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo",
+  "acceptance_criteria": [
+    "Explains scheduling, enqueueing, and execution in sequence.",
+    "Names the core modules involved in cron support.",
+    "Distinguishes cron setup from normal job execution where relevant.",
+    "Does not hallucinate external schedulers not present in the repo."
+  ],
+  "expected_modules_read": [
+    "arq/cron.py",
+    "arq/worker.py",
+    "arq/cli.py"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "explanation",
+    "primary_surface": "cron-flow",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}

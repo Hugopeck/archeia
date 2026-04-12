@@ -1,0 +1,53 @@
+{
+  "repo_id": "daily-api",
+  "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/daily-api",
+  "commit": "9752461a184940e947cefadc886cba2010cd87fc",
+  "pipeline_order": [
+    "archeia-scan-repo",
+    "archeia-scan-git",
+    "archeia-write-tech-docs",
+    "archeia-write-readmes",
+    "archeia-write-agents-docs",
+    "archeia-draw-diagrams"
+  ],
+  "required_outputs": {
+    "root_docs": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "archeia": [
+      "Architecture.md",
+      "System.json",
+      "Standards.md",
+      "Guide.md"
+    ]
+  },
+  "always_attempted_outputs": [
+    "Containers.json",
+    "Components.json",
+    "DataFlow.json"
+  ],
+  "conditional_expectations": {
+    "Entities.json": "expected_present",
+    "StateMachine.json": "evidence_dependent"
+  },
+  "copy_rules": {
+    "include_root_docs": true,
+    "include_archeia_dir": true,
+    "include_colocated_readmes": true,
+    "include_colocated_agents": true,
+    "exclude": [
+      ".archeia/codebase/scan-report.md",
+      ".archeia/codebase/git-report.md"
+    ]
+  },
+  "validation": {
+    "run_validate_evidence": true,
+    "include_root_docs": true,
+    "require_manifests": true
+  },
+  "notes": [
+    "Large TypeScript API repo.",
+    "Do not treat DB-resetting test commands as repo defaults during evaluation."
+  ]
+}

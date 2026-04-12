@@ -1,0 +1,203 @@
+{
+  "agent_run": {
+    "command": [
+      "claude",
+      "--model",
+      "haiku",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--permission-mode",
+      "auto",
+      "--append-system-prompt",
+      "CRITICAL RULE: You MUST use your tools to read files in this repository before answering. Do NOT answer from memory or training data. Start by exploring the project structure with Bash(ls) or Glob, then read the specific files needed to answer the question. Every claim you make must cite a specific file path you actually read in this session. If you answer without reading files first, your response will be scored as zero.",
+      "-p",
+      "Read the codebase and explain how billing, account credits, and invoices interact in Polar's backend. Base your answer only on code you actually read."
+    ],
+    "exit_code": 0,
+    "finished_at": "2026-04-10T01:45:07+00:00",
+    "started_at": "2026-04-10T01:40:50+00:00",
+    "status": "completed",
+    "stderr": "",
+    "stdout": "Based on my reading of the Polar codebase, here's how billing, account credits, and invoices interact:\n\n## System Components\n\n### 1. **Customer Balance (Wallet)**\n- **Model**: `Wallet` (polar/models/wallet.py:28-56)\n- Each customer has a **billing wallet** per currency that tracks their account balance\n- The balance is calculated as the sum of all `WalletTransaction` entries for that wallet\n- When orders are created, the system:\n  - Checks the customer's current balance in `get_billing_wallet_balance()` (order/service.py:677-678)\n  - Calculates `applied_balance_amount` based on whether the order is a charge or credit:\n    - **For charges**: Uses up to the full balance available\n    - **For credits**: Applies the credit to clear any existing debt, then adds remainder to balance\n\n### 2. **Billing Entries (Transaction Log)**\n- **Model**: `BillingEntry` (polar/models/billing_entry.py)\n- Records every billing transaction for a customer with:\n  - Type: `cycle`, `proration`, `metered`, `subscription_seats_increase`, `subscription_seats_decrease`\n  - Direction: `debit` (charge) or `credit` (refund/credit)\n  - Amount and currency\n  - Links to: Customer, Subscription, Order, Product Price, Event\n\n### 3. **Orders and Invoices**\n- **Order Model** (polar/models/order.py):\n  - `invoice_number`: Sequential number per customer (polar/models/customer.py:186)\n  - `invoice_path`: S3 path to generated PDF (only set after payment)\n  - `applied_balance_amount`: How much customer balance was applied to this order\n  - Tracks: subtotal, discount, tax, status (pending/paid/refunded/partially_refunded/void)\n\n- **Invoice Generation** (polar/invoice/service.py + generator.py):\n  - Invoices are only created from **paid orders** (`create_order_invoice()`)\n  - Invoice includes `applied_balance_amount` as a line item showing balance applied\n  - Invoice is stored in S3 and referenced via `order.invoice_path`\n\n### 4. **Account Credits (Organization Credits)**\n- **Model**: `AccountCredit` (polar/models/account_credit.py)\n- Separate from customer balance\u2014belongs to an `Account` (the organization/maintainer)\n- Tracks: Amount granted, amount used, expiration date, revocation status\n- Can be granted from campaigns with automatic grants\n- **Applied to platform fees**, not customer orders (polar/transaction/service/platform_fee.py:224-256):\n  - When transactions settle and platform fees are calculated\n  - `account_credit_service.apply_to_fee()` (polar/account_credit/service.py:127-167):\n    - Applies active, non-expired credits to reduce platform fees\n    - Credits are consumed in order and tracked with `credit.used` amount\n\n## Interaction Flow\n\n```\nCustomer Order Creation (order/service.py:650-780)\n\u251c\u2500\u2500 Get customer's billing wallet balance\n\u251c\u2500\u2500 Calculate applied_balance_amount based on order total vs balance\n\u251c\u2500\u2500 Create Order with applied_balance_amount\n\u251c\u2500\u2500 Create WalletTransaction if balance changed\n\u2514\u2500\u2500 If due_amount \u2264 0 \u2192 Mark as paid, emit event\n\nOrder Payment (order/service.py: trigger_payment)\n\u2514\u2500\u2500 After payment succeeds\n    \u251c\u2500\u2500 Calculate platform fees based on payment amount\n    \u2514\u2500\u2500 In transaction settlement (platform_fee.py:206-221)\n        \u2514\u2500\u2500 Apply Account credits to fees\n            \u2514\u2500\u2500 Reduce account.credit_balance by amount applied\n\nInvoice Generation (order/service.py:429-445)\n\u2514\u2500\u2500 After order is paid (status = paid)\n    \u251c\u2500\u2500 Validate billing name/address present\n    \u2514\u2500\u2500 Generate PDF from order data\n        \u251c\u2500\u2500 Include applied_balance_amount\n        \u2514\u2500\u2500 Store in S3, set order.invoice_path\n```\n\n## Key Points\n\n1. **Customer balance** is per-customer, used to offset charges during order creation\n2. **Billing entries** audit all billing activity for subscriptions/usage\n3. **Order.applied_balance_amount** tracks how much balance was applied, shown in invoice\n4. **Account credits** are organization-level, applied to platform fees during settlement\n5. **Invoices** are generated only after payment and include all financial details including applied balance",
+    "transcript_path": "/tmp/archeia-phase4/polar-l2-polar-ask-complex-02-trial1/.archeia-eval/conversation.json"
+  },
+  "code_quality": {
+    "lint": null,
+    "lint_baseline": null,
+    "lint_baseline_findings": null,
+    "lint_delta": null,
+    "lint_findings": null,
+    "tests": null
+  },
+  "condition_application": {
+    "archeia_output": "evals/archeia-output/polar",
+    "condition_id": "l2",
+    "copied_paths": [
+      ".archeia",
+      "AGENTS.md",
+      "CLAUDE.md",
+      "clients/packages/i18n/README.md",
+      "clients/packages/orbit/README.md",
+      "dev/README.md",
+      "server/README.md",
+      "server/polar/README.md",
+      "server/polar/benefit/README.md",
+      "server/polar/benefit/agents.md",
+      "server/polar/benefit/claude.md",
+      "server/polar/customer_portal/README.md",
+      "server/polar/integrations/README.md",
+      "server/polar/integrations/agents.md",
+      "server/polar/integrations/claude.md",
+      "server/polar/kit/README.md",
+      "server/polar/models/README.md",
+      "server/polar/models/agents.md",
+      "server/polar/models/claude.md",
+      "server/polar/oauth2/README.md",
+      "server/polar/observability/README.md",
+      "server/polar/transaction/README.md",
+      "server/polar/worker/README.md",
+      "server/polar/worker/agents.md",
+      "server/polar/worker/claude.md",
+      "server/scripts/README.md",
+      "server/tests/README.md",
+      "server/tinybird/README.md",
+      "server/tinybird/agents.md",
+      "server/tinybird/claude.md"
+    ],
+    "kept_existing_docs": false,
+    "removed_paths": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "repo_id": "polar",
+    "worktree": "/tmp/archeia-phase4/polar-l2-polar-ask-complex-02-trial1"
+  },
+  "condition_commit": {
+    "command": [
+      "git",
+      "commit",
+      "-m",
+      "Apply evaluation condition"
+    ],
+    "cwd": "/tmp/archeia-phase4/polar-l2-polar-ask-complex-02-trial1",
+    "exit_code": 0,
+    "finished_at": "2026-04-10T01:40:50+00:00",
+    "started_at": "2026-04-10T01:40:50+00:00",
+    "stderr": "",
+    "stdout": "[detached HEAD 41fb4df] Apply evaluation condition\n 41 files changed, 1983 insertions(+), 274 deletions(-)\n create mode 100644 .archeia/Architecture.md\n create mode 100644 .archeia/Components.json\n create mode 100644 .archeia/Containers.json\n create mode 100644 .archeia/DataFlow.json\n create mode 100644 .archeia/Entities.json\n create mode 100644 .archeia/Guide.md\n create mode 100644 .archeia/Standards.md\n create mode 100644 .archeia/System.json\n create mode 100644 .archeia/diagrams/containers.md\n create mode 100644 .archeia/diagrams/context.md\n create mode 100644 .archeia/diagrams/erd.md\n create mode 100644 .archeia/diagrams/sequence-primary.md\n create mode 100644 clients/packages/i18n/README.md\n create mode 100644 clients/packages/orbit/README.md\n create mode 100644 dev/README.md\n create mode 100644 server/README.md\n create mode 100644 server/polar/README.md\n create mode 100644 server/polar/benefit/README.md\n create mode 100644 server/polar/benefit/agents.md\n create mode 100644 server/polar/benefit/claude.md\n create mode 100644 server/polar/customer_portal/README.md\n create mode 100644 server/polar/integrations/README.md\n create mode 100644 server/polar/integrations/agents.md\n create mode 100644 server/polar/integrations/claude.md\n create mode 100644 server/polar/kit/README.md\n create mode 100644 server/polar/models/README.md\n create mode 100644 server/polar/models/agents.md\n create mode 100644 server/polar/models/claude.md\n create mode 100644 server/polar/oauth2/README.md\n create mode 100644 server/polar/observability/README.md\n create mode 100644 server/polar/transaction/README.md\n create mode 100644 server/polar/worker/README.md\n create mode 100644 server/polar/worker/agents.md\n create mode 100644 server/polar/worker/claude.md\n create mode 100644 server/scripts/README.md\n create mode 100644 server/tests/README.md\n create mode 100644 server/tinybird/README.md\n create mode 100644 server/tinybird/agents.md\n create mode 100644 server/tinybird/claude.md\n"
+  },
+  "condition_id": "l2",
+  "diff": "",
+  "finished_at": "2026-04-10T01:45:25+00:00",
+  "judge": {
+    "command": [
+      "claude",
+      "--output-format",
+      "json",
+      "-p",
+      "You are judging an Archeia evaluation run.\n\nTask category: ask_complex\nTask id: polar-ask-complex-02\n\nTask prompt:\nRead the codebase and explain how billing, account credits, and invoices interact in Polar's backend. Base your answer only on code you actually read.\n\nGround truth / reference:\nExpected outcome:\n- Must describe the relationship between billing entries, credits, and invoice-related modules using actual domain boundaries in the code. Expected grounding includes account_credit, billing_entry, invoice, and model-level surfaces.\n\nMust mention / touch:\n- server/polar/account_credit/\n- server/polar/billing_entry/\n- server/polar/invoice/\n- server/polar/models/\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo\n\nAcceptance criteria:\n[\n  \"Explains the interaction among billing, credit, and invoice modules.\",\n  \"Uses actual Polar domain modules and models.\",\n  \"Clarifies where state or financial records are represented.\",\n  \"Avoids unsupported claims about financial behavior.\"\n]\n\nAgent response:\nBased on my reading of the Polar codebase, here's how billing, account credits, and invoices interact:\n\n## System Components\n\n### 1. **Customer Balance (Wallet)**\n- **Model**: `Wallet` (polar/models/wallet.py:28-56)\n- Each customer has a **billing wallet** per currency that tracks their account balance\n- The balance is calculated as the sum of all `WalletTransaction` entries for that wallet\n- When orders are created, the system:\n  - Checks the customer's current balance in `get_billing_wallet_balance()` (order/service.py:677-678)\n  - Calculates `applied_balance_amount` based on whether the order is a charge or credit:\n    - **For charges**: Uses up to the full balance available\n    - **For credits**: Applies the credit to clear any existing debt, then adds remainder to balance\n\n### 2. **Billing Entries (Transaction Log)**\n- **Model**: `BillingEntry` (polar/models/billing_entry.py)\n- Records every billing transaction for a customer with:\n  - Type: `cycle`, `proration`, `metered`, `subscription_seats_increase`, `subscription_seats_decrease`\n  - Direction: `debit` (charge) or `credit` (refund/credit)\n  - Amount and currency\n  - Links to: Customer, Subscription, Order, Product Price, Event\n\n### 3. **Orders and Invoices**\n- **Order Model** (polar/models/order.py):\n  - `invoice_number`: Sequential number per customer (polar/models/customer.py:186)\n  - `invoice_path`: S3 path to generated PDF (only set after payment)\n  - `applied_balance_amount`: How much customer balance was applied to this order\n  - Tracks: subtotal, discount, tax, status (pending/paid/refunded/partially_refunded/void)\n\n- **Invoice Generation** (polar/invoice/service.py + generator.py):\n  - Invoices are only created from **paid orders** (`create_order_invoice()`)\n  - Invoice includes `applied_balance_amount` as a line item showing balance applied\n  - Invoice is stored in S3 and referenced via `order.invoice_path`\n\n### 4. **Account Credits (Organization Credits)**\n- **Model**: `AccountCredit` (polar/models/account_credit.py)\n- Separate from customer balance\u2014belongs to an `Account` (the organization/maintainer)\n- Tracks: Amount granted, amount used, expiration date, revocation status\n- Can be granted from campaigns with automatic grants\n- **Applied to platform fees**, not customer orders (polar/transaction/service/platform_fee.py:224-256):\n  - When transactions settle and platform fees are calculated\n  - `account_credit_service.apply_to_fee()` (polar/account_credit/service.py:127-167):\n    - Applies active, non-expired credits to reduce platform fees\n    - Credits are consumed in order and tracked with `credit.used` amount\n\n## Interaction Flow\n\n```\nCustomer Order Creation (order/service.py:650-780)\n\u251c\u2500\u2500 Get customer's billing wallet balance\n\u251c\u2500\u2500 Calculate applied_balance_amount based on order total vs balance\n\u251c\u2500\u2500 Create Order with applied_balance_amount\n\u251c\u2500\u2500 Create WalletTransaction if balance changed\n\u2514\u2500\u2500 If due_amount \u2264 0 \u2192 Mark as paid, emit event\n\nOrder Payment (order/service.py: trigger_payment)\n\u2514\u2500\u2500 After payment succeeds\n    \u251c\u2500\u2500 Calculate platform fees based on payment amount\n    \u2514\u2500\u2500 In transaction settlement (platform_fee.py:206-221)\n        \u2514\u2500\u2500 Apply Account credits to fees\n            \u2514\u2500\u2500 Reduce account.credit_balance by amount applied\n\nInvoice Generation (order/service.py:429-445)\n\u2514\u2500\u2500 After order is paid (status = paid)\n    \u251c\u2500\u2500 Validate billing name/address present\n    \u2514\u2500\u2500 Generate PDF from order data\n        \u251c\u2500\u2500 Include applied_balance_amount\n        \u2514\u2500\u2500 Store in S3, set order.invoice_path\n```\n\n## Key Points\n\n1. **Customer balance** is per-customer, used to offset charges during order creation\n2. **Billing entries** audit all billing activity for subscriptions/usage\n3. **Order.applied_balance_amount** tracks how much balance was applied, shown in invoice\n4. **Account credits** are organization-level, applied to platform fees during settlement\n5. **Invoices** are generated only after payment and include all financial details including applied balance\n\nGit diff:\n\n\nCode-quality signals:\n{\n  \"lint\": null,\n  \"lint_baseline\": null,\n  \"lint_baseline_findings\": null,\n  \"lint_delta\": null,\n  \"lint_findings\": null,\n  \"tests\": null\n}\n\nEfficiency signals:\n{\n  \"action_calls\": 0,\n  \"exploration_calls\": 17,\n  \"exploration_to_action_ratio\": null,\n  \"finished_at\": \"2026-04-10T01:44:47.334000+00:00\",\n  \"input_tokens\": 210,\n  \"output_tokens\": 5145,\n  \"started_at\": \"2026-04-10T01:40:57.351000+00:00\",\n  \"time_to_completion_seconds\": 229.983,\n  \"time_to_first_edit_seconds\": null,\n  \"tool_call_count\": 25,\n  \"tool_counts\": {\n    \"bash\": 8,\n    \"glob\": 2,\n    \"read\": 15\n  },\n  \"total_tokens\": 5355\n}\n\nScore the run from 0-100 using four equally weighted 0-25 dimensions:\n1. Correctness: factual accuracy against ground truth.\n2. Completeness: covers all relevant systems and caveats.\n3. Evidence alignment: cites or reflects the repo-grounded flow.\n4. Communication quality: organized, concise, and directly useful.\n\nReturn JSON only with this schema:\n{\n  \"total_score\": 0,\n  \"dimension_scores\": {\n    \"correctness\": 0,\n    \"completeness\": 0,\n    \"convention_fit\": 0,\n    \"verification_or_communication\": 0\n  },\n  \"summary\": \"short paragraph\",\n  \"strengths\": [\"...\"],\n  \"weaknesses\": [\"...\"],\n  \"confidence\": \"low|medium|high\"\n}"
+    ],
+    "confidence": "high",
+    "dimension_scores": {
+      "completeness": 21,
+      "convention_fit": 20,
+      "correctness": 21,
+      "verification_or_communication": 20
+    },
+    "finished_at": "2026-04-10T01:45:25+00:00",
+    "started_at": "2026-04-10T01:45:07+00:00",
+    "status": "completed",
+    "strengths": [
+      "Covers all four required domain modules (account_credit, billing_entry, invoice, models)",
+      "Correctly distinguishes customer-level balance from organization-level account credits",
+      "Provides specific file paths and line numbers grounding claims in actual code",
+      "Clear interaction flow diagram showing how components connect",
+      "Accurately describes account credits being applied to platform fees, not customer orders"
+    ],
+    "summary": "The response demonstrates strong grounding in the actual codebase, correctly identifying and explaining all four required modules: account_credit, billing_entry, invoice, and the relevant models. It accurately describes the role of each component\u2014billing entries as transaction logs, account credits as organization-level fee offsets, invoices as PDF artifacts generated from paid orders, and customer wallets for balance tracking. The interaction flow diagram is well-structured and traces the lifecycle from order creation through settlement. Minor concerns include some line-number citations that could not be independently verified and the prominence given to the Wallet system (which, while present in the code, somewhat overshadows the billing_entry module's role). The response avoids unsupported claims and stays close to what the code evidences.",
+    "total_score": 82,
+    "weaknesses": [
+      "Billing entries could have been explored more deeply\u2014types and their lifecycle are listed but not fully explained",
+      "Some line-number references may be approximate rather than exact",
+      "The invoice module's internal structure (service.py vs generator.py separation) could have been elaborated further"
+    ]
+  },
+  "metrics": {
+    "action_calls": 0,
+    "exploration_calls": 17,
+    "exploration_to_action_ratio": null,
+    "finished_at": "2026-04-10T01:44:47.334000+00:00",
+    "input_tokens": 210,
+    "output_tokens": 5145,
+    "started_at": "2026-04-10T01:40:57.351000+00:00",
+    "time_to_completion_seconds": 229.983,
+    "time_to_first_edit_seconds": null,
+    "tool_call_count": 25,
+    "tool_counts": {
+      "bash": 8,
+      "glob": 2,
+      "read": 15
+    },
+    "total_tokens": 5355
+  },
+  "repo": {
+    "archeia_output_path": "evals/archeia-output/polar",
+    "baseline_docs": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "branch": "main",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "commit": "98df9bae772c3cb5b315ed8877c4ec83b05953dd",
+    "complexity": "complex",
+    "id": "polar",
+    "language": "py-ts",
+    "loc": 529000,
+    "notes": [
+      "Largest and most complex evaluation repo.",
+      "Best suited for cross-module plan and implement tasks."
+    ],
+    "repo": "polarsource/polar",
+    "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/polar",
+    "tests_available": false
+  },
+  "repo_id": "polar",
+  "result_path": "/Users/hugopeck/conductor/workspaces/archeia/athens/evals/results/raw/polar/polar-ask-complex-02/l2/trial-1.json",
+  "started_at": "2026-04-10T01:40:49+00:00",
+  "status": "completed",
+  "task": {
+    "acceptance_criteria": [
+      "Explains the interaction among billing, credit, and invoice modules.",
+      "Uses actual Polar domain modules and models.",
+      "Clarifies where state or financial records are represented.",
+      "Avoids unsupported claims about financial behavior."
+    ],
+    "category": "ask_complex",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "expected_modules_read": [
+      "server/polar/account_credit/",
+      "server/polar/billing_entry/",
+      "server/polar/invoice/",
+      "server/polar/models/"
+    ],
+    "ground_truth": "Expected outcome:\n- Must describe the relationship between billing entries, credits, and invoice-related modules using actual domain boundaries in the code. Expected grounding includes account_credit, billing_entry, invoice, and model-level surfaces.\n\nMust mention / touch:\n- server/polar/account_credit/\n- server/polar/billing_entry/\n- server/polar/invoice/\n- server/polar/models/\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo",
+    "id": "polar-ask-complex-02",
+    "metadata": {
+      "difficulty": "complex",
+      "doc_sensitivity": "high",
+      "output_type": "explanation",
+      "primary_surface": "billing-credit-invoice",
+      "verification_scope": "repo_default"
+    },
+    "prompt": "Read the codebase and explain how billing, account credits, and invoices interact in Polar's backend. Base your answer only on code you actually read.",
+    "repo_id": "polar"
+  },
+  "trial": 1
+}

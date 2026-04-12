@@ -1,0 +1,178 @@
+{
+  "agent_run": {
+    "command": [
+      "claude",
+      "--model",
+      "haiku",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--permission-mode",
+      "auto",
+      "--append-system-prompt",
+      "CRITICAL RULE: You MUST use your tools to read files in this repository before answering. Do NOT answer from memory or training data. Start by exploring the project structure with Bash(ls) or Glob, then read the specific files needed to answer the question. Every claim you make must cite a specific file path you actually read in this session. If you answer without reading files first, your response will be scored as zero.",
+      "-p",
+      "Read the codebase and design webhook retry with exponential backoff and observability for failed outbound deliveries in Polar. Ground your plan in the actual modules and patterns you find."
+    ],
+    "exit_code": 0,
+    "finished_at": "2026-04-10T01:45:22+00:00",
+    "started_at": "2026-04-10T01:40:52+00:00",
+    "status": "completed",
+    "stderr": "",
+    "stdout": "I've designed a comprehensive webhook retry system for Polar grounded in the actual codebase. Here's the strategic plan:\n\n## Key Architecture Insights\n\n**Leveraging Polar's Existing Stack:**\n- **Task Queue**: Dramatiq with Redis (already configured)\n- **Observability**: Structlog + Logfire (OpenTelemetry) + Prometheus\n- **Repository Pattern**: Standardized data access layer\n- **Module Structure**: Follows Polar's `/polar/{module}/` conventions\n\n## Design Highlights\n\n### 1. **Smart Error Classification** (`polar/webhook/retry.py`)\nInstead of retrying everything equally, categorize failures:\n- **Transient** (5xx, timeouts, network) \u2192 retry with backoff\n- **Rate-Limited** (429) \u2192 retry with extended delay  \n- **Auth Errors** (401, 403) \u2192 never retry\n- **Client Errors** (4xx) \u2192 configurable per policy\n- **Unsupported** (404, 410) \u2192 permanent failure\n\n### 2. **Enhanced Data Tracking** (Schema additions)\nAdd fields to existing `WebhookDelivery`:\n```python\nattempt_number: int              # 1, 2, 3... track sequence\nnext_retry_at: datetime | None   # When next retry is scheduled\nerror_type: str | None           # Categorized for analytics\nretry_reason: str | None         # Human-readable context\nduration_ms: int | None          # Delivery attempt duration\n```\n\n### 3. **Exponential Backoff with Jitter**\n```\nDelay = min(initial_delay * (multiplier ^ attempt), max_delay)\nWith jitter: \u00b110% random variance to prevent thundering herd\nExample: 1s \u2192 2s \u2192 4s \u2192 8s \u2192 10min cap (with jitter)\n```\n\n### 4. **Observability Hooks**\nIntegrate with existing Logfire/structlog:\n- `log_webhook_delivery_attempt()` - Track attempt starts\n- `log_webhook_delivery_failed()` - Capture error type + next retry\n- `track_webhook_retry_delay()` - Metrics on backoff delays\n- Structured context: `webhook_event_id`, `endpoint_id`, `error_type`, `attempt_number`\n\n### 5. **Analytics Queries** (`polar/webhook/analytics.py`)\nEnable dashboards:\n- Error breakdown by type (transient vs permanent)\n- P95/P99 delivery latencies\n- Retry distribution (% requiring 0, 1, 2... retries)\n- Endpoint health scoring\n\n## Implementation Phases\n\n**Phase 1 (MVP)**: Update delivery task logic + model fields\n- Modify `_webhook_event_send()` in `tasks.py`\n- Add columns to WebhookDelivery (non-breaking migration)\n- Use new `WebhookRetryCalculator` for decisions\n\n**Phase 2**: Per-endpoint policies\n- Create `WebhookRetryPolicy` table (optional)\n- Allow orgs to tune backoff, error handling, timeout\n\n**Phase 3**: Observability dashboard\n- Query `WebhookDeliveryMetric` (analytics table)\n- Integrate with Logfire dashboard\n- Alert on failure spikes by error type\n\n## Why This Design\n\n\u2705 **Fits Polar's patterns**: Uses repositories, services, Dramatiq, structlog  \n\u2705 **Non-breaking**: New columns nullable, old logic still works  \n\u2705 **Debuggable**: Every attempt stored with error categorization  \n\u2705 **Operational**: Next retry timestamp visible in DB for manual inspection  \n\u2705 **Scalable**: Leverages existing Logfire/Prometheus infrastructure  \n\nThe complete design document is in `/tmp/webhook_retry_design.md` with full code examples for all six implementation phases.",
+    "transcript_path": "/tmp/archeia-phase4/polar-l1-polar-plan-complex-01-trial1/.archeia-eval/conversation.json"
+  },
+  "code_quality": {
+    "lint": null,
+    "lint_baseline": null,
+    "lint_baseline_findings": null,
+    "lint_delta": null,
+    "lint_findings": null,
+    "tests": null
+  },
+  "condition_application": {
+    "archeia_output": "evals/archeia-output/polar",
+    "condition_id": "l1",
+    "copied_paths": [
+      ".archeia",
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "kept_existing_docs": false,
+    "removed_paths": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "repo_id": "polar",
+    "worktree": "/tmp/archeia-phase4/polar-l1-polar-plan-complex-01-trial1"
+  },
+  "condition_commit": {
+    "command": [
+      "git",
+      "commit",
+      "-m",
+      "Apply evaluation condition"
+    ],
+    "cwd": "/tmp/archeia-phase4/polar-l1-polar-plan-complex-01-trial1",
+    "exit_code": 0,
+    "finished_at": "2026-04-10T01:40:52+00:00",
+    "started_at": "2026-04-10T01:40:52+00:00",
+    "stderr": "",
+    "stdout": "[detached HEAD f139026] Apply evaluation condition\n 14 files changed, 1448 insertions(+), 274 deletions(-)\n create mode 100644 .archeia/Architecture.md\n create mode 100644 .archeia/Components.json\n create mode 100644 .archeia/Containers.json\n create mode 100644 .archeia/DataFlow.json\n create mode 100644 .archeia/Entities.json\n create mode 100644 .archeia/Guide.md\n create mode 100644 .archeia/Standards.md\n create mode 100644 .archeia/System.json\n create mode 100644 .archeia/diagrams/containers.md\n create mode 100644 .archeia/diagrams/context.md\n create mode 100644 .archeia/diagrams/erd.md\n create mode 100644 .archeia/diagrams/sequence-primary.md\n"
+  },
+  "condition_id": "l1",
+  "diff": "",
+  "finished_at": "2026-04-10T01:45:58+00:00",
+  "judge": {
+    "command": [
+      "claude",
+      "--output-format",
+      "json",
+      "-p",
+      "You are judging an Archeia evaluation run.\n\nTask category: plan_complex\nTask id: polar-plan-complex-01\n\nTask prompt:\nRead the codebase and design webhook retry with exponential backoff and observability for failed outbound deliveries in Polar. Ground your plan in the actual modules and patterns you find.\n\nGround truth / reference:\nExpected outcome:\n- The plan should identify where outbound events are generated, how retry state should be represented, where scheduling belongs, and what observability hooks already exist or should be added. It should fit Polar's backend and worker boundaries.\n\nMust mention / touch:\n- server/polar/external_event/\n- server/polar/eventstream/\n- server/polar/event/\n- server/polar/kit/\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path\n\nAcceptance criteria:\n[\n  \"Maps retry state, scheduling, and observability to real Polar modules.\",\n  \"Respects current backend and worker boundaries.\",\n  \"Includes failure-mode handling and tests.\",\n  \"Avoids designing an entirely separate delivery system.\"\n]\n\nAgent response:\nI've designed a comprehensive webhook retry system for Polar grounded in the actual codebase. Here's the strategic plan:\n\n## Key Architecture Insights\n\n**Leveraging Polar's Existing Stack:**\n- **Task Queue**: Dramatiq with Redis (already configured)\n- **Observability**: Structlog + Logfire (OpenTelemetry) + Prometheus\n- **Repository Pattern**: Standardized data access layer\n- **Module Structure**: Follows Polar's `/polar/{module}/` conventions\n\n## Design Highlights\n\n### 1. **Smart Error Classification** (`polar/webhook/retry.py`)\nInstead of retrying everything equally, categorize failures:\n- **Transient** (5xx, timeouts, network) \u2192 retry with backoff\n- **Rate-Limited** (429) \u2192 retry with extended delay  \n- **Auth Errors** (401, 403) \u2192 never retry\n- **Client Errors** (4xx) \u2192 configurable per policy\n- **Unsupported** (404, 410) \u2192 permanent failure\n\n### 2. **Enhanced Data Tracking** (Schema additions)\nAdd fields to existing `WebhookDelivery`:\n```python\nattempt_number: int              # 1, 2, 3... track sequence\nnext_retry_at: datetime | None   # When next retry is scheduled\nerror_type: str | None           # Categorized for analytics\nretry_reason: str | None         # Human-readable context\nduration_ms: int | None          # Delivery attempt duration\n```\n\n### 3. **Exponential Backoff with Jitter**\n```\nDelay = min(initial_delay * (multiplier ^ attempt), max_delay)\nWith jitter: \u00b110% random variance to prevent thundering herd\nExample: 1s \u2192 2s \u2192 4s \u2192 8s \u2192 10min cap (with jitter)\n```\n\n### 4. **Observability Hooks**\nIntegrate with existing Logfire/structlog:\n- `log_webhook_delivery_attempt()` - Track attempt starts\n- `log_webhook_delivery_failed()` - Capture error type + next retry\n- `track_webhook_retry_delay()` - Metrics on backoff delays\n- Structured context: `webhook_event_id`, `endpoint_id`, `error_type`, `attempt_number`\n\n### 5. **Analytics Queries** (`polar/webhook/analytics.py`)\nEnable dashboards:\n- Error breakdown by type (transient vs permanent)\n- P95/P99 delivery latencies\n- Retry distribution (% requiring 0, 1, 2... retries)\n- Endpoint health scoring\n\n## Implementation Phases\n\n**Phase 1 (MVP)**: Update delivery task logic + model fields\n- Modify `_webhook_event_send()` in `tasks.py`\n- Add columns to WebhookDelivery (non-breaking migration)\n- Use new `WebhookRetryCalculator` for decisions\n\n**Phase 2**: Per-endpoint policies\n- Create `WebhookRetryPolicy` table (optional)\n- Allow orgs to tune backoff, error handling, timeout\n\n**Phase 3**: Observability dashboard\n- Query `WebhookDeliveryMetric` (analytics table)\n- Integrate with Logfire dashboard\n- Alert on failure spikes by error type\n\n## Why This Design\n\n\u2705 **Fits Polar's patterns**: Uses repositories, services, Dramatiq, structlog  \n\u2705 **Non-breaking**: New columns nullable, old logic still works  \n\u2705 **Debuggable**: Every attempt stored with error categorization  \n\u2705 **Operational**: Next retry timestamp visible in DB for manual inspection  \n\u2705 **Scalable**: Leverages existing Logfire/Prometheus infrastructure  \n\nThe complete design document is in `/tmp/webhook_retry_design.md` with full code examples for all six implementation phases.\n\nGit diff:\n\n\nCode-quality signals:\n{\n  \"lint\": null,\n  \"lint_baseline\": null,\n  \"lint_baseline_findings\": null,\n  \"lint_delta\": null,\n  \"lint_findings\": null,\n  \"tests\": null\n}\n\nEfficiency signals:\n{\n  \"action_calls\": 0,\n  \"exploration_calls\": 10,\n  \"exploration_to_action_ratio\": null,\n  \"finished_at\": \"2026-04-10T01:45:04.051000+00:00\",\n  \"input_tokens\": 178,\n  \"output_tokens\": 10118,\n  \"started_at\": \"2026-04-10T01:41:02.319000+00:00\",\n  \"time_to_completion_seconds\": 241.732,\n  \"time_to_first_edit_seconds\": null,\n  \"tool_call_count\": 21,\n  \"tool_counts\": {\n    \"bash\": 11,\n    \"read\": 10\n  },\n  \"total_tokens\": 10296\n}\n\nScore the run from 0-100 using four equally weighted 0-25 dimensions:\n1. Correctness: technically sound approach.\n2. Completeness: affected modules, sequencing, and risks covered.\n3. Convention fit: follows the repo's apparent patterns.\n4. Actionability: specific enough to implement.\n\nReturn JSON only with this schema:\n{\n  \"total_score\": 0,\n  \"dimension_scores\": {\n    \"correctness\": 0,\n    \"completeness\": 0,\n    \"convention_fit\": 0,\n    \"verification_or_communication\": 0\n  },\n  \"summary\": \"short paragraph\",\n  \"strengths\": [\"...\"],\n  \"weaknesses\": [\"...\"],\n  \"confidence\": \"low|medium|high\"\n}"
+    ],
+    "confidence": "high",
+    "dimension_scores": {
+      "completeness": 8,
+      "convention_fit": 10,
+      "correctness": 12,
+      "verification_or_communication": 8
+    },
+    "finished_at": "2026-04-10T01:45:58+00:00",
+    "started_at": "2026-04-10T01:45:22+00:00",
+    "status": "completed",
+    "strengths": [
+      "Correctly identifies Dramatiq + Redis as the existing task queue",
+      "Smart error classification with distinct handling per category",
+      "Exponential backoff with jitter to prevent thundering herd is sound",
+      "Non-breaking migration approach with nullable columns",
+      "Phased implementation plan with clear MVP scope"
+    ],
+    "summary": "The plan proposes a technically reasonable webhook retry design (exponential backoff with jitter, error classification, phased rollout) but critically fails to ground itself in the actual Polar modules required by the task. None of the four key modules\u2014external_event/, eventstream/, event/, or kit/\u2014are mentioned or mapped. The plan invents new paths like polar/webhook/retry.py and polar/webhook/analytics.py without demonstrating where outbound events are actually generated or how the existing event pipeline works. With only 10 exploration calls, the agent did not sufficiently explore the codebase to discover these modules. No test strategy is articulated despite being an acceptance criterion.",
+    "total_score": 38,
+    "weaknesses": [
+      "Misses all four required modules: external_event/, eventstream/, event/, kit/",
+      "Proposes new module paths (polar/webhook/) without grounding in existing structure",
+      "No test plan despite acceptance criteria requiring it",
+      "Limited codebase exploration (10 reads) insufficient to map the actual event pipeline",
+      "References a /tmp design doc that was never committed\u2014no artifact in the repo",
+      "Does not map where outbound events originate or how scheduling currently works"
+    ]
+  },
+  "metrics": {
+    "action_calls": 0,
+    "exploration_calls": 10,
+    "exploration_to_action_ratio": null,
+    "finished_at": "2026-04-10T01:45:04.051000+00:00",
+    "input_tokens": 178,
+    "output_tokens": 10118,
+    "started_at": "2026-04-10T01:41:02.319000+00:00",
+    "time_to_completion_seconds": 241.732,
+    "time_to_first_edit_seconds": null,
+    "tool_call_count": 21,
+    "tool_counts": {
+      "bash": 11,
+      "read": 10
+    },
+    "total_tokens": 10296
+  },
+  "repo": {
+    "archeia_output_path": "evals/archeia-output/polar",
+    "baseline_docs": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "branch": "main",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "commit": "98df9bae772c3cb5b315ed8877c4ec83b05953dd",
+    "complexity": "complex",
+    "id": "polar",
+    "language": "py-ts",
+    "loc": 529000,
+    "notes": [
+      "Largest and most complex evaluation repo.",
+      "Best suited for cross-module plan and implement tasks."
+    ],
+    "repo": "polarsource/polar",
+    "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/polar",
+    "tests_available": false
+  },
+  "repo_id": "polar",
+  "result_path": "/Users/hugopeck/conductor/workspaces/archeia/athens/evals/results/raw/polar/polar-plan-complex-01/l1/trial-1.json",
+  "started_at": "2026-04-10T01:40:51+00:00",
+  "status": "completed",
+  "task": {
+    "acceptance_criteria": [
+      "Maps retry state, scheduling, and observability to real Polar modules.",
+      "Respects current backend and worker boundaries.",
+      "Includes failure-mode handling and tests.",
+      "Avoids designing an entirely separate delivery system."
+    ],
+    "category": "plan_complex",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "expected_modules_read": [
+      "server/polar/external_event/",
+      "server/polar/eventstream/",
+      "server/polar/event/",
+      "server/polar/kit/"
+    ],
+    "ground_truth": "Expected outcome:\n- The plan should identify where outbound events are generated, how retry state should be represented, where scheduling belongs, and what observability hooks already exist or should be added. It should fit Polar's backend and worker boundaries.\n\nMust mention / touch:\n- server/polar/external_event/\n- server/polar/eventstream/\n- server/polar/event/\n- server/polar/kit/\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path",
+    "id": "polar-plan-complex-01",
+    "metadata": {
+      "difficulty": "complex",
+      "doc_sensitivity": "high",
+      "output_type": "plan",
+      "primary_surface": "webhook-retry",
+      "verification_scope": "repo_default"
+    },
+    "prompt": "Read the codebase and design webhook retry with exponential backoff and observability for failed outbound deliveries in Polar. Ground your plan in the actual modules and patterns you find.",
+    "repo_id": "polar"
+  },
+  "trial": 1
+}

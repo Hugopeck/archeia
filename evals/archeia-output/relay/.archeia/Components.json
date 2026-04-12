@@ -1,0 +1,166 @@
+{
+  "level": 3,
+  "title": "Component Diagram",
+  "containers": [
+    {
+      "id": "relay-cli",
+      "name": "Relay CLI",
+      "components": [
+        {
+          "id": "relay-cli-bootstrap",
+          "name": "Bootstrap",
+          "type": "handler",
+          "description": "Entry point that parses CLI arguments and dispatches to commands",
+          "evidence": ["src/cli/bootstrap.ts", "src/cli/index.ts"]
+        },
+        {
+          "id": "relay-cli-commands",
+          "name": "Commands",
+          "type": "controller",
+          "description": "Command implementations: core, setup, cloud, agent-management, messaging, monitoring, auth, doctor",
+          "evidence": ["src/cli/commands/core.ts", "src/cli/commands/setup.ts", "src/cli/commands/messaging.ts"]
+        },
+        {
+          "id": "relay-cli-lib",
+          "name": "CLI Library",
+          "type": "library",
+          "description": "Shared helpers for client creation, formatting, JSON parsing, and path resolution",
+          "evidence": ["src/cli/lib/index.ts"]
+        }
+      ]
+    },
+    {
+      "id": "broker-binary",
+      "name": "Broker Binary",
+      "components": [
+        {
+          "id": "broker-spawner",
+          "name": "Spawner",
+          "type": "handler",
+          "description": "Spawns CLI agent subprocesses (Claude, Codex, Gemini) as PTY processes",
+          "evidence": ["src/main.rs"]
+        },
+        {
+          "id": "broker-pty-worker",
+          "name": "PTY Worker",
+          "type": "handler",
+          "description": "Manages PTY I/O: reads agent output, writes injected messages, detects prompts",
+          "evidence": ["src/main.rs"]
+        },
+        {
+          "id": "broker-routing",
+          "name": "Routing",
+          "type": "module",
+          "description": "Routes messages between agents based on channel and target name",
+          "evidence": ["src/main.rs"]
+        },
+        {
+          "id": "broker-relaycast-ws",
+          "name": "Relaycast WS",
+          "type": "handler",
+          "description": "WebSocket client connecting to Relaycast Cloud for cross-process relay",
+          "evidence": ["src/main.rs", "Cargo.toml"]
+        },
+        {
+          "id": "broker-listen-api",
+          "name": "Listen API",
+          "type": "handler",
+          "description": "HTTP API for SDK to subscribe to broker events",
+          "evidence": ["src/main.rs"]
+        }
+      ]
+    },
+    {
+      "id": "sdk",
+      "name": "TypeScript SDK",
+      "components": [
+        {
+          "id": "sdk-client",
+          "name": "AgentRelayClient",
+          "type": "service",
+          "description": "Main client class — spawns broker, manages agent lifecycle, sends messages",
+          "evidence": ["packages/sdk/src/client.ts"]
+        },
+        {
+          "id": "sdk-relay",
+          "name": "AgentRelay",
+          "type": "service",
+          "description": "High-level relay facade with typed spawn methods (claude, codex, gemini)",
+          "evidence": ["packages/sdk/src/relay.ts"]
+        },
+        {
+          "id": "sdk-protocol",
+          "name": "Protocol",
+          "type": "module",
+          "description": "Protocol types, envelopes, and version constants shared with Rust broker",
+          "evidence": ["packages/sdk/src/protocol.ts"]
+        },
+        {
+          "id": "sdk-workflows",
+          "name": "Workflows",
+          "type": "module",
+          "description": "Higher-level workflow abstractions for agent orchestration patterns",
+          "evidence": ["packages/sdk/src/workflows/index.ts"]
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "source": "relay-cli-bootstrap",
+      "target": "relay-cli-commands",
+      "description": "Dispatches parsed command to implementation",
+      "technology": "function call",
+      "evidence": ["src/cli/bootstrap.ts"]
+    },
+    {
+      "source": "relay-cli-commands",
+      "target": "relay-cli-lib",
+      "description": "Uses shared helpers for output formatting and client factory",
+      "technology": "function call",
+      "evidence": ["src/cli/lib/index.ts"]
+    },
+    {
+      "source": "relay-cli-commands",
+      "target": "sdk-client",
+      "description": "Creates AgentRelayClient to communicate with broker",
+      "technology": "function call",
+      "evidence": ["src/cli/lib/index.ts"]
+    },
+    {
+      "source": "sdk-relay",
+      "target": "sdk-client",
+      "description": "Delegates spawn and messaging operations to AgentRelayClient",
+      "technology": "function call",
+      "evidence": ["packages/sdk/src/relay.ts"]
+    },
+    {
+      "source": "sdk-client",
+      "target": "broker-listen-api",
+      "description": "Subscribes to broker events via HTTP",
+      "technology": "HTTPS",
+      "evidence": ["packages/sdk/src/client.ts"]
+    },
+    {
+      "source": "broker-routing",
+      "target": "broker-pty-worker",
+      "description": "Routes incoming messages to target agent PTY",
+      "technology": "function call",
+      "evidence": ["src/main.rs"]
+    },
+    {
+      "source": "broker-routing",
+      "target": "broker-relaycast-ws",
+      "description": "Broadcasts messages to remote agents via Relaycast",
+      "technology": "WebSocket",
+      "evidence": ["src/main.rs"]
+    },
+    {
+      "source": "broker-spawner",
+      "target": "broker-pty-worker",
+      "description": "Creates PTY worker for each spawned agent",
+      "technology": "function call",
+      "evidence": ["src/main.rs"]
+    }
+  ]
+}

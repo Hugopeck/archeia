@@ -1,0 +1,170 @@
+{
+  "system_boundary": {
+    "id": "polar",
+    "name": "Polar",
+    "description": "Open source payment infrastructure platform for developers — merchant of record handling billing, subscriptions, digital products, and tax compliance."
+  },
+  "containers": [
+    {
+      "id": "api-server",
+      "name": "API Server",
+      "description": "FastAPI REST API serving all backend endpoints, authentication, and business logic.",
+      "technology": "Python / FastAPI / Uvicorn",
+      "type": "api",
+      "evidence": ["server/polar/app.py", "server/pyproject.toml"]
+    },
+    {
+      "id": "background-worker",
+      "name": "Background Worker",
+      "description": "Dramatiq worker processing async jobs: webhook delivery, payment callbacks, email sending, and scheduled tasks.",
+      "technology": "Python / Dramatiq / Redis",
+      "type": "worker",
+      "evidence": ["server/polar/worker/", "server/pyproject.toml"]
+    },
+    {
+      "id": "web-dashboard",
+      "name": "Web Dashboard",
+      "description": "Next.js merchant-facing dashboard for managing products, subscriptions, orders, and analytics.",
+      "technology": "TypeScript / Next.js / React",
+      "type": "webapp",
+      "evidence": ["clients/apps/web/", "clients/package.json"]
+    },
+    {
+      "id": "backoffice",
+      "name": "Backoffice",
+      "description": "Internal admin UI mounted as a sub-application within the API server, using HTMX and DaisyUI.",
+      "technology": "Python / FastAPI / HTMX / DaisyUI",
+      "type": "webapp",
+      "evidence": ["server/polar/backoffice/", "CLAUDE.md"]
+    },
+    {
+      "id": "email-renderer",
+      "name": "Email Renderer",
+      "description": "Node.js service that compiles and renders transactional email templates.",
+      "technology": "TypeScript / Node.js",
+      "type": "worker",
+      "evidence": ["server/emails/", "server/Dockerfile"]
+    }
+  ],
+  "external_systems": [
+    {
+      "id": "stripe",
+      "name": "Stripe",
+      "description": "Payment processor handling charges, subscriptions, and payouts.",
+      "technology": "Stripe API v14"
+    },
+    {
+      "id": "github",
+      "name": "GitHub",
+      "description": "Used for OAuth authentication and repository-based benefit grants.",
+      "technology": "GitHub API via githubkit"
+    },
+    {
+      "id": "postgresql",
+      "name": "PostgreSQL",
+      "description": "Primary relational database storing all business entities.",
+      "technology": "PostgreSQL via asyncpg + SQLAlchemy"
+    },
+    {
+      "id": "redis",
+      "name": "Redis",
+      "description": "Cache and message broker for Dramatiq background job queues.",
+      "technology": "Redis"
+    },
+    {
+      "id": "s3",
+      "name": "S3-compatible Storage",
+      "description": "Object storage for file uploads, invoices, and downloadable content.",
+      "technology": "AWS S3 / MinIO via boto3"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "web-dashboard",
+      "target": "api-server",
+      "description": "Fetches data and submits actions via REST API.",
+      "technology": "HTTPS / JSON",
+      "evidence": ["AGENTS.md", "clients/packages/client/"]
+    },
+    {
+      "source": "api-server",
+      "target": "postgresql",
+      "description": "Reads and writes all business entities.",
+      "technology": "asyncpg",
+      "evidence": ["server/polar/postgres.py"]
+    },
+    {
+      "source": "api-server",
+      "target": "redis",
+      "description": "Enqueues background jobs and caches data.",
+      "technology": "Redis protocol",
+      "evidence": ["server/polar/redis.py"]
+    },
+    {
+      "source": "api-server",
+      "target": "s3",
+      "description": "Stores and retrieves files, invoices, and downloadable content.",
+      "technology": "S3 API via boto3",
+      "evidence": ["server/pyproject.toml"]
+    },
+    {
+      "source": "api-server",
+      "target": "stripe",
+      "description": "Creates payment intents, manages subscriptions, and processes payouts.",
+      "technology": "Stripe API",
+      "evidence": ["server/pyproject.toml", "AGENTS.md"]
+    },
+    {
+      "source": "api-server",
+      "target": "github",
+      "description": "Authenticates users via OAuth, manages repository access benefits.",
+      "technology": "GitHub API",
+      "evidence": ["server/pyproject.toml"]
+    },
+    {
+      "source": "background-worker",
+      "target": "redis",
+      "description": "Consumes jobs from Dramatiq queues.",
+      "technology": "Redis protocol",
+      "evidence": ["server/polar/worker/"]
+    },
+    {
+      "source": "background-worker",
+      "target": "postgresql",
+      "description": "Reads and writes data during background job processing.",
+      "technology": "asyncpg",
+      "evidence": ["server/polar/worker/"]
+    },
+    {
+      "source": "background-worker",
+      "target": "stripe",
+      "description": "Processes payment callbacks and subscription updates.",
+      "technology": "Stripe API",
+      "evidence": ["server/polar/worker/"]
+    },
+    {
+      "source": "backoffice",
+      "target": "postgresql",
+      "description": "Queries data for internal admin views.",
+      "technology": "SQLAlchemy",
+      "evidence": ["server/polar/backoffice/"]
+    }
+  ],
+  "people_container_mappings": [
+    {
+      "person": "merchant",
+      "container": "web-dashboard",
+      "description": "Manages products, views analytics, and configures integrations."
+    },
+    {
+      "person": "customer",
+      "container": "web-dashboard",
+      "description": "Accesses customer portal to manage subscriptions and downloads."
+    },
+    {
+      "person": "merchant",
+      "container": "api-server",
+      "description": "Integrates via REST API and SDK for programmatic access."
+    }
+  ]
+}

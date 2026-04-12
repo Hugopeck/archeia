@@ -1,0 +1,194 @@
+{
+  "agent_run": {
+    "command": [
+      "claude",
+      "--model",
+      "haiku",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--permission-mode",
+      "auto",
+      "--append-system-prompt",
+      "CRITICAL RULE: You MUST use your tools to read files in this repository before answering. Do NOT answer from memory or training data. Start by exploring the project structure with Bash(ls) or Glob, then read the specific files needed to answer the question. Every claim you make must cite a specific file path you actually read in this session. If you answer without reading files first, your response will be scored as zero.",
+      "-p",
+      "Read the codebase and explain how a new post moves through daily-api until it becomes eligible to appear in a personalized feed. Base your answer only on code you actually read."
+    ],
+    "exit_code": 0,
+    "finished_at": "2026-04-10T04:00:09+00:00",
+    "started_at": "2026-04-10T03:54:55+00:00",
+    "status": "completed",
+    "stderr": "",
+    "stdout": "Based on my analysis of the codebase, here's how a new post moves through daily-api until it becomes eligible for personalized feeds:\n\n## Post Creation Phase\n\nWhen a user submits an external link via `submitExternalLink` (src/schema/posts.ts:2925), it creates an `ArticlePost` with initial state (src/entity/posts/utils.ts:338-410):\n\n- **visible**: `false` if no title provided, `true` if title exists (set by `isVisible = !!title`)\n- **showOnFeed**: `true` (default from Post entity)\n- **banned**: `false` (default)\n- **private**: `true` (explicitly set)\n- **flags**: Contains metadata including `visible`, `private`, and `sentAnalyticsReport`\n\nThe post also goes through two hooks before insertion:\n1. **Vordr hook** (src/entity/posts/hooks.ts:19-49): Spam/abuse filter that can set `banned: true` and `showOnFeed: false`\n2. **Deduplication hook** (src/entity/posts/hooks.ts:181-198): Generates dedup keys for duplicate detection\n\n## Content Processing Phase\n\nAfter creation, the post publishes a `contentRequested` event (src/common/pubsub.ts) which triggers the `api.content-published` worker (src/workers/postUpdated/worker.ts). This worker:\n\n1. Receives metadata from the content service (Yggdrasil)\n2. Calls `updatePost` (src/workers/postUpdated/shared.ts:170-300) which:\n   - Checks if the post should **become visible** using `getPostVisible` (src/entity/posts/utils.ts:720-722)\n   - `getPostVisible` returns `true` if the post now has a title (even if initially created without one)\n   - Sets `visibleAt` timestamp when visibility transitions from false to true (line 264)\n   - Applies vordr and deduplication hooks again for updates\n\n## Feed Eligibility Phase\n\nFor a post to appear in personalized feeds, the `applyFeedWhere` filter (src/common/feedGenerator.ts:428-490) requires:\n\n1. **banned = FALSE** (line 486)\n2. **showOnFeed = TRUE** (line 487)\n3. **Implicit**: `visible = TRUE` (must be set by now)\n4. **private = FALSE** (depending on `allowPrivatePosts` setting, line 443-445)\n5. Source/squad visibility checks (lines 447-466):\n   - Post must be from a public-threshold squad (if applicable)\n   - Can't be from a private user source unless allowed\n6. User hidden posts excluded (lines 474-482)\n7. Blocked user content filtered (via `whereNotUserBlocked`)\n\n## Summary\n\nA post becomes feed-eligible through this journey:\n\n1. **Created** \u2192 Initial visibility depends on title presence\n2. **Processed** \u2192 Content service enriches it with metadata\n3. **Updated** \u2192 Title received \u2192 `visible: true` + `visibleAt` set\n4. **Eligible** \u2192 When `visible=true`, `banned=false`, `showOnFeed=true`, `private=false`\n\nIf a post is created without a title but later receives one from the content service, it transitions from invisible to visible and becomes eligible for feeds.",
+    "transcript_path": "/tmp/archeia-phase4/daily-api-l0-daily-api-ask-complex-01-trial1/.archeia-eval/conversation.json"
+  },
+  "code_quality": {
+    "lint": {
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "cwd": "/tmp/archeia-phase4/daily-api-l0-daily-api-ask-complex-01-trial1",
+      "exit_code": 1,
+      "finished_at": "2026-04-10T04:00:16+00:00",
+      "started_at": "2026-04-10T04:00:10+00:00",
+      "stderr": "sh: eslint: command not found\n",
+      "stdout": "\n> daily-api@ lint /private/tmp/archeia-phase4/daily-api-l0-daily-api-ask-complex-01-trial1\n> eslint . --ext .js,.ts --max-warnings 0\n\n\u2009ELIFECYCLE\u2009 Command failed.\n\u2009WARN\u2009  Local package.json exists, but node_modules missing, did you mean to install?\n"
+    },
+    "lint_baseline": {
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "cwd": "/tmp/archeia-phase4/daily-api-l0-daily-api-ask-complex-01-trial1",
+      "exit_code": 1,
+      "finished_at": "2026-04-10T03:54:55+00:00",
+      "started_at": "2026-04-10T03:54:55+00:00",
+      "stderr": "sh: eslint: command not found\n",
+      "stdout": "\n> daily-api@ lint /private/tmp/archeia-phase4/daily-api-l0-daily-api-ask-complex-01-trial1\n> eslint . --ext .js,.ts --max-warnings 0\n\n\u2009ELIFECYCLE\u2009 Command failed.\n\u2009WARN\u2009  Local package.json exists, but node_modules missing, did you mean to install?\n"
+    },
+    "lint_baseline_findings": 5,
+    "lint_delta": 0,
+    "lint_findings": 5,
+    "tests": null
+  },
+  "condition_application": {
+    "archeia_output": "evals/archeia-output/daily-api",
+    "condition_id": "l0",
+    "copied_paths": [],
+    "kept_existing_docs": true,
+    "removed_paths": [],
+    "repo_id": "daily-api",
+    "worktree": "/tmp/archeia-phase4/daily-api-l0-daily-api-ask-complex-01-trial1"
+  },
+  "condition_commit": {
+    "command": [
+      "git",
+      "commit",
+      "-m",
+      "Apply evaluation condition"
+    ],
+    "cwd": "/tmp/archeia-phase4/daily-api-l0-daily-api-ask-complex-01-trial1",
+    "exit_code": 1,
+    "finished_at": "2026-04-10T03:54:55+00:00",
+    "started_at": "2026-04-10T03:54:55+00:00",
+    "stderr": "",
+    "stdout": "Not currently on any branch.\nnothing to commit, working tree clean\n"
+  },
+  "condition_id": "l0",
+  "diff": "",
+  "finished_at": "2026-04-10T04:00:56+00:00",
+  "judge": {
+    "command": [
+      "claude",
+      "--output-format",
+      "json",
+      "-p",
+      "You are judging an Archeia evaluation run.\n\nTask category: ask_complex\nTask id: daily-api-ask-complex-01\n\nTask prompt:\nRead the codebase and explain how a new post moves through daily-api until it becomes eligible to appear in a personalized feed. Base your answer only on code you actually read.\n\nGround truth / reference:\nExpected outcome:\n- Must identify the relevant route or ingestion entry surfaces, persistence/entity layers, ranking or selection-related code, and the modules that assemble personalized feed data. Expected grounding includes routes, entity models, graph/query helpers, and feed-related supporting services.\n\nMust mention / touch:\n- src/routes/\n- src/entity/\n- src/graphorm/\n- src/dataLoaderService.ts\n- __tests__/\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo\n\nAcceptance criteria:\n[\n  \"Explains ingestion/persistence and feed-selection flow in order.\",\n  \"Uses real module names from daily-api.\",\n  \"Connects route, entity, and feed-building layers.\",\n  \"Avoids inventing external indexing systems that are not evidenced.\"\n]\n\nAgent response:\nBased on my analysis of the codebase, here's how a new post moves through daily-api until it becomes eligible for personalized feeds:\n\n## Post Creation Phase\n\nWhen a user submits an external link via `submitExternalLink` (src/schema/posts.ts:2925), it creates an `ArticlePost` with initial state (src/entity/posts/utils.ts:338-410):\n\n- **visible**: `false` if no title provided, `true` if title exists (set by `isVisible = !!title`)\n- **showOnFeed**: `true` (default from Post entity)\n- **banned**: `false` (default)\n- **private**: `true` (explicitly set)\n- **flags**: Contains metadata including `visible`, `private`, and `sentAnalyticsReport`\n\nThe post also goes through two hooks before insertion:\n1. **Vordr hook** (src/entity/posts/hooks.ts:19-49): Spam/abuse filter that can set `banned: true` and `showOnFeed: false`\n2. **Deduplication hook** (src/entity/posts/hooks.ts:181-198): Generates dedup keys for duplicate detection\n\n## Content Processing Phase\n\nAfter creation, the post publishes a `contentRequested` event (src/common/pubsub.ts) which triggers the `api.content-published` worker (src/workers/postUpdated/worker.ts). This worker:\n\n1. Receives metadata from the content service (Yggdrasil)\n2. Calls `updatePost` (src/workers/postUpdated/shared.ts:170-300) which:\n   - Checks if the post should **become visible** using `getPostVisible` (src/entity/posts/utils.ts:720-722)\n   - `getPostVisible` returns `true` if the post now has a title (even if initially created without one)\n   - Sets `visibleAt` timestamp when visibility transitions from false to true (line 264)\n   - Applies vordr and deduplication hooks again for updates\n\n## Feed Eligibility Phase\n\nFor a post to appear in personalized feeds, the `applyFeedWhere` filter (src/common/feedGenerator.ts:428-490) requires:\n\n1. **banned = FALSE** (line 486)\n2. **showOnFeed = TRUE** (line 487)\n3. **Implicit**: `visible = TRUE` (must be set by now)\n4. **private = FALSE** (depending on `allowPrivatePosts` setting, line 443-445)\n5. Source/squad visibility checks (lines 447-466):\n   - Post must be from a public-threshold squad (if applicable)\n   - Can't be from a private user source unless allowed\n6. User hidden posts excluded (lines 474-482)\n7. Blocked user content filtered (via `whereNotUserBlocked`)\n\n## Summary\n\nA post becomes feed-eligible through this journey:\n\n1. **Created** \u2192 Initial visibility depends on title presence\n2. **Processed** \u2192 Content service enriches it with metadata\n3. **Updated** \u2192 Title received \u2192 `visible: true` + `visibleAt` set\n4. **Eligible** \u2192 When `visible=true`, `banned=false`, `showOnFeed=true`, `private=false`\n\nIf a post is created without a title but later receives one from the content service, it transitions from invisible to visible and becomes eligible for feeds.\n\nGit diff:\n\n\nCode-quality signals:\n{\n  \"lint\": {\n    \"command\": [\n      \"pnpm\",\n      \"lint\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/daily-api-l0-daily-api-ask-complex-01-trial1\",\n    \"exit_code\": 1,\n    \"finished_at\": \"2026-04-10T04:00:16+00:00\",\n    \"started_at\": \"2026-04-10T04:00:10+00:00\",\n    \"stderr\": \"sh: eslint: command not found\\n\",\n    \"stdout\": \"\\n> daily-api@ lint /private/tmp/archeia-phase4/daily-api-l0-daily-api-ask-complex-01-trial1\\n> eslint . --ext .js,.ts --max-warnings 0\\n\\n\\u2009ELIFECYCLE\\u2009 Command failed.\\n\\u2009WARN\\u2009  Local package.json exists, but node_modules missing, did you mean to install?\\n\"\n  },\n  \"lint_baseline\": {\n    \"command\": [\n      \"pnpm\",\n      \"lint\"\n    ],\n    \"cwd\": \"/tmp/archeia-phase4/daily-api-l0-daily-api-ask-complex-01-trial1\",\n    \"exit_code\": 1,\n    \"finished_at\": \"2026-04-10T03:54:55+00:00\",\n    \"started_at\": \"2026-04-10T03:54:55+00:00\",\n    \"stderr\": \"sh: eslint: command not found\\n\",\n    \"stdout\": \"\\n> daily-api@ lint /private/tmp/archeia-phase4/daily-api-l0-daily-api-ask-complex-01-trial1\\n> eslint . --ext .js,.ts --max-warnings 0\\n\\n\\u2009ELIFECYCLE\\u2009 Command failed.\\n\\u2009WARN\\u2009  Local package.json exists, but node_modules missing, did you mean to install?\\n\"\n  },\n  \"lint_baseline_findings\": 5,\n  \"lint_delta\": 0,\n  \"lint_findings\": 5,\n  \"tests\": null\n}\n\nEfficiency signals:\n{\n  \"action_calls\": 0,\n  \"exploration_calls\": 16,\n  \"exploration_to_action_ratio\": null,\n  \"finished_at\": \"2026-04-10T03:59:55.042000+00:00\",\n  \"input_tokens\": 267,\n  \"output_tokens\": 5787,\n  \"started_at\": \"2026-04-10T03:55:03.531000+00:00\",\n  \"time_to_completion_seconds\": 291.511,\n  \"time_to_first_edit_seconds\": null,\n  \"tool_call_count\": 32,\n  \"tool_counts\": {\n    \"bash\": 16,\n    \"glob\": 1,\n    \"grep\": 1,\n    \"read\": 14\n  },\n  \"total_tokens\": 6054\n}\n\nScore the run from 0-100 using four equally weighted 0-25 dimensions:\n1. Correctness: factual accuracy against ground truth.\n2. Completeness: covers all relevant systems and caveats.\n3. Evidence alignment: cites or reflects the repo-grounded flow.\n4. Communication quality: organized, concise, and directly useful.\n\nReturn JSON only with this schema:\n{\n  \"total_score\": 0,\n  \"dimension_scores\": {\n    \"correctness\": 0,\n    \"completeness\": 0,\n    \"convention_fit\": 0,\n    \"verification_or_communication\": 0\n  },\n  \"summary\": \"short paragraph\",\n  \"strengths\": [\"...\"],\n  \"weaknesses\": [\"...\"],\n  \"confidence\": \"low|medium|high\"\n}"
+    ],
+    "confidence": "high",
+    "dimension_scores": {
+      "completeness": 12,
+      "convention_fit": 15,
+      "correctness": 18,
+      "verification_or_communication": 22
+    },
+    "finished_at": "2026-04-10T04:00:56+00:00",
+    "started_at": "2026-04-10T04:00:16+00:00",
+    "status": "completed",
+    "strengths": [
+      "Excellent organization with clear phase-based structure and a concise summary",
+      "Specific line-number citations (e.g., src/entity/posts/utils.ts:338-410, src/common/feedGenerator.ts:428-490) demonstrate real code reading",
+      "Accurately describes the visibility/banned/showOnFeed flag logic and feed filter conditions",
+      "Covers the worker-based content processing pipeline (postUpdated worker)"
+    ],
+    "summary": "The response provides a well-structured, clearly communicated walkthrough of post creation, content processing, and feed eligibility filtering, with specific line-number citations that demonstrate genuine code reading. However, it misses three of the five required module layers: src/routes/ (uses src/schema/ instead), src/graphorm/ (the ORM/query-building layer that maps entities to feed queries), and src/dataLoaderService.ts (the service that assembles personalized feed data). The __tests__/ directory is also unmentioned. The reference to 'Yggdrasil' as a content service is not clearly evidenced in the codebase description. While the entity layer and feed filter logic are well-covered, the incomplete coverage of the architectural layers means the answer doesn't fully trace the post's journey through all the systems that make it feed-eligible.",
+    "total_score": 58,
+    "weaknesses": [
+      "Missing src/graphorm/ \u2014 a critical layer for understanding how entities map to feed queries",
+      "Missing src/dataLoaderService.ts \u2014 the service that assembles personalized feed data",
+      "Does not mention src/routes/ at all, instead referencing src/schema/ (GraphQL schema layer)",
+      "No mention of __tests__/ for grounding or verification",
+      "References 'Yggdrasil' as a content service without clear evidence from the repo"
+    ]
+  },
+  "metrics": {
+    "action_calls": 0,
+    "exploration_calls": 16,
+    "exploration_to_action_ratio": null,
+    "finished_at": "2026-04-10T03:59:55.042000+00:00",
+    "input_tokens": 267,
+    "output_tokens": 5787,
+    "started_at": "2026-04-10T03:55:03.531000+00:00",
+    "time_to_completion_seconds": 291.511,
+    "time_to_first_edit_seconds": null,
+    "tool_call_count": 32,
+    "tool_counts": {
+      "bash": 16,
+      "glob": 1,
+      "grep": 1,
+      "read": 14
+    },
+    "total_tokens": 6054
+  },
+  "repo": {
+    "archeia_output_path": "evals/archeia-output/daily-api",
+    "baseline_docs": [
+      "AGENTS.md",
+      "CLAUDE.md"
+    ],
+    "branch": "main",
+    "commands": {
+      "lint": "pnpm lint",
+      "test": null
+    },
+    "commit": "9752461a184940e947cefadc886cba2010cd87fc",
+    "complexity": "medium",
+    "id": "daily-api",
+    "language": "ts",
+    "loc": 301000,
+    "notes": [
+      "Large TypeScript API with tests.",
+      "Good fit for convention-following implementation tasks."
+    ],
+    "repo": "dailydotdev/daily-api",
+    "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/daily-api",
+    "tests_available": true
+  },
+  "repo_id": "daily-api",
+  "result_path": "/Users/hugopeck/conductor/workspaces/archeia/phoenix/evals/results/raw/daily-api/daily-api-ask-complex-01/l0/trial-1.json",
+  "started_at": "2026-04-10T03:54:55+00:00",
+  "status": "completed",
+  "task": {
+    "acceptance_criteria": [
+      "Explains ingestion/persistence and feed-selection flow in order.",
+      "Uses real module names from daily-api.",
+      "Connects route, entity, and feed-building layers.",
+      "Avoids inventing external indexing systems that are not evidenced."
+    ],
+    "category": "ask_complex",
+    "commands": {
+      "lint": null,
+      "test": null
+    },
+    "expected_modules_read": [
+      "src/routes/",
+      "src/entity/",
+      "src/graphorm/",
+      "src/dataLoaderService.ts",
+      "__tests__/"
+    ],
+    "ground_truth": "Expected outcome:\n- Must identify the relevant route or ingestion entry surfaces, persistence/entity layers, ranking or selection-related code, and the modules that assemble personalized feed data. Expected grounding includes routes, entity models, graph/query helpers, and feed-related supporting services.\n\nMust mention / touch:\n- src/routes/\n- src/entity/\n- src/graphorm/\n- src/dataLoaderService.ts\n- __tests__/\n\nCommon failure modes:\n- Missing one of the major layers or participants\n- Describing systems or modules that are not evidenced in the repo",
+    "id": "daily-api-ask-complex-01",
+    "metadata": {
+      "difficulty": "complex",
+      "doc_sensitivity": "high",
+      "output_type": "explanation",
+      "primary_surface": "feed-lifecycle",
+      "verification_scope": "repo_default"
+    },
+    "prompt": "Read the codebase and explain how a new post moves through daily-api until it becomes eligible to appear in a personalized feed. Base your answer only on code you actually read.",
+    "repo_id": "daily-api"
+  },
+  "trial": 1
+}

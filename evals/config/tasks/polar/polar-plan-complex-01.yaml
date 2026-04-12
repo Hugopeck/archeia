@@ -1,0 +1,30 @@
+{
+  "id": "polar-plan-complex-01",
+  "repo_id": "polar",
+  "category": "plan_complex",
+  "prompt": "Read the codebase and design webhook retry with exponential backoff and observability for failed outbound deliveries in Polar. Ground your plan in the actual modules and patterns you find.",
+  "ground_truth": "Expected outcome:\n- The plan should identify where outbound events are generated, how retry state should be represented, where scheduling belongs, and what observability hooks already exist or should be added. It should fit Polar's backend and worker boundaries.\n\nMust mention / touch:\n- server/polar/external_event/\n- server/polar/eventstream/\n- server/polar/event/\n- server/polar/kit/\n\nCommon failure modes:\n- Proposing a design that bypasses the repo's existing boundaries\n- Omitting a major affected module or verification path",
+  "acceptance_criteria": [
+    "Maps retry state, scheduling, and observability to real Polar modules.",
+    "Respects current backend and worker boundaries.",
+    "Includes failure-mode handling and tests.",
+    "Avoids designing an entirely separate delivery system."
+  ],
+  "expected_modules_read": [
+    "server/polar/external_event/",
+    "server/polar/eventstream/",
+    "server/polar/event/",
+    "server/polar/kit/"
+  ],
+  "commands": {
+    "test": null,
+    "lint": null
+  },
+  "metadata": {
+    "difficulty": "complex",
+    "output_type": "plan",
+    "primary_surface": "webhook-retry",
+    "doc_sensitivity": "high",
+    "verification_scope": "repo_default"
+  }
+}
