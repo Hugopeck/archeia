@@ -20,13 +20,13 @@
     "tests/parity/README.md"
   ],
   "copied_archeia_paths": [
-    ".archeia/Architecture.md",
-    ".archeia/Components.json",
-    ".archeia/Containers.json",
-    ".archeia/DataFlow.json",
-    ".archeia/Guide.md",
-    ".archeia/Standards.md",
-    ".archeia/System.json",
+    ".archeia/codebase/architecture/architecture.md",
+    ".archeia/codebase/architecture/components.json",
+    ".archeia/codebase/architecture/containers.json",
+    ".archeia/codebase/architecture/dataflow.json",
+    ".archeia/codebase/guide.md",
+    ".archeia/codebase/standards/standards.md",
+    ".archeia/codebase/architecture/system.json",
     ".archeia/diagrams"
   ],
   "copied_root_docs": [
@@ -44,8 +44,8 @@
   ],
   "repo_id": "relay",
   "skipped_outputs": [
-    ".archeia/Entities.json",
-    ".archeia/StateMachine.json"
+    ".archeia/codebase/architecture/entities.json",
+    ".archeia/codebase/architecture/statemachine.json"
   ],
   "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/relay",
   "source_repo": "AgentWorkforce/relay",
@@ -60,7 +60,7 @@
     "exit_code": 0,
     "status": "ok",
     "stderr": "mode=python\n",
-    "stdout": "{\n  \"mode\": \"python\",\n  \"repo_root\": \"/private/tmp/archeia-phase3/relay\",\n  \"output_dir\": \"/private/tmp/archeia-phase3/relay/.archeia\",\n  \"checked_files\": [\n    \".archeia/Architecture.md\",\n    \".archeia/GitReport.md\",\n    \".archeia/Guide.md\",\n    \".archeia/ScanReport.md\",\n    \".archeia/Standards.md\",\n    \".archeia/Components.json\",\n    \".archeia/Containers.json\",\n    \".archeia/DataFlow.json\",\n    \".archeia/System.json\",\n    \"AGENTS.md\",\n    \"CLAUDE.md\"\n  ],\n  \"valid_paths\": [\n    \"package.json\",\n    \"Cargo.toml\",\n    \"README.md\",\n    \"fly.toml\",\n    \".env.example\",\n    \"tsconfig.json\",\n    \"packages/openclaw/src/index.ts\",\n    \"packages/sdk/src/index.ts\",\n    \"src/index.ts\",\n    \"packages/sdk/src/client.ts\",\n    \"src/main.rs\",\n    \"vitest.config.ts\",\n    \"turbo.json\",\n    \".husky/pre-commit\",\n    \".github/workflows/build-broker-binary.yml\",\n    \"openapi.yaml\",\n    \".nvmrc\",\n    \".eslintrc.cjs\",\n    \".prettierrc\",\n    \".github/workflows/publish.yml\",\n    \"packages/sdk/src\",\n    \"src/cli/bootstrap.ts\",\n    \"src/cli/index.ts\",\n    \"src/cli/commands/core.ts\",\n    \"src/cli/commands/setup.ts\",\n    \"src/cli/commands/messaging.ts\",\n    \"src/cli/lib/index.ts\",\n    \"packages/sdk/src/relay.ts\",\n    \"packages/sdk/src/protocol.ts\",\n    \"packages/sdk/src/workflows/index.ts\",\n    \"packages/openclaw/src/gateway.ts\",\n    \"openclaw-web/app\",\n    \"packages/telemetry/src/index.ts\",\n    \"packages/sdk/README.md\"\n  ],\n  \"invalid_paths\": [],\n  \"malformed_evidence\": [],\n  \"stats\": {\n    \"checked_files\": 11,\n    \"valid_paths\": 34,\n    \"invalid_paths\": 0,\n    \"malformed_evidence\": 0\n  }\n}\n"
+    "stdout": "{\n  \"mode\": \"python\",\n  \"repo_root\": \"/private/tmp/archeia-phase3/relay\",\n  \"output_dir\": \"/private/tmp/archeia-phase3/relay/.archeia\",\n  \"checked_files\": [\n    \".archeia/codebase/architecture/architecture.md\",\n    \".archeia/codebase/git-report.md\",\n    \".archeia/codebase/guide.md\",\n    \".archeia/codebase/scan-report.md\",\n    \".archeia/codebase/standards/standards.md\",\n    \".archeia/codebase/architecture/components.json\",\n    \".archeia/codebase/architecture/containers.json\",\n    \".archeia/codebase/architecture/dataflow.json\",\n    \".archeia/codebase/architecture/system.json\",\n    \"AGENTS.md\",\n    \"CLAUDE.md\"\n  ],\n  \"valid_paths\": [\n    \"package.json\",\n    \"Cargo.toml\",\n    \"README.md\",\n    \"fly.toml\",\n    \".env.example\",\n    \"tsconfig.json\",\n    \"packages/openclaw/src/index.ts\",\n    \"packages/sdk/src/index.ts\",\n    \"src/index.ts\",\n    \"packages/sdk/src/client.ts\",\n    \"src/main.rs\",\n    \"vitest.config.ts\",\n    \"turbo.json\",\n    \".husky/pre-commit\",\n    \".github/workflows/build-broker-binary.yml\",\n    \"openapi.yaml\",\n    \".nvmrc\",\n    \".eslintrc.cjs\",\n    \".prettierrc\",\n    \".github/workflows/publish.yml\",\n    \"packages/sdk/src\",\n    \"src/cli/bootstrap.ts\",\n    \"src/cli/index.ts\",\n    \"src/cli/commands/core.ts\",\n    \"src/cli/commands/setup.ts\",\n    \"src/cli/commands/messaging.ts\",\n    \"src/cli/lib/index.ts\",\n    \"packages/sdk/src/relay.ts\",\n    \"packages/sdk/src/protocol.ts\",\n    \"packages/sdk/src/workflows/index.ts\",\n    \"packages/openclaw/src/gateway.ts\",\n    \"openclaw-web/app\",\n    \"packages/telemetry/src/index.ts\",\n    \"packages/sdk/README.md\"\n  ],\n  \"invalid_paths\": [],\n  \"malformed_evidence\": [],\n  \"stats\": {\n    \"checked_files\": 11,\n    \"valid_paths\": 34,\n    \"invalid_paths\": 0,\n    \"malformed_evidence\": 0\n  }\n}\n"
   },
   "worktree": "/tmp/archeia-phase3/relay"
 }

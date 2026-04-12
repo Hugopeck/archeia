@@ -20,13 +20,13 @@
     "test/mitmproxy/README.md"
   ],
   "copied_archeia_paths": [
-    ".archeia/Architecture.md",
-    ".archeia/Components.json",
-    ".archeia/Containers.json",
-    ".archeia/DataFlow.json",
-    ".archeia/Guide.md",
-    ".archeia/Standards.md",
-    ".archeia/System.json",
+    ".archeia/codebase/architecture/architecture.md",
+    ".archeia/codebase/architecture/components.json",
+    ".archeia/codebase/architecture/containers.json",
+    ".archeia/codebase/architecture/dataflow.json",
+    ".archeia/codebase/guide.md",
+    ".archeia/codebase/standards/standards.md",
+    ".archeia/codebase/architecture/system.json",
     ".archeia/diagrams"
   ],
   "copied_root_docs": [
@@ -44,8 +44,8 @@
   ],
   "repo_id": "mitmproxy",
   "skipped_outputs": [
-    ".archeia/Entities.json",
-    ".archeia/StateMachine.json"
+    ".archeia/codebase/architecture/entities.json",
+    ".archeia/codebase/architecture/statemachine.json"
   ],
   "source_path": "/Users/hugopeck/archeia-archive/packages/experiments/repos/clones/mitmproxy",
   "source_repo": "mitmproxy/mitmproxy",
@@ -60,7 +60,7 @@
     "exit_code": 0,
     "status": "ok",
     "stderr": "mode=python\n",
-    "stdout": "{\n  \"mode\": \"python\",\n  \"repo_root\": \"/private/tmp/archeia-phase3/mitmproxy\",\n  \"output_dir\": \"/private/tmp/archeia-phase3/mitmproxy/.archeia\",\n  \"checked_files\": [\n    \".archeia/Architecture.md\",\n    \".archeia/GitReport.md\",\n    \".archeia/Guide.md\",\n    \".archeia/ScanReport.md\",\n    \".archeia/Standards.md\",\n    \".archeia/Components.json\",\n    \".archeia/Containers.json\",\n    \".archeia/DataFlow.json\",\n    \".archeia/System.json\",\n    \"AGENTS.md\",\n    \"CLAUDE.md\"\n  ],\n  \"valid_paths\": [\n    \"pyproject.toml\",\n    \"README.md\",\n    \"mitmproxy/tools/main.py\",\n    \"mitmproxy/proxy/server.py\",\n    \"release/docker/Dockerfile\",\n    \"mitmproxy/master.py\",\n    \"mitmproxy/addonmanager.py\",\n    \"mitmproxy/tools/web/app.py\",\n    \"CONTRIBUTING.md\",\n    \"uv.lock\",\n    \"release/README.md\",\n    \".github/workflows/main.yml\",\n    \"mitmproxy/hooks.py\",\n    \".python-version\",\n    \"web/package.json\",\n    \"examples/README.md\",\n    \"mitmproxy/io\",\n    \"web/README.md\",\n    \"web/tsconfig.json\",\n    \"mitmproxy/py.typed\",\n    \"test/mitmproxy\",\n    \"mitmproxy/options.py\",\n    \"mitmproxy/optmanager.py\",\n    \"mitmproxy/proxy/layers\",\n    \"mitmproxy/proxy/layer.py\",\n    \"mitmproxy/addons\",\n    \"mitmproxy/tools/web/webaddons.py\",\n    \"mitmproxy/tools/console\",\n    \"mitmproxy/tools/dump.py\",\n    \"mitmproxy/tools/web/master.py\",\n    \"web/vite.config.ts\",\n    \"web/src\",\n    \"mitmproxy/proxy/mode_specs.py\"\n  ],\n  \"invalid_paths\": [],\n  \"malformed_evidence\": [],\n  \"stats\": {\n    \"checked_files\": 11,\n    \"valid_paths\": 33,\n    \"invalid_paths\": 0,\n    \"malformed_evidence\": 0\n  }\n}\n"
+    "stdout": "{\n  \"mode\": \"python\",\n  \"repo_root\": \"/private/tmp/archeia-phase3/mitmproxy\",\n  \"output_dir\": \"/private/tmp/archeia-phase3/mitmproxy/.archeia\",\n  \"checked_files\": [\n    \".archeia/codebase/architecture/architecture.md\",\n    \".archeia/codebase/git-report.md\",\n    \".archeia/codebase/guide.md\",\n    \".archeia/codebase/scan-report.md\",\n    \".archeia/codebase/standards/standards.md\",\n    \".archeia/codebase/architecture/components.json\",\n    \".archeia/codebase/architecture/containers.json\",\n    \".archeia/codebase/architecture/dataflow.json\",\n    \".archeia/codebase/architecture/system.json\",\n    \"AGENTS.md\",\n    \"CLAUDE.md\"\n  ],\n  \"valid_paths\": [\n    \"pyproject.toml\",\n    \"README.md\",\n    \"mitmproxy/tools/main.py\",\n    \"mitmproxy/proxy/server.py\",\n    \"release/docker/Dockerfile\",\n    \"mitmproxy/master.py\",\n    \"mitmproxy/addonmanager.py\",\n    \"mitmproxy/tools/web/app.py\",\n    \"CONTRIBUTING.md\",\n    \"uv.lock\",\n    \"release/README.md\",\n    \".github/workflows/main.yml\",\n    \"mitmproxy/hooks.py\",\n    \".python-version\",\n    \"web/package.json\",\n    \"examples/README.md\",\n    \"mitmproxy/io\",\n    \"web/README.md\",\n    \"web/tsconfig.json\",\n    \"mitmproxy/py.typed\",\n    \"test/mitmproxy\",\n    \"mitmproxy/options.py\",\n    \"mitmproxy/optmanager.py\",\n    \"mitmproxy/proxy/layers\",\n    \"mitmproxy/proxy/layer.py\",\n    \"mitmproxy/addons\",\n    \"mitmproxy/tools/web/webaddons.py\",\n    \"mitmproxy/tools/console\",\n    \"mitmproxy/tools/dump.py\",\n    \"mitmproxy/tools/web/master.py\",\n    \"web/vite.config.ts\",\n    \"web/src\",\n    \"mitmproxy/proxy/mode_specs.py\"\n  ],\n  \"invalid_paths\": [],\n  \"malformed_evidence\": [],\n  \"stats\": {\n    \"checked_files\": 11,\n    \"valid_paths\": 33,\n    \"invalid_paths\": 0,\n    \"malformed_evidence\": 0\n  }\n}\n"
   },
   "worktree": "/tmp/archeia-phase3/mitmproxy"
 }
