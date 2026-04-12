@@ -60,6 +60,8 @@ Distributions are free to adopt directory-based layouts internally if they prefe
 
 The temporal model defines three kernel operations — one for each transition and one for history traversal. These are inherent skills of the standard and every conforming distribution must implement or delegate to them.
 
+Every operation is **performed by the domain owner**, not by arbitrary agents. The owner may delegate the *work* of computing a transition (e.g., "which tasks should move from future to present in this sprint?") to subagents via the concurrency model in [Truth #4 of PRINCIPLES.md](PRINCIPLES.md#4-ownership-plus-delegation-is-the-concurrency-model), but the *commit* of the new frontmatter state is always the owner's write. Subagents compute; the owner commits.
+
 ### `advance` — future → present
 
 An artifact in the `future` state becomes the present state of its concept. This is the "commitment" operation.
@@ -191,7 +193,7 @@ The forward flow describes causation. The **read flow** describes where agents f
         agents in every domain
 ```
 
-Everyone reads `codebase/` for system context. Everyone reads `product/` for intent. Nobody writes to them except their owner families. This is consistent with the ownership principle (Truth #3 in PRINCIPLES.md): reads are free, writes are domain-scoped.
+Everyone reads `codebase/` for system context. Everyone reads `product/` for intent. Nobody writes to them except their owners. This is consistent with the ownership-plus-delegation principle ([Truth #4 in PRINCIPLES.md](PRINCIPLES.md#4-ownership-plus-delegation-is-the-concurrency-model)): reads are free, writes are owner-only, and parallelism comes from the owner delegating to subagents rather than from concurrent access.
 
 The read flow is why `codebase/` is so load-bearing. It's the single source of truth for "what exists right now in the system we're building," and every other domain's agents consult it to ground their decisions in reality.
 

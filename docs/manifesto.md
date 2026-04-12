@@ -4,11 +4,13 @@
 
 ## The problem
 
-AI coding agents don't fail because they can't reason. They fail because they can't find what's true, can't remember what was decided, and can't trust what they read. Context is the bottleneck, not intelligence.
+AI coding agents don't fail because they can't reason. They fail for two reasons, and both of them are solvable by giving them a better surface to work on.
 
-Project knowledge today is scattered across a dozen tools an agent can't see: architecture lives in a senior dev's head, product decisions in Notion, roadmap in Linear, business vision in a pitch deck, growth experiments in a spreadsheet, task state in Jira, and the half that matters is a Slack thread from last March. Every agent session starts from zero and reconstructs context from file names and guesses.
+**The first bottleneck is context.** Agents can't find what's true, can't remember what was decided, and can't trust what they read. Project knowledge is scattered across a dozen tools an agent can't see: architecture lives in a senior dev's head, product decisions in Notion, roadmap in Linear, business vision in a pitch deck, growth experiments in a spreadsheet, task state in Jira, and the half that matters is a Slack thread from last March. Every agent session starts from zero and reconstructs context from file names and guesses.
 
-Archeia closes that gap by putting the project's mind inside the project's repo.
+**The second bottleneck is human-agent collaboration.** Humans need to direct, observe, intervene, hand off, recover, and audit — safely, recoverably, traceably, sync and async. A chat window can hold a conversation but it cannot hold a collaboration. Without a shared surface where both humans and agents can persist, edit, and audit work, every attempt to scale agentic work past a one-shot conversation collapses back into "type everything in the chat," which doesn't scale at all.
+
+Archeia closes both gaps by putting the project's mind inside the project's repo — a place where agents can find what they need *and* where humans and agents can work on the same artifacts at the same time, with git handling safety, recovery, traceability, and async coordination for free.
 
 ## What you get
 
@@ -26,15 +28,16 @@ That's the whole substrate. No server, no database, no API, no protocol layer. T
 
 ## What makes it new
 
-Five claims, each of them either novel or stated as a first-class principle for the first time:
+Six claims, each of them either novel or stated as a first-class principle for the first time:
 
 1. **Context is the bottleneck, not intelligence.** Structure is the cheapest intelligence multiplier available.
-2. **The filesystem is already the database.** Directories, paths, markdown, and git already do what you were about to spin up a vector DB for.
-3. **Ownership is the only concurrency primitive agents need.** Assign each domain to one writer family, and conflicts literally cannot happen.
-4. **Project knowledge has a temporal state: past, present, future.** Every artifact refers to a moment, and that moment is a first-class field — not an afterthought.
-5. **Agents compose via files, not APIs.** The filesystem is the message bus; frontmatter is the schema. Any agent framework in any language can participate.
+2. **Human-agent collaboration is the second bottleneck.** Without a shared surface where both humans and agents can work safely and recoverably, every collaboration collapses back into the chat window.
+3. **The filesystem is already the database AND the canvas.** Directories, paths, markdown, and git already solve agent memory and human-agent coordination simultaneously. You don't need a memory service, and you don't need a project board.
+4. **Ownership plus delegation is the concurrency model.** Each domain has one owner. When the owner needs parallelism, it delegates to subagents that return results; the owner integrates and commits. No concurrent writes, no locks, no CRDTs, no merge algorithms — just disciplined ownership and the subagent primitive.
+5. **Project knowledge has a temporal state: past, present, future.** Every artifact refers to a moment, and that moment is a first-class frontmatter field — not an afterthought.
+6. **Agents compose via files, not APIs.** The filesystem is the message bus; frontmatter is the schema. Any agent framework in any language can participate.
 
-Claim #4 is the one I have not seen anywhere else. Every other in-repo knowledge system (ADR, arc42, Diataxis, Docs as Code) is flat and present-tense. Archeia says: every artifact has a `temporal_state`, transitions between states are kernel operations, and history isn't an afterthought — it's the past half of the model.
+Claims #2 and #5 are the ones I haven't seen anywhere else. Every other in-repo knowledge system (ADR, arc42, Diataxis, Docs as Code) is flat, present-tense, and agent-blind. Archeia says: name both bottlenecks, give them a single shared substrate, treat every artifact's temporal state as first-class, and let subagent delegation do the concurrency work that locks and CRDTs try and fail to do elsewhere.
 
 ## What it replaces
 
