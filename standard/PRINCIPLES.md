@@ -93,19 +93,19 @@ This is what the subagent primitive is for in Claude Code and every serious agen
 
 ---
 
-## 5. Project knowledge has a temporal state: past, present, future
+## 5. Project knowledge comes in three lifecycle shapes: living, accumulating, transient
 
-Every artifact in a project refers to a moment. Some artifacts describe what happened: retrospectives, git history analysis, completed tasks, superseded specs. Some describe what is: current architecture, active work, locked product spec. Some describe what is intended: draft vision, proposed designs, upcoming tasks.
+Not every artifact has the same lifecycle. Most project knowledge is living documents — one file per concept, edited in place, with history in git. A smaller but essential subset is accumulating records — ADRs, retros, concluded experiments — append-only artifacts that stay on disk forever because the record itself is the point. A minority is transient artifacts — tasks, drafts, running experiments — that flow through states during their lifetime and get pruned from disk after a bounded retention window, with git preserving the long tail.
 
-This is the principle most in-repo knowledge systems miss. ADR repos, arc42 templates, Diataxis, and Docs as Code are all flat and present-tense. They have no theory of time. History is implicit in git log, intent is implicit in "TODO" comments, and the coexistence of "what we used to do" and "what we want to do" in the same documentation is what makes most wikis rot.
+This is the principle most in-repo knowledge systems miss, and the one we spent the most time getting wrong. Earlier drafts of the standard tried to treat every artifact as flowing through a uniform past/present/future lifecycle. That framing was elegant but false: it duplicated what git already does for living documents, it forced ADRs into a lifecycle they don't actually have, and it caused filesystem bloat as operational artifacts accumulated with no pruning story.
 
-Archeia treats temporal state as a first-class field. Every artifact has `temporal_state: past | present | future` in its frontmatter. Transitions between states are kernel operations — `advance` (future → present) and `archive` (present → past). Walking the past-state chain of a concept gives you its evolution without needing a separate timeline system.
+The three-shapes model is what falls out when you walk through the real artifacts honestly. Living documents (product.md, architecture.md, vision.md, scan-report.md — the bulk of `.archeia/`) are implicit-present — you edit them, git holds history, there's no state machine and no supersession files cluttering the directory. Accumulating records (product/decisions/, execution/retros/, business/landscape/) are append-only, with a `status` field tracking relevance (active/superseded/archived), and they are *never deleted*. Transient artifacts (execution/tasks/, execution/plans/, business/drafts/) have a real lifecycle with a retention window — they flow through status values that map to temporal categories, and once they reach a terminal state they sit on disk for a short retention period (Archeia Solo defaults: 14 days for tasks, 30 days for plans, 0 days for discarded drafts) before being pruned.
 
-The temporal axis resolves cases older "descriptive vs prescriptive" splits fumble: retros are past and authored, drafts are future and prescriptive, done tasks are past and operational. "When does this artifact refer to?" is a human-native question — everyone already thinks this way. "Is this regenerable?" is an engineer's question. The human question wins.
+The kernel operations split cleanly by shape: `advance` and `complete` and `prune` apply only to transient artifacts; `supersede` applies only to accumulating records; `evolve` maps to `git log` for living documents and to on-disk traversal for the other shapes. Three shapes, five operations, one rule: match the machinery to the lifecycle the artifact actually has, and stop fighting git.
 
-**Consequence:** Archeia has a native theory of project time. You can ask an agent "show me how the onboarding spec evolved over the last quarter" and the answer is a glob pattern plus a frontmatter filter, not a database query.
+**Consequence:** most of `.archeia/` is living documents backed by git, which means the standard doesn't need a universal temporal state field, doesn't need supersession chains for most artifacts, and doesn't bloat over time. The minority of artifacts that genuinely need lifecycle tracking get it, with retention windows that match how humans actually work with operational state.
 
-See [`TEMPORAL_MODEL.md`](TEMPORAL_MODEL.md) for the full specification.
+See [`TEMPORAL_MODEL.md`](TEMPORAL_MODEL.md) for the full specification — the three shapes, the status-to-temporal mapping for transient artifacts, the retention-window conventions, and worked examples across all five domains.
 
 ---
 
@@ -133,9 +133,9 @@ Each principle is useful alone. Together they compound:
 - **Truth #2** names the second bottleneck: human-agent collaboration.
 - **Truth #3** names the substrate that dissolves both: the filesystem as database *and* canvas.
 - **Truth #4** names the coordination model: ownership plus subagent delegation.
-- **Truth #5** names the temporal model: past, present, future as a first-class field.
+- **Truth #5** names the lifecycle model: three shapes (living, accumulating, transient), each with different rules.
 - **Truth #6** names the composition model: files as the message bus.
 
-Remove any one and the others break. Without naming both bottlenecks, there's no reason to adopt the substrate. Without the substrate, you end up building a memory service *and* a project board and gluing them together. Without ownership + delegation, you need a distributed coordination protocol. Without temporal state, you can't distinguish history from intent and wiki rot eats you. Without file-based composition, you're back to framework lock-in and adapter code between every pair of agents.
+Remove any one and the others break. Without naming both bottlenecks, there's no reason to adopt the substrate. Without the substrate, you end up building a memory service *and* a project board and gluing them together. Without ownership + delegation, you need a distributed coordination protocol. Without the three shapes, you either bloat the filesystem forever or delete artifacts that future work needs to reference — wiki rot eats you either way. Without file-based composition, you're back to framework lock-in and adapter code between every pair of agents.
 
 The standard is what you get when you follow all six at the same time and let them collide. What falls out is Archeia.

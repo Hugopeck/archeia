@@ -34,10 +34,10 @@ Six claims, each of them either novel or stated as a first-class principle for t
 2. **Human-agent collaboration is the second bottleneck.** Without a shared surface where both humans and agents can work safely and recoverably, every collaboration collapses back into the chat window.
 3. **The filesystem is already the database AND the canvas.** Directories, paths, markdown, and git already solve agent memory and human-agent coordination simultaneously. You don't need a memory service, and you don't need a project board.
 4. **Ownership plus delegation is the concurrency model.** Each domain has one owner. When the owner needs parallelism, it delegates to subagents that return results; the owner integrates and commits. No concurrent writes, no locks, no CRDTs, no merge algorithms — just disciplined ownership and the subagent primitive.
-5. **Project knowledge has a temporal state: past, present, future.** Every artifact refers to a moment, and that moment is a first-class frontmatter field — not an afterthought.
+5. **Project knowledge comes in three lifecycle shapes: living, accumulating, transient.** Most of `.archeia/` is living documents (one file per concept, edited in place, history in git). A smaller subset is accumulating records (ADRs, retros — append-only, never deleted). A minority is transient artifacts (tasks, drafts — flow through states with bounded retention, then pruned with git as the backstop). Each shape gets the minimum machinery it needs; nothing duplicates git.
 6. **Agents compose via files, not APIs.** The filesystem is the message bus; frontmatter is the schema. Any agent framework in any language can participate.
 
-Claims #2 and #5 are the ones I haven't seen anywhere else. Every other in-repo knowledge system (ADR, arc42, Diataxis, Docs as Code) is flat, present-tense, and agent-blind. Archeia says: name both bottlenecks, give them a single shared substrate, treat every artifact's temporal state as first-class, and let subagent delegation do the concurrency work that locks and CRDTs try and fail to do elsewhere.
+Claims #2 and #5 are the ones I haven't seen anywhere else. Every other in-repo knowledge system (ADR, arc42, Diataxis, Docs as Code) is flat, present-tense, agent-blind, and lifecycle-naive. Archeia says: name both bottlenecks, give them a single shared substrate, recognize that different artifacts have fundamentally different lifecycles and match the machinery to each, and let subagent delegation do the concurrency work that locks and CRDTs try and fail to do elsewhere.
 
 ## What it replaces
 
