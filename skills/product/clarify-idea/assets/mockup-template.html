@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{title}} — concept mockup</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7fb;
+      --surface: #ffffff;
+      --text: #101218;
+      --muted: #626b7a;
+      --line: #dde2ea;
+      --accent: #4f46e5;
+      --accent-soft: #eef0ff;
+      --shadow: 0 12px 30px rgba(16, 18, 24, 0.08);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #fbfcff 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    .shell {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 24px;
+      align-items: stretch;
+      margin-bottom: 24px;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .copy {
+      padding: 32px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 16px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(32px, 5vw, 52px);
+      line-height: 1.02;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .button {
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      text-decoration: none;
+      color: var(--text);
+      background: #fff;
+      font-weight: 600;
+    }
+
+    .button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .preview {
+      padding: 20px;
+      display: grid;
+      gap: 16px;
+      background: radial-gradient(circle at top left, #f5f6ff 0%, #ffffff 60%);
+    }
+
+    .window {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .chrome {
+      display: flex;
+      gap: 8px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #f8f9fc;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #d0d5dd;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      min-height: 380px;
+    }
+
+    .sidebar {
+      padding: 18px;
+      border-right: 1px solid var(--line);
+      background: #fbfcff;
+    }
+
+    .nav-item {
+      padding: 10px 12px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .nav-item.active {
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .content {
+      padding: 20px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    .metric {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .story {
+      padding: 20px;
+    }
+
+    .story h2 {
+      margin: 0 0 8px;
+      font-size: 22px;
+    }
+
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; }
+      .app { grid-template-columns: 1fr; }
+      .sidebar { border-right: 0; border-bottom: 1px solid var(--line); }
+      .card-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div class="panel copy">
+        <span class="eyebrow">Concept mockup</span>
+        <h1>{{title}}</h1>
+        <p>{{summary}}</p>
+        <div class="actions">
+          <a class="button primary" href="#">Primary action</a>
+          <a class="button" href="#">Secondary action</a>
+        </div>
+      </div>
+      <div class="panel preview">
+        <div class="window">
+          <div class="chrome">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
+          <div class="app">
+            <aside class="sidebar">
+              <div class="nav-item active">Overview</div>
+              <div class="nav-item">Workflow</div>
+              <div class="nav-item">Saved ideas</div>
+              <div class="nav-item">Settings</div>
+            </aside>
+            <section class="content">
+              <div class="card-grid">
+                <div class="card">
+                  <div class="metric">{{metric_one}}</div>
+                  <div class="label">{{metric_one_label}}</div>
+                </div>
+                <div class="card">
+                  <div class="metric">{{metric_two}}</div>
+                  <div class="label">{{metric_two_label}}</div>
+                </div>
+              </div>
+              <div class="card story">
+                <h2>{{highlight_title}}</h2>
+                <p>{{highlight_copy}}</p>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

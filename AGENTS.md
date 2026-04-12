@@ -33,9 +33,11 @@ archeia/
 └── install.sh               # Symlinks all skills into ~/.claude/skills/
 ```
 
-## Skill Pipeline (codebase domain)
+## Skill Pipelines by Domain
 
-Skills in the codebase domain run in a fixed order against a **target repository** (not this repo). Each reads artifacts produced by earlier skills:
+### Codebase domain
+
+Skills run in a fixed order against a **target repository**. Each reads artifacts produced by earlier skills:
 
 1. **`archeia:scan-repo`** → `.archeia/codebase/scan-report.md` (quantitative metrics, README coverage gaps)
 2. **`archeia:scan-git`** → `.archeia/codebase/git-report.md` (team dynamics, collaboration patterns)
@@ -43,6 +45,24 @@ Skills in the codebase domain run in a fixed order against a **target repository
 4. **`archeia:write-readmes`** → colocated `README.md` per directory (driven by scan-report coverage table)
 5. **`archeia:write-agents-docs`** → colocated `agents.md` + `claude.md` pairs (only where local rules differ from root)
 6. **`archeia:draw-diagrams`** → `.archeia/codebase/diagrams/` Mermaid files generated from the C4 JSONs
+
+### Product domain (ported from hstack)
+
+1. **`archeia:clarify-idea`** → `.archeia/business/drafts/*.md` — explore a rough idea, save a design brief
+2. **`archeia:create-vision`** → `.archeia/business/vision/*.md` — pressure-test a plan and save a vision artifact
+3. **`archeia:review-draft`** → `.archeia/product/product.md` (locked) — convert a `status: review` draft into the implementation-ready spec
+4. **`archeia:lock-spec`** → `.archeia/product/decisions/*.md` — append an ADR-style decision record
+
+### Execution domain (ported from track)
+
+1. **`archeia:setup-track`** → scaffolds `.archeia/execution/` in an adopting repo (script installation is Phase 3+ — see SKILL.md migration note)
+2. **`archeia:create`** → `.archeia/execution/projects/*.md` or `.archeia/execution/tasks/*.md` — create projects/tasks from natural language, reads `.archeia/product/product.md` when present
+3. **`archeia:decompose`** → breaks a project brief into parallel task files
+4. **`archeia:work`** → runs the active work session on a tracked task
+5. **`archeia:todo`** → regenerates `BOARD.md` / `TODO.md` / `PROJECTS.md` views (requires the not-yet-ported `track-todo.sh`)
+6. **`archeia:update-track`** → auto-update skills at session start
+
+**Execution domain port note:** Only SKILL.md files, `work/references/`, and the four template readmes under `setup-track/assets/` were ported in Phase 2. The bash enforcement layer (`scripts/`, git hooks, GitHub Actions workflows, `install-manifest.json`, `track-ruleset.json`) stays in `github.com/Hugopeck/track` and can be selectively backported later. See the migration note at the top of each execution SKILL.md.
 
 ## Cross-Domain Contracts
 
