@@ -64,6 +64,16 @@ Skills run in a fixed order against a **target repository**. Each reads artifact
 
 **Execution domain port note:** Only SKILL.md files, `work/references/`, and the four template readmes under `setup-track/assets/` were ported in Phase 2. The bash enforcement layer (`scripts/`, git hooks, GitHub Actions workflows, `install-manifest.json`, `track-ruleset.json`) stays in `github.com/Hugopeck/track` and can be selectively backported later. See the migration note at the top of each execution SKILL.md.
 
+## Personal Subagents
+
+The `agents/` folder at the repo root contains Claude Code **subagents** — role-shaped AI assistants (`architect`, `engineer`) that install to `~/.claude/agents/` and become available in every repo. They coexist with the domain skills under `skills/`: skills own workflows, agents own roles.
+
+Each agent is Archeia-aware: its system prompt names the exact `.archeia/<domain>/` paths it reads and writes. When invoked in a repo without `.archeia/`, the agent falls back to generic code-reading behavior.
+
+`install.sh` symlinks each `agents/*.md` (except the README) into `~/.claude/agents/<name>.md`. Symlinks mean a `git pull` here immediately updates the installed agents with no re-install step.
+
+See `agents/README.md` for the install flow, invocation patterns, and how to add new agents.
+
 ## Cross-Domain Contracts
 
 See `standard/SCHEMA.md` for the full ownership and read/write rules. The three contracts that span domains:
