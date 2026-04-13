@@ -1,72 +1,48 @@
-# Archeia
+# Archeia Solo — Reference Distribution of the Archeia Standard
 
-**A standard for organizing project knowledge inside software repositories.**
+This repository is **Archeia Solo**, the canonical software reference implementation of the [Archeia Standard](https://github.com/Hugopeck/archeia-standard). The open spec lives upstream; this repo contains the skills, agents, and tooling that implement the Solo distribution for solo builders shipping bootstrapped AI-first software products.
 
-The spec lives at [`standard/SCHEMA.md`](standard/SCHEMA.md). This repo is the reference implementation.
+If you want to understand the standard, read it upstream. If you want to adopt the standard as a solo operator, install this repo.
 
-## The Problem
-
-Architecture knowledge lives in a senior dev's head. Product decisions live in Notion. Business strategy lives in a founder's pitch deck. Growth experiments live in a spreadsheet. Task state lives in Jira. None of it lives where agents can see it — next to the code.
-
-AI agents compensate by reading file names, inferring structure, and guessing. They get the topology wrong because the topology was never written down in a place they could find. When agents do produce documentation, there's no standard for where it goes, who owns it, or what format it takes. Every project reinvents this from scratch.
-
-## The Standard
-
-Archeia defines a canonical location (`.archeia/`), a fixed set of domains, clear ownership per domain, and contracts for cross-domain reads. The five domains:
-
-| Domain | Purpose | Owner |
-|---|---|---|
-| `business/` | Why we're building, for whom, how we make money | Business skills |
-| `product/` | Locked, implementation-ready spec | Product skills |
-| `codebase/` | What the code is right now (descriptive, regenerable) | Codebase skills |
-| `growth/` | How we acquire, retain, monetize | Growth skills |
-| `execution/` | What we're doing right now | Execution skills |
-
-Each domain is independent. A project might use only some of them. Full details in [`standard/SCHEMA.md`](standard/SCHEMA.md).
-
-## Reference Implementation
-
-This repo ships skills organized by domain. Each skill is a `SKILL.md` file containing YAML frontmatter plus a prompt/workflow:
-
-```
-skills/
-├── product/            # Product-domain skills (from former hstack)
-│   ├── clarify-idea
-│   └── create-vision
-├── codebase/           # Codebase-domain skills (the former archeia pipeline)
-│   ├── scan-repo
-│   ├── scan-git
-│   ├── write-tech-docs
-│   ├── write-readmes
-│   ├── write-agents-docs
-│   └── draw-diagrams
-└── execution/          # Execution-domain skills (from former track)
-    ├── work
-    ├── create
-    ├── decompose
-    ├── setup-track
-    ├── todo
-    └── update-track
-```
-
-Skills install under the `archeia:` namespace — e.g. `archeia:scan-repo`, `archeia:clarify-idea`, `archeia:work`. Not every project needs every skill.
-
-## Installation
+## Install
 
 ```bash
 git clone https://github.com/Hugopeck/archeia.git ~/.local/share/agent-skills/archeia
 bash ~/.local/share/agent-skills/archeia/install.sh
 ```
 
-## Built On
+`install.sh` symlinks every skill under `skills/<domain>/<name>/` into `~/.claude/skills/` and every agent under `agents/*.md` into `~/.claude/agents/`. Symlinks mean a `git pull` here immediately updates the installed skills and agents with no re-install step.
 
-- [C4 Model](https://c4model.com/) — Three-level architecture zoom driving `codebase/architecture/*.json`
-- [arc42](https://arc42.org/overview) — Architecture documentation template
-- [Diataxis](https://docs.diataxis.fr/) — Separation of reference, how-to, explanation, tutorial
-- [Docs as Code](https://www.docops.io/docs-as-code/) — Documentation lives in the repo
-- [agents.md](https://www.agents.md/) — Open standard for agent-readable docs
-- [ADR](https://adr.github.io/) — Decision capture format used in `product/decisions/`
+## What's in this repo
+
+- **[`DISTRIBUTION.md`](DISTRIBUTION.md)** — the Solo distribution spec. Audience, kernel conformance, skill roster, agent roster, status vocabularies, retention windows, ethos, forward workflow, install, and pending-work disclosure. This is the canonical description of what Archeia Solo is and is not.
+- **`skills/`** — 16 skills organized by domain:
+  - `skills/product/` — `clarify-idea`, `create-vision`, `review-draft`, `lock-spec`
+  - `skills/codebase/` — `scan-repo`, `scan-git`, `write-tech-docs`, `write-readmes`, `write-agents-docs`, `draw-diagrams`
+  - `skills/execution/` — `work`, `create`, `decompose`, `setup-track`, `todo`, `update-track`
+  - `skills/business/` — reserved (per the standard)
+  - `skills/growth/` — reserved (per the standard)
+- **`agents/`** — personal Claude Code subagents (`architect`, `engineer`) that install to `~/.claude/agents/` and are available in every repo you open, not just Archeia ones.
+- **`evals/`** — the codebase-domain eval harness plus the smoke test suite (`evals/smoke/`) that verifies the harness and skill integration.
+
+## The upstream spec
+
+All structural claims and contracts come from [github.com/Hugopeck/archeia-standard](https://github.com/Hugopeck/archeia-standard). The key documents there:
+
+- **[MANIFESTO.md](https://github.com/Hugopeck/archeia-standard/blob/main/MANIFESTO.md)** — the one-page pitch
+- **[PRINCIPLES.md](https://github.com/Hugopeck/archeia-standard/blob/main/PRINCIPLES.md)** — the seven fundamental truths
+- **[KERNEL.md](https://github.com/Hugopeck/archeia-standard/blob/main/KERNEL.md)** — the formal substrate: primitives, invariants, operations, inherent skills
+- **[SCHEMA.md](https://github.com/Hugopeck/archeia-standard/blob/main/SCHEMA.md)** — the canonical software application of the kernel (five domains, three contracts)
+- **[TEMPORAL_MODEL.md](https://github.com/Hugopeck/archeia-standard/blob/main/TEMPORAL_MODEL.md)** — the three lifecycle shapes
+- **[ONTOLOGY.md](https://github.com/Hugopeck/archeia-standard/blob/main/ONTOLOGY.md)** — canonical vocabulary grounded in cognitive science and recent AI research
+- **[docs/memory-vs-knowledge.md](https://github.com/Hugopeck/archeia-standard/blob/main/docs/memory-vs-knowledge.md)** — the honest audit of what Archeia solves and what it doesn't
+
+## Why the split
+
+The Archeia Standard defines a kernel that distributions extend. Keeping the kernel inside one specific distribution's repo (Solo) contradicted the spec's own architectural claim. The split (completed 2026-04-13) positions future distributions (Research, Studio, Enterprise) as peers of Solo rather than children of it, and gives the standard an independent URL that can be cited without depending on any one distribution's repo layout.
+
+Prior history of the standard files lives in this repo under `git log --follow standard/<file>` for commits up through `e037dc8`. Going forward, standard-level changes happen upstream in `archeia-standard`; Solo-specific changes happen here.
 
 ## License
 
-MIT
+MIT.

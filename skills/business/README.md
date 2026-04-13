@@ -1,10 +1,10 @@
 # business domain (reserved)
 
-No dedicated business skills exist yet. This directory is reserved for future skills that own the `business/` domain as defined by the [Archeia Standard](../../standard/SCHEMA.md).
+No dedicated business skills exist yet. This directory is reserved for future skills that own the `business/` domain as defined by the [Archeia Standard](https://github.com/Hugopeck/archeia-standard/blob/main/SCHEMA.md).
 
 ## What the standard says
 
-Per `standard/SCHEMA.md`, the `business/` domain captures the holistic business vision — why this product exists, who it's for, how it makes money, and what the competitive landscape looks like. It's the upstream input to everything else.
+Per [`SCHEMA.md`](https://github.com/Hugopeck/archeia-standard/blob/main/SCHEMA.md), the `business/` domain captures the holistic business vision — why this product exists, who it's for, how it makes money, and what the competitive landscape looks like. It's the upstream input to everything else.
 
 Contents (per the standard):
 

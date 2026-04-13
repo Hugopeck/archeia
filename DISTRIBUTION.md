@@ -1,6 +1,6 @@
 # Archeia Solo — Distribution for Solo Builders
 
-> **The reference distribution.** Archeia Solo is the complete, unapologetically opinionated extension of [the Archeia Kernel](../KERNEL.md) for one specific audience: solo operators running bootstrapped software businesses with AI agents doing the bulk of the work. It ships 16 skills, a growing agent roster, explicit retention windows, and a philosophical ethos that refuses several framings (VC logic, PMF rituals, team-later assumptions) on purpose.
+> **The reference distribution.** Archeia Solo is the complete, unapologetically opinionated extension of [the Archeia Kernel](https://github.com/Hugopeck/archeia-standard/blob/main/KERNEL.md) for one specific audience: solo operators running bootstrapped software businesses with AI agents doing the bulk of the work. It ships 16 skills, a growing agent roster, explicit retention windows, and a philosophical ethos that refuses several framings (VC logic, PMF rituals, team-later assumptions) on purpose.
 >
 > If you're a solo builder shipping AI-assisted software that needs to earn from day one, this is the distribution you install. If you're any other kind of builder, this is still the best-documented Archeia distribution to read as a reference before writing your own.
 
@@ -33,7 +33,7 @@ These audiences have different needs and deserve their own distributions. Don't 
 
 ## 2. Kernel conformance
 
-Archeia Solo conforms to the [Archeia Kernel](../KERNEL.md) version `0.1.0` and uses the five canonical software domains from [`SCHEMA.md`](../SCHEMA.md). It does not add or remove domains. It does not add new lifecycle shapes. It picks specific owners, specific status vocabularies, specific retention windows, and specific skills — but nothing above the kernel line is modified.
+Archeia Solo conforms to the [Archeia Kernel](https://github.com/Hugopeck/archeia-standard/blob/main/KERNEL.md) version `0.1.0` and uses the five canonical software domains from [`SCHEMA.md`](https://github.com/Hugopeck/archeia-standard/blob/main/SCHEMA.md). It does not add or remove domains. It does not add new lifecycle shapes. It picks specific owners, specific status vocabularies, specific retention windows, and specific skills — but nothing above the kernel line is modified.
 
 **`standard/domains.yaml` for Archeia Solo:**
 
@@ -67,13 +67,13 @@ domains:
 contracts:
   - from: business
     to: product
-    schema: standard/contracts/draft.schema.json
+    schema: https://github.com/Hugopeck/archeia-standard/blob/main/contracts/draft.schema.json
   - from: product
     to: execution
-    schema: standard/contracts/product.schema.json
+    schema: https://github.com/Hugopeck/archeia-standard/blob/main/contracts/product.schema.json
   - from: codebase
     to: product
-    schema: standard/contracts/c4.schema.json
+    schema: https://github.com/Hugopeck/archeia-standard/blob/main/contracts/c4.schema.json
 ```
 
 Note that in Archeia Solo, `business/` is owned by `product-skills`. This is a known interim arrangement — the product-ideation skills (`clarify-idea`, `create-vision`) live under `skills/product/` and write to `.archeia/business/`. A future version may split this into a dedicated `business-skills` owner, but as of 1.0 the solo operator uses the same skill family for both domains.
@@ -117,7 +117,7 @@ Archeia Solo ships 16 skills organized by domain. All install under the `archeia
 
 ### Kernel-inherent skills
 
-Per [`KERNEL.md`](../KERNEL.md#6-inherent-skills), every distribution must provide implementations of:
+Per [`KERNEL.md`](https://github.com/Hugopeck/archeia-standard/blob/main/KERNEL.md#6-inherent-skills), every distribution must provide implementations of:
 
 - **`archeia:init`** — scaffold `.archeia/` and its five domains for a new project
 - **`archeia:validate`** — walk the tree and check conformance against schemas and shapes
@@ -263,7 +263,7 @@ A distribution that tried to accommodate both solo builders and VC-backed teams 
 
 ## 7. The forward workflow
 
-Archeia Solo's canonical workflow moves artifacts through the [forward flow](../TEMPORAL_MODEL.md#6-the-forward-flow-product--execution--codebase): `business → product → execution → codebase`.
+Archeia Solo's canonical workflow moves artifacts through the [forward flow](https://github.com/Hugopeck/archeia-standard/blob/main/TEMPORAL_MODEL.md#6-the-forward-flow-product--execution--codebase): `business → product → execution → codebase`.
 
 ```
 1. Idea strikes
@@ -381,12 +381,21 @@ These gaps are documented here rather than hidden because adopters deserve to kn
 
 ## 11. References
 
-- **[`../KERNEL.md`](../KERNEL.md)** — the abstract substrate Solo extends
-- **[`../SCHEMA.md`](../SCHEMA.md)** — the canonical five-domain software layout
-- **[`../PRINCIPLES.md`](../PRINCIPLES.md)** — the six fundamental truths
-- **[`../TEMPORAL_MODEL.md`](../TEMPORAL_MODEL.md)** — the three lifecycle shapes
-- **[`../../skills/`](../../skills/)** — the 16 skill implementations
-- **[`../../agents/`](../../agents/)** — the personal agent roster
-- **[`../../install.sh`](../../install.sh)** — the symlink installer
+Upstream — the Archeia Standard at [github.com/Hugopeck/archeia-standard](https://github.com/Hugopeck/archeia-standard):
+
+- **[`KERNEL.md`](https://github.com/Hugopeck/archeia-standard/blob/main/KERNEL.md)** — the abstract substrate Solo extends
+- **[`SCHEMA.md`](https://github.com/Hugopeck/archeia-standard/blob/main/SCHEMA.md)** — the canonical five-domain software layout
+- **[`PRINCIPLES.md`](https://github.com/Hugopeck/archeia-standard/blob/main/PRINCIPLES.md)** — the seven fundamental truths
+- **[`TEMPORAL_MODEL.md`](https://github.com/Hugopeck/archeia-standard/blob/main/TEMPORAL_MODEL.md)** — the three lifecycle shapes
+- **[`ONTOLOGY.md`](https://github.com/Hugopeck/archeia-standard/blob/main/ONTOLOGY.md)** — canonical vocabulary and academic grounding
+
+In this repo (Archeia Solo):
+
+- **[`skills/`](skills/)** — the 16 skill implementations
+- **[`agents/`](agents/)** — the personal agent roster
+- **[`install.sh`](install.sh)** — the symlink installer
+
+External:
+
 - **[Claude Code skill docs](https://code.claude.com/docs/en/skills)**
 - **[Claude Code subagent docs](https://code.claude.com/docs/en/sub-agents)**

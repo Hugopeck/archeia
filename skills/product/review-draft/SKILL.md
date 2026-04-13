@@ -5,7 +5,7 @@ description: Review a business draft and produce the locked product.md. Reads a 
 
 # review-draft
 
-Turn a reviewed business draft into the locked `product/product.md` spec. This skill closes the `business → product` contract defined by the Archeia Standard (`standard/SCHEMA.md`).
+Turn a reviewed business draft into the locked `product/product.md` spec. This skill closes the `business → product` contract defined by the Archeia Standard ([`SCHEMA.md`](https://github.com/Hugopeck/archeia-standard/blob/main/SCHEMA.md)).
 
 ## When to use
 

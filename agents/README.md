@@ -24,7 +24,7 @@ Subagents receive only their own system prompt (plus basic environment details) 
 
 ## Archeia awareness
 
-Each agent in this folder names the exact `.archeia/<domain>/` paths it reads and writes, per the [Archeia Standard](../standard/SCHEMA.md). This is deliberate — agents are meant to coordinate with the domain skills (`archeia:write-tech-docs`, `archeia:review-draft`, `archeia:work`) by reading the same `.archeia/` tree, not by inventing parallel state.
+Each agent in this folder names the exact `.archeia/<domain>/` paths it reads and writes, per the [Archeia Standard](https://github.com/Hugopeck/archeia-standard/blob/main/SCHEMA.md). This is deliberate — agents are meant to coordinate with the domain skills (`archeia:write-tech-docs`, `archeia:review-draft`, `archeia:work`) by reading the same `.archeia/` tree, not by inventing parallel state.
 
 **Still works in non-archeia repos.** When `.archeia/` doesn't exist in the target repo, each agent's "read this from `.archeia/...`" steps no-op and the agent falls back to generic code-reading behavior. You don't need the archeia monorepo cloned to use them.
 
@@ -59,4 +59,4 @@ See `architect.md` and `engineer.md` for the canonical file shape.
 ## Reference
 
 - Claude Code subagent docs: https://code.claude.com/docs/en/sub-agents
-- Archeia Standard (defines the `.archeia/<domain>/` paths the agents read): [`../standard/SCHEMA.md`](../standard/SCHEMA.md)
+- Archeia Standard (defines the `.archeia/<domain>/` paths the agents read): [`SCHEMA.md`](https://github.com/Hugopeck/archeia-standard/blob/main/SCHEMA.md)

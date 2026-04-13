@@ -1,14 +1,16 @@
 # AGENTS.md
 
+> This repo is **Archeia Solo**, the reference distribution of the [Archeia Standard](https://github.com/Hugopeck/archeia-standard). All references to "the standard" below link to the upstream repo.
+
 This file provides guidance to AI coding agents working in this repository.
 
 ## What This Repo Is
 
-Archeia is the reference implementation of the **Archeia Standard** — a standard for organizing project knowledge inside software repositories. The standard defines a canonical location (`.archeia/`), five domains (business, product, codebase, growth, execution), clear ownership per domain, and contracts for cross-domain reads.
+**Archeia Solo** is the canonical software reference implementation of the Archeia Standard — an open substrate for structured in-repo knowledge that AI agents and humans share. The standard defines a canonical location (`.archeia/`), five domains (business, product, codebase, growth, execution), clear ownership per domain, and contracts for cross-domain reads.
 
-The spec lives at [`standard/SCHEMA.md`](standard/SCHEMA.md). The reference implementation ships as a set of skills under `skills/`, organized by domain.
+The full spec lives upstream at [github.com/Hugopeck/archeia-standard](https://github.com/Hugopeck/archeia-standard). This repo ships the skills, agents, and tooling that implement the Solo distribution.
 
-This is a monorepo that absorbed three previous projects:
+Archeia Solo absorbed three previous projects during the monorepo bootstrap:
 - Former `archeia` (codebase domain) — now `skills/codebase/`
 - Former `hstack` (product domain) — now `skills/product/`
 - Former `track` (execution domain) — now `skills/execution/`
@@ -18,20 +20,23 @@ All skills install under the `archeia:` namespace — e.g. `archeia:scan-repo`, 
 ## Repo Layout
 
 ```
-archeia/
-├── standard/                # The spec
-│   ├── SCHEMA.md            # The Archeia Standard
-│   └── VERSION              # Semver for the standard
+archeia/                     # Archeia Solo — reference distribution
+├── DISTRIBUTION.md          # The Solo distribution spec
+├── README.md                # Landing page (points upstream at the standard)
+├── AGENTS.md                # This file
+├── CLAUDE.md                # Points at AGENTS.md
+├── install.sh               # Symlinks skills and agents into ~/.claude/
 ├── skills/
-│   ├── business/            # (stubbed, future)
-│   ├── product/             # Product-domain skills (formerly hstack)
-│   ├── codebase/            # Codebase-domain skills (formerly archeia)
-│   ├── growth/              # (stubbed, future)
-│   └── execution/           # Execution-domain skills (formerly track)
-├── evals/                   # Codebase-domain eval harness (Python)
-├── docs/                    # Reference bibliography
-└── install.sh               # Symlinks all skills into ~/.claude/skills/
+│   ├── business/            # (stubbed, reserved per the standard)
+│   ├── product/             # Product-domain skills (from former hstack)
+│   ├── codebase/            # Codebase-domain skills (from former archeia)
+│   ├── growth/              # (stubbed, reserved per the standard)
+│   └── execution/           # Execution-domain skills (from former track)
+├── agents/                  # Personal Claude Code subagents
+└── evals/                   # Codebase-domain eval harness + smoke tests
 ```
+
+The open standard itself — MANIFESTO, PRINCIPLES, KERNEL, SCHEMA, TEMPORAL_MODEL, ONTOLOGY, and the JSON schemas — lives upstream at [github.com/Hugopeck/archeia-standard](https://github.com/Hugopeck/archeia-standard).
 
 ## Skill Pipelines by Domain
 
@@ -76,7 +81,7 @@ See `agents/README.md` for the install flow, invocation patterns, and how to add
 
 ## Cross-Domain Contracts
 
-See `standard/SCHEMA.md` for the full ownership and read/write rules. The three contracts that span domains:
+See [`SCHEMA.md`](https://github.com/Hugopeck/archeia-standard/blob/main/SCHEMA.md) for the full ownership and read/write rules. The three contracts that span domains:
 
 - `business/drafts/*.md` → `product/product.md` (YAML frontmatter contract)
 - `product/product.md` → `execution/` (Features, Constraints, Priorities sections drive task creation)
@@ -129,4 +134,4 @@ When working on `archeia:write-tech-docs` or downstream consumers like `archeia:
 
 ## Ownership Rules
 
-Every file under `.archeia/` has exactly one owning domain. Skills write only to their own domain and read across domains freely. See `standard/SCHEMA.md` §Ownership Model for the full rules.
+Every file under `.archeia/` has exactly one owning domain. Skills write only to their own domain and read across domains freely. See [`SCHEMA.md`](https://github.com/Hugopeck/archeia-standard/blob/main/SCHEMA.md) §Ownership Model for the full rules.

@@ -1,10 +1,10 @@
 # growth domain (reserved)
 
-No growth skills exist yet. This directory is reserved for future skills that own the `growth/` domain as defined by the [Archeia Standard](../../standard/SCHEMA.md).
+No growth skills exist yet. This directory is reserved for future skills that own the `growth/` domain as defined by the [Archeia Standard](https://github.com/Hugopeck/archeia-standard/blob/main/SCHEMA.md).
 
 ## What the standard says
 
-Per `standard/SCHEMA.md`, the `growth/` domain captures how a product acquires, retains, and monetizes users. Growth is its own discipline — it reads from both business (strategy, pricing) and product (features, specs) but is subordinate to neither.
+Per [`SCHEMA.md`](https://github.com/Hugopeck/archeia-standard/blob/main/SCHEMA.md), the `growth/` domain captures how a product acquires, retains, and monetizes users. Growth is its own discipline — it reads from both business (strategy, pricing) and product (features, specs) but is subordinate to neither.
 
 Contents (per the standard):
 

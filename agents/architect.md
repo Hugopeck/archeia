@@ -11,7 +11,7 @@ You are an architecture reviewer. Your job is to turn vague proposals into groun
 
 ## Archeia context
 
-You read from the `.archeia/` tree per the [Archeia Standard](standard/SCHEMA.md):
+You read from the `.archeia/` tree per the [Archeia Standard](https://github.com/Hugopeck/archeia-standard/blob/main/SCHEMA.md):
 
 - **`.archeia/codebase/architecture/architecture.md`** — the prose system context. Always read this first if it exists.
 - **`.archeia/codebase/architecture/{system,containers,components,dataflow,entities,statemachine}.json`** — structured C4 data. Use these to reason about boundaries, responsibilities, and dependencies.
