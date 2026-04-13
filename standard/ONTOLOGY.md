@@ -2,7 +2,7 @@
 
 > **Purpose.** This document grounds every term the Archeia Standard uses in established academic literature — cognitive science, multi-agent systems, temporal databases, knowledge representation — and in the recent (2023–2026) AI agent research that is shaping vocabulary in real time. It is the reference every other Archeia document cites when it needs to justify a term.
 >
-> The field is pre-paradigmatic. Yegge, Harrison, Letta, Zep, Supermemory, Mem0, Anthropic, and a dozen academic groups are all using different words for overlapping concepts. Archeia's job is not to invent new words; it is to pick the canonical ones and say why.
+> The field is pre-paradigmatic. Garry Tan, Harrison Chase, Sarah Wooders, Michael Chomsky, Letta, Zep, Supermemory, Mem0, Anthropic, and a dozen academic groups are all using different words for overlapping concepts. Archeia's job is not to invent new words; it is to pick the canonical ones and say why.
 
 ---
 
@@ -16,7 +16,7 @@ Every claim in this document is anchored to one of three source types:
 
 - **Classical academic** — peer-reviewed work from 1959–2021, verified against primary sources.
 - **Recent AI research** — arXiv papers from 2023–2026, verified against the paper text where possible.
-- **Industry coinage** — terms from Anthropic, Letta, Yegge, Harrison, or the broader agent-framework community that haven't yet crystallized in academia. Used sparingly and always flagged.
+- **Industry coinage** — terms from Anthropic, Letta, Garry Tan, Harrison Chase, Sarah Wooders, or the broader agent-framework community that haven't yet crystallized in academia. Used sparingly and always flagged.
 
 ---
 
@@ -39,9 +39,11 @@ Before defining terms, we need to say where Archeia sits in the stack. Every dis
 |  The harness that loads skills, invokes the model,   |
 |  manages context, and reads/writes artifacts.        |
 |  Claude Code, Cursor, OpenCode, bespoke runtimes.    |
-|  <-- Yegge's "thin harness, fat skills" operates      |
-|      here. Harrison's "compaction" concerns operate  |
-|      here.                                            |
+|  <-- Garry Tan's "thin harness, fat skills" operates  |
+|      here. Harrison Chase's "your harness, your      |
+|      memory" argument operates here. Sarah Wooders'  |
+|      "memory isn't a plugin, it's the harness"       |
+|      operates here.                                   |
 +------------------------------------------------------+
                          |
                          |  runs
@@ -110,7 +112,7 @@ This mapping is why Archeia's three lifecycle shapes aren't arbitrary: they corr
 
 **Definition:** The process by which labile, detail-rich memories (episodic) are transformed into stable, structured, generalized knowledge (semantic) through re-examination, pattern extraction, and integration with prior knowledge.
 
-**Archeia role:** The Archeia kernel operation `consolidate` (see §4.6) names this process in the agent context. When an agent reads multiple source artifacts and produces a structured target artifact with citations, it is performing consolidation. This replaces Yegge's informal "diarize" term (which is a misapplied metaphor from speech processing) with the cognitive-science term for exactly this operation.
+**Archeia role:** The Archeia kernel operation `consolidate` (see §4.6) names this process in the agent context. When an agent reads multiple source artifacts and produces a structured target artifact with citations, it is performing consolidation. This replaces Garry Tan's informal "diarize" term from "Thin Harness, Fat Skills" (which was a misapplied metaphor from speech processing) with the cognitive-science term for exactly this operation.
 
 ### 3.4 Temporal modeling (bi-temporal)
 
@@ -126,7 +128,7 @@ This mapping is why Archeia's three lifecycle shapes aren't arbitrary: they corr
 
 A fact can have a transaction time of "March 15" and a valid time of "Q2 2025 through Q1 2026." Knowing when it was recorded is not the same as knowing when it's true.
 
-**Archeia role:** Archeia is currently **only transaction-time aware** (via git). Zep and Harrison's critique — that git knows when a file changed but not whether it's still true — is a real gap. The Archeia schemas for living documents and accumulating records now support an optional `last_verified` frontmatter field (the nearest practical proxy for valid time) so that staleness is detectable.
+**Archeia role:** Archeia is currently **only transaction-time aware** (via git). Zep's and Michael Chomsky's critique — that git knows when a file changed but not whether it's still true — is a real gap. The Archeia schemas for living documents and accumulating records now support an optional `last_verified` frontmatter field (the nearest practical proxy for valid time) so that staleness is detectable.
 
 A future Archeia extension may adopt fuller bi-temporal support — `valid_from` / `valid_until` on accumulating records, periodic re-verification of living documents — but even the minimal `last_verified` addition materially improves selective forgetting, which is one of the four canonical memory competencies MemoryAgentBench uses to score memory systems (see §6).
 
@@ -197,7 +199,7 @@ The full specification is in [`TEMPORAL_MODEL.md`](TEMPORAL_MODEL.md). This sect
 
 **Definition:** Read a set of source artifacts and produce or update a target artifact that integrates their content with cited evidence. The target is typically a living document (e.g., `architecture.md` consolidating source files, scan reports, and git history) or an accumulating record (e.g., a retrospective consolidating session traces).
 
-**Why this replaces "diarize":** The term "diarize" in Yegge's article is a metaphor stretched from **speaker diarization** (Tranter & Reynolds, "An overview of automatic speaker diarization systems," *IEEE TASLP* 14(5):1557–1565, 2006), which means "determining who spoke when" in an audio recording. This is a completely different operation — it's speaker identification, not synthesis from multiple sources. Using "diarize" to mean "synthesize structured judgment from many documents" is a category error that would fail peer review.
+**Why this replaces "diarize":** The term "diarize" in Garry Tan's "Thin Harness, Fat Skills" (X post, April 10, 2026) is a metaphor stretched from **speaker diarization** (Tranter & Reynolds, "An overview of automatic speaker diarization systems," *IEEE TASLP* 14(5):1557–1565, 2006), which means "determining who spoke when" in an audio recording. This is a completely different operation — it's speaker identification, not synthesis from multiple sources. Using "diarize" to mean "synthesize structured judgment from many documents" is a category error that would fail peer review.
 
 **Consolidation is the right term** because it is:
 - The biological process that takes fragmented experience and produces structured long-term memory (exact match to the operation)
@@ -269,7 +271,7 @@ When Archeia says "the `.archeia/` tree is the project's mind," we are not speak
 
 ## 6. The four memory competencies
 
-Harrison's critique identified "four memory jobs" but did not cite their source. The source is:
+Michael Chomsky's analysis essay (X, April 11, 2026) identified "four memory jobs" but did not cite their source. The source is:
 
 **Canonical source:** Yifan Hu, Yining Wang & Julian McAuley, "Evaluating Memory in LLM Agents via Incremental Multi-Turn Interactions" (**MemoryAgentBench**), arXiv:2507.05257, 2025.
 
@@ -319,13 +321,13 @@ The third point is Archeia's one hard requirement on harnesses: **compaction mus
 
 **Definition:** A **skill** is a reusable, parameterizable procedure — typically a Markdown document with YAML frontmatter — that teaches a model how to execute a specific workflow. Skills encode process, not content. The same skill invoked with different parameters produces different outcomes.
 
-**"Fat skills, thin harness"** (Yegge's claim) means: put the reusable procedural knowledge in skill files, keep the runtime that executes them as small as possible. This is consistent with Anderson's production-system architecture in ACT-R (1993): knowledge lives in productions (condition-action rules), and the runtime is a simple matcher-executor.
+**"Fat skills, thin harness"** (Garry Tan's framing in "Thin Harness, Fat Skills," X, April 10, 2026) means: put the reusable procedural knowledge in skill files, keep the runtime that executes them as small as possible. This is consistent with Anderson's production-system architecture in ACT-R (1993): knowledge lives in productions (condition-action rules), and the runtime is a simple matcher-executor. Tan's own reference implementation is **gstack** ([github.com/garrytan/gstack](https://github.com/garrytan/gstack)) — 23 Claude Code skills organized as a "virtual engineering organization" (CEO, designer, QA, security, release engineer roles). It is the working proof-of-concept for the thin-harness / fat-skills architecture.
 
 **Archeia role:** Skills live outside `.archeia/` — they are writers, not artifacts. The `skills/` folder at the repo root is where the reference implementation keeps them. A conforming distribution may organize skills differently; what matters is that skills produce and consume artifacts conforming to the schemas.
 
 ### The parameterized-skill refinement
 
-Yegge's sharpest contribution on skills is that **they are method calls with parameters, not undifferentiated prompts**. The same `/investigate` skill with `(TARGET=<medical>, QUESTION=<safety>, DATASET=<discovery-emails>)` produces a medical research analyst; with different parameters it produces a forensic investigator. The procedure is the same; the parameters are the world.
+Garry Tan's sharpest contribution on skills is that **they are method calls with parameters, not undifferentiated prompts**. The same `/investigate` skill with `(TARGET=<medical>, QUESTION=<safety>, DATASET=<discovery-emails>)` produces a medical research analyst; with different parameters it produces a forensic investigator. The procedure is the same; the parameters are the world.
 
 Archeia should adopt this refinement explicitly in the skill format spec. Current `SKILL.md` frontmatter is:
 
@@ -352,7 +354,7 @@ parameters:
 ---
 ```
 
-This is consistent with how Claude Code's skill description field already functions as an implicit parameter-matcher (via the resolver pattern Yegge describes), but making it explicit lets harnesses validate inputs at invocation time.
+This is consistent with how Claude Code's skill description field already functions as an implicit parameter-matcher (via the resolver pattern Garry Tan describes), but making it explicit lets harnesses validate inputs at invocation time.
 
 This refinement is a planned Phase-C update to [`KERNEL.md`](KERNEL.md), not yet shipped.
 
@@ -360,7 +362,7 @@ This refinement is a planned Phase-C update to [`KERNEL.md`](KERNEL.md), not yet
 
 ## 9. Latent vs deterministic
 
-**Canonical source:** Steve Yegge (informal industry framing). No classical academic source for this specific framing, but the underlying distinction is **exact computation vs approximate computation** from numerical analysis, and **declarative vs procedural reasoning** from cognitive architectures (Anderson 1993, ACT-R).
+**Canonical source:** Garry Tan, "Thin Harness, Fat Skills" (X post, April 10, 2026). No classical academic source for this specific framing, but the underlying distinction is **exact computation vs approximate computation** from numerical analysis, and **declarative vs procedural reasoning** from cognitive architectures (Anderson 1993, ACT-R).
 
 **Definition:** Work that requires judgment, synthesis, or pattern recognition belongs in **latent space** (the model does it). Work that requires exact reproducibility belongs in **deterministic code** (compiled programs, SQL queries, scripts, validators). Putting deterministic work in latent space is the most common failure mode in agent design.
 
@@ -435,7 +437,7 @@ All other Archeia terms should be replaceable with or glossed by their canonical
 
 Claims we have not been able to verify against primary sources, even with web search of recent literature:
 
-1. **Sarah Wooders — "memory is context management, not a retrieval problem."** The concept is central to Letta's philosophy and consistent with MemGPT, but the exact phrasing could not be located in Wooders' talks, papers, or interviews. Archeia cites the **concept** (paraphrased, attributed to Letta's approach) rather than a direct quote.
+1. **Sarah Wooders — "Why memory isn't a plugin (it's the harness)."** *(Previously unverified; now verified.)* X thread, April 4, 2026. Verified quote: **"Asking to plug memory into an agent harness is like asking to plug driving into a car."** Earlier drafts of this document paraphrased the concept as "memory is context management, not a retrieval problem" while noting the exact quote could not be located. The correct exact quote has now been located; Archeia cites Wooders' verified wording going forward. The concept — that managing context (and therefore memory) is a core responsibility of the harness itself, not a plugin — is identical to what Archeia had been attributing to her in paraphrased form.
 
 2. **McDaniel & Einstein "canonical year"** for prospective memory. No single founding paper; the 2007 Sage book *Prospective Memory: An Overview and Synthesis of an Emerging Field* is the most-cited synthesis and what Archeia cites.
 
@@ -499,6 +501,14 @@ Papers cited in this document, grouped by category.
 - Nygard, M. (2011). Documenting Architecture Decisions. [cognitect.com/blog](https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions)
 - Tranter, S. E. & Reynolds, D. A. (2006). An overview of automatic speaker diarization systems. *IEEE Transactions on Audio, Speech, and Language Processing* 14(5):1557–1565.
 
+### Industry essays and primary sources (April 2026)
+- Chase, H. (2026). Your harness, your memory. *LangChain Blog, In the Loop Series*, April 11, 2026. https://blog.langchain.com/your-harness-your-memory/
+- Chomsky, M. (2026). [Analysis of Garry Tan and Harrison Chase on harness + memory]. X, April 11, 2026. https://x.com/michael_chomsky/status/2043369126631207096
+- Tan, G. (2026). Thin Harness, Fat Skills. X, April 10, 2026. https://x.com/garrytan/status/2042925773300908103
+- Tan, G. (2026). gbrain — personal knowledge management with git-backed markdown + Postgres/pgvector retrieval. https://github.com/garrytan/gbrain
+- Tan, G. (2026). gstack — 23 Claude Code skills organized as a virtual engineering organization. https://github.com/garrytan/gstack
+- Wooders, S. (2026). Why memory isn't a plugin (it's the harness). X thread, April 4, 2026. https://x.com/sarahwooders/status/2040121230473457921
+
 ### Recent AI research (2023–2026)
 - Hu, Y., Wang, Y. & McAuley, J. (2025). Evaluating memory in LLM agents via incremental multi-turn interactions (MemoryAgentBench). arXiv:2507.05257.
 - Lee, Y., Nair, R., Zhang, Q., Lee, K., Khattab, O. & Finn, C. (2026). Meta-Harness: End-to-end optimization of model harnesses. arXiv:2603.28052.
@@ -519,13 +529,21 @@ Papers cited in this document, grouped by category.
 
 ## 15. Acknowledgments
 
-The research underlying this ontology draws on three specific pieces of prior work that reshaped earlier Archeia drafts:
+The research underlying this ontology draws on four specific pieces of prior work from April 2026 that reshaped earlier Archeia drafts:
 
-- **Steve Yegge's "The Harness Is The Product" essay (2026).** Introduced the thin-harness / fat-skills framing, the latent-vs-deterministic distinction, and the parameterized-skill view. Archeia's Truth #7 and the harness section both follow from this reading.
-- **Harrison's response essay on memory (2026).** Argued that memory is context management, not retrieval, and audited file-based memory against the four MemoryAgentBench competencies. Archeia's `docs/memory-vs-knowledge.md` audit is a direct response to this critique.
-- **Sarah Wooders and the Letta team.** The framing of memory as a context-management problem (rather than a storage/retrieval problem) runs through Letta's work even where the exact quote is hard to pin down. Archeia's handling of the harness boundary owes directly to this framing.
+- **Garry Tan, "Thin Harness, Fat Skills"** (X, [April 10, 2026](https://x.com/garrytan/status/2042925773300908103)). Introduced the thin-harness / fat-skills framing, the latent-vs-deterministic distinction, and the parameterized-skill view. Archeia's Truth #7 and the skill format spec in [`KERNEL.md`](KERNEL.md#10-skill-format-parameterized-procedures) both follow from this reading. Tan's own reference implementations are [gstack](https://github.com/garrytan/gstack) (23 Claude Code skills as a "virtual engineering organization") and [gbrain](https://github.com/garrytan/gbrain) (personal knowledge management).
 
-The error of using "diarize" for the knowledge-consolidation operation is acknowledged as Archeia's own false start in earlier drafts. The correction to `consolidate` is documented in this file as the canonical term.
+- **Sarah Wooders, "Why memory isn't a plugin (it's the harness)"** (X thread, [April 4, 2026](https://x.com/sarahwooders/status/2040121230473457921)). Sarah is CTO of [Letta](https://letta.com) (formerly MemGPT). The verified exact quote: *"Asking to plug memory into an agent harness is like asking to plug driving into a car. Managing context, and therefore memory, is a core capability and responsibility of the agent harness."* This framing is the source of Archeia's harness-boundary section in [`KERNEL.md`](KERNEL.md#9-where-the-harness-fits) — the claim that compaction policy is harness business, but persistence guarantees are contract business.
+
+- **Harrison Chase, "Your harness, your memory"** (LangChain Blog, [April 11, 2026](https://blog.langchain.com/your-harness-your-memory/)). Harrison is CEO of LangChain. His essay argues that agent harnesses and agent memory are inseparable, that closed harnesses create memory lock-in ("if you use a closed harness, especially if its behind an API, you don't own your memory"), and that open harnesses (like LangChain's Deep Agents) are the right response. Archeia's kernel-and-distribution framing is aligned with this claim: the Archeia Standard is an open contract at the knowledge layer, and any conforming harness — Claude Code, Cursor, Deep Agents, OpenCode, bespoke — can participate.
+
+- **Michael Chomsky, analysis essay** (X, [April 11, 2026](https://x.com/michael_chomsky/status/2043369126631207096)). Chomsky analyzed both Garry Tan and Harrison Chase and argued that *both* oversimplify memory — Garry by trusting markdown files alone, Harrison by making memory sound tractable. His essay introduced the four memory competencies as the audit framework (sourced from MemoryAgentBench, Hu et al. 2025). Archeia's [`docs/memory-vs-knowledge.md`](../docs/memory-vs-knowledge.md) audit is a direct response to Chomsky's critique. Chomsky also points out that Garry Tan's own `gbrain` project uses Postgres + pgvector underneath the markdown interface — evidence that even the strongest file-based-memory advocate needed a real database to make it work.
+
+The error of using "diarize" for the knowledge-consolidation operation (inherited from Garry Tan's "Thin Harness, Fat Skills") is acknowledged as Archeia's own false start in earlier drafts. The correction to `consolidate` is documented in this file as the canonical term.
+
+### Earlier attribution error (now corrected)
+
+Earlier drafts of Archeia's documentation incorrectly credited **Steve Yegge** with authorship of "The Harness Is The Product" / "Thin Harness, Fat Skills." Yegge is a name that appears in Garry Tan's essay (quoted for the "10x to 100x productivity" claim), not the author. The correct author is Garry Tan, YC president. This ontology document — along with [`PRINCIPLES.md`](PRINCIPLES.md), [`KERNEL.md`](KERNEL.md), and [`../docs/memory-vs-knowledge.md`](../docs/memory-vs-knowledge.md) — was corrected to reflect the actual authorship in kernel version 0.2.1.
 
 ---
 

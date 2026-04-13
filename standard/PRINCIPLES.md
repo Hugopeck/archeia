@@ -154,7 +154,7 @@ Second, distributions must declare which of their custom artifacts and operation
 
 **Consequence:** when designing any part of a distribution, ask "is this judgment or is this computation?" If it is computation, write code. If it is judgment, write a skill. The cheapest LLM budget is the budget you never spent because a validator handled the work.
 
-Steve Yegge's "The Harness Is The Product" (2026) is the clearest informal statement of this principle. There is no single academic source, but the underlying distinction maps to the declarative/procedural split in cognitive architectures (Anderson 1993, ACT-R) and to the exact/approximate distinction in numerical analysis.
+Garry Tan's "Thin Harness, Fat Skills" (X, [April 10, 2026](https://x.com/garrytan/status/2042925773300908103)) is the clearest informal statement of this principle. There is no single academic source, but the underlying distinction maps to the declarative/procedural split in cognitive architectures (Anderson 1993, ACT-R) and to the exact/approximate distinction in numerical analysis.
 
 ---
 

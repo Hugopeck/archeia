@@ -171,7 +171,7 @@ The operation's return type is distribution-defined (a structured list, a timeli
 
 **Effect:** read a set of source artifacts (files, git history, external data, prior `.archeia/` artifacts) and produce or update a target artifact that integrates their content with cited evidence.
 
-**Academic grounding:** this operation implements **memory consolidation** in the cognitive-science sense (Müller & Pilzecker 1900; Squire & Alvarez, *Current Opinion in Neurobiology* 5:169–177, 1995) — the process by which labile, detail-rich traces become stable, structured knowledge. In current LLM-agent literature the operation is typically called **"knowledge consolidation"** and is used throughout MemoryAgentBench (Hu et al., arXiv:2507.05257, 2025) and the Agent-Memory Survey. Earlier drafts of this kernel used the term "diarize" from Yegge (2026); that term was a misapplied metaphor from speech-processing speaker diarization (Tranter & Reynolds, *IEEE TASLP* 14(5), 2006), which means something completely different. The term has been corrected to `consolidate` as of kernel version 0.2.0. See [`ONTOLOGY.md`](ONTOLOGY.md) §4.6 for the full history.
+**Academic grounding:** this operation implements **memory consolidation** in the cognitive-science sense (Müller & Pilzecker 1900; Squire & Alvarez, *Current Opinion in Neurobiology* 5:169–177, 1995) — the process by which labile, detail-rich traces become stable, structured knowledge. In current LLM-agent literature the operation is typically called **"knowledge consolidation"** and is used throughout MemoryAgentBench (Hu et al., arXiv:2507.05257, 2025) and the Agent-Memory Survey. Earlier drafts of this kernel used the term "diarize" from Garry Tan's "Thin Harness, Fat Skills" (X, April 10, 2026); that term was a misapplied metaphor from speech-processing speaker diarization (Tranter & Reynolds, *IEEE TASLP* 14(5), 2006), which means something completely different. The term has been corrected to `consolidate` as of kernel version 0.2.0. See [`ONTOLOGY.md`](ONTOLOGY.md) §4.6 for the full history.
 
 **Contract:**
 
@@ -328,7 +328,7 @@ If a harness compacts away a pending write to `.archeia/product/product.md`, tha
 - Tool-call logs that are already persisted elsewhere (e.g., in the harness's own session log)
 - Anything that has been consolidated into a durable artifact in the last turn
 
-This division of labor is consistent with Sarah Wooders' and the Letta team's framing of memory as **context management** rather than a retrieval problem. The harness manages what lives in the context window at any moment; Archeia provides the durable substrate the context window reads from and writes to. Neither layer replaces the other.
+This division of labor is consistent with Sarah Wooders' framing in "Why memory isn't a plugin (it's the harness)" (X, April 4, 2026): *"Asking to plug memory into an agent harness is like asking to plug driving into a car. Managing context, and therefore memory, is a core capability and responsibility of the agent harness."* The harness manages what lives in the context window at any moment; Archeia provides the durable substrate the context window reads from and writes to. Neither layer replaces the other. This framing is also the core argument of Harrison Chase's "Your harness, your memory" (LangChain Blog, April 11, 2026), which makes the case that closed harnesses yield memory ownership to third parties and that open harnesses are the necessary response — an argument Archeia's open-standard approach aligns with directly.
 
 ### Why this matters
 
@@ -377,7 +377,7 @@ operation: consolidate
 ---
 ```
 
-The `parameters` field is a refinement adopted from Yegge's "The Harness Is The Product" essay (2026) and supported by recent literature on atomic skills (Ma et al., arXiv:2604.05013, 2026). The core insight is that **skills are method calls with typed parameters, not undifferentiated prompts**. The same `/investigate` skill with different parameters produces radically different behaviors. Making this explicit lets harnesses validate inputs at invocation time and lets skill authors reason about reuse.
+The `parameters` field is a refinement adopted from Garry Tan's "Thin Harness, Fat Skills" essay (X, [April 10, 2026](https://x.com/garrytan/status/2042925773300908103)) and supported by recent literature on atomic skills (Ma et al., arXiv:2604.05013, 2026). The core insight is that **skills are method calls with typed parameters, not undifferentiated prompts**. The same `/investigate` skill with different parameters produces radically different behaviors. Making this explicit lets harnesses validate inputs at invocation time and lets skill authors reason about reuse. Tan's own reference implementation is [gstack](https://github.com/garrytan/gstack) — 23 Claude Code skills organized as a virtual engineering organization.
 
 The `reads` and `writes` fields declare the skill's `.archeia/` footprint. The `operation` field names which kernel operation the skill implements. These fields are not required for backward compatibility, but distributions that ship new skills are strongly encouraged to populate them, and kernel version 1.0 may make them mandatory.
 
@@ -429,7 +429,7 @@ The kernel uses semantic versioning. `standard/VERSION` at the repo root contain
 - **Minor version bump** — additive changes: new optional fields, new optional operations, new validation checks that don't break existing conforming repos.
 - **Patch version bump** — clarifications, documentation fixes, or non-normative additions.
 
-The current kernel version is **0.2.0**. The 0.1 → 0.2 bump reflects the addition of `consolidate` as a sixth operation (renaming the earlier `diarize` term per the ontology work), the addition of Truth #7 (latent vs deterministic) to PRINCIPLES.md, the addition of the harness boundary section (§9), and the parameterized-skill format refinement (§10). The kernel will reach **1.0.0** when the first external distribution (not Archeia Solo) is shipped and the kernel has survived that contact with a new audience.
+The current kernel version is **0.2.1**. The 0.1 → 0.2 bump reflected the addition of `consolidate` as a sixth operation (renaming the earlier `diarize` term per the ontology work), the addition of Truth #7 (latent vs deterministic) to PRINCIPLES.md, the addition of the harness boundary section (§9), and the parameterized-skill format refinement (§10). The 0.2.0 → 0.2.1 patch bump corrects attribution errors across the ontology and audit docs: the "Thin Harness, Fat Skills" essay is by **Garry Tan** (not Steve Yegge, who was only quoted in it); the verified Sarah Wooders quote from "Why memory isn't a plugin (it's the harness)" is now cited correctly; Harrison Chase's "Your harness, your memory" (LangChain Blog) is now cited directly; and Michael Chomsky's analysis essay (which introduced the four-memory-competencies audit framework via MemoryAgentBench) is now cited separately from Harrison Chase's essay. The kernel will reach **1.0.0** when the first external distribution (not Archeia Solo) is shipped and the kernel has survived that contact with a new audience.
 
 ---
 

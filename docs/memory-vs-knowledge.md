@@ -8,15 +8,23 @@
 
 ## 1. Why this document exists
 
-In April 2026, two widely-read essays appeared within a week of each other:
+In April 2026, four essays appeared within a week of each other, all arguing about the same underlying question: what is the right architecture for agent memory, and who gets to own it?
 
-- **Steve Yegge, "The Harness Is The Product"** — argued that AI agent productivity comes from the thin-harness + fat-skills architecture, with specific contributions on latent-vs-deterministic work allocation and skill-as-method-call semantics.
+- **Sarah Wooders, "Why memory isn't a plugin (it's the harness)"** ([X thread, April 4, 2026](https://x.com/sarahwooders/status/2040121230473457921)) — argued that memory is not a separate service that plugs into an agent; it is what the harness *is*. Verified exact quote: *"Asking to plug memory into an agent harness is like asking to plug driving into a car. Managing context, and therefore memory, is a core capability and responsibility of the agent harness."*
 
-- **Harrison (@harrisons), "Memory Is Not a Storage Problem"** — responded that Yegge and Garry Tan both underplay memory, that file-based memory is a starting posture but not the end state, and that nobody — not Letta, not Zep, not Supermemory, not Mem0, not Archeia — has memory right yet.
+- **Garry Tan, "Thin Harness, Fat Skills"** ([X, April 10, 2026](https://x.com/garrytan/status/2042925773300908103)) — argued that AI agent productivity comes from the thin-harness + fat-skills architecture, with specific contributions on latent-vs-deterministic work allocation and skill-as-method-call semantics. Tan's reference implementations are [gstack](https://github.com/garrytan/gstack) (23 Claude Code skills as a "virtual engineering organization") and [gbrain](https://github.com/garrytan/gbrain) (personal knowledge management).
 
-Harrison's critique lands. Archeia has been marketed primarily as a **storage and structure** proposition, and for the central cases that's correct and useful. But Harrison's honest summary — "nobody has memory right" — is what makes his essay the most credible voice in the conversation. Archeia should match that honesty rather than overclaim.
+- **Harrison Chase, "Your harness, your memory"** ([LangChain Blog, April 11, 2026](https://blog.langchain.com/your-harness-your-memory/)) — argued that agent harnesses and agent memory are inseparable, that closed harnesses create memory lock-in, and that open harnesses (like LangChain's Deep Agents) are the necessary response. Key claim: *"If you use a closed harness, especially if its behind an API, you don't own your memory."*
+
+- **Michael Chomsky, analysis essay** ([X, April 11, 2026](https://x.com/michael_chomsky/status/2043369126631207096)) — analyzed Garry Tan's and Harrison Chase's positions and argued that *both* oversimplify memory. Garry by trusting markdown files alone (Chomsky's key counterpoint: Garry's own `gbrain` project uses Postgres + pgvector underneath the markdown interface — evidence that even the strongest file-based-memory advocate needed a real database to make it work). Harrison by making memory sound tractable. Chomsky's essay introduced the **four memory competencies** from MemoryAgentBench as the audit framework any memory claim should face, and his summary — *"nobody has memory right"* — is the most credible framing in the current debate.
+
+Chomsky's critique lands hardest on Archeia. Archeia has been marketed primarily as a **storage and structure** proposition, and for the central cases that's correct and useful. But Chomsky's honest summary is what makes his essay the most credible voice in the conversation. Archeia should match that honesty rather than overclaim.
 
 This document is the match. It audits Archeia against the four canonical memory competencies from the academic literature, says where Archeia is strong, where it's partial, where it's weak, and where it explicitly defers to a different layer of the stack.
+
+### Earlier attribution error (now corrected)
+
+Earlier drafts of this document incorrectly credited **Steve Yegge** with authorship of "The Harness Is The Product" / "Thin Harness, Fat Skills." Yegge appears in Garry Tan's essay only as a quoted source for the "10x to 100x as productive" claim; the essay itself is Tan's. Earlier drafts also conflated **Harrison Chase's** "Your harness, your memory" argument with **Michael Chomsky's** four-memory-competencies critique — these are two different essays by two different authors with overlapping but distinct claims. Both errors were corrected in kernel version 0.2.1.
 
 ---
 
@@ -29,7 +37,7 @@ The most rigorous academic framing of what an agent memory system must do is **M
 3. **Long-range understanding** — connect information across sessions separated in time.
 4. **Selective forgetting** — recognize when a memory is stale and stop relying on it.
 
-Harrison's "four jobs" are a paraphrase of these four competencies. The framing is canonical and any agent-memory claim should be audited against all four.
+Michael Chomsky's "four jobs" framing in his April 11, 2026 analysis is a paraphrase of these four canonical competencies. The framing is canonical and any agent-memory claim should be audited against all four.
 
 ---
 
@@ -92,7 +100,7 @@ The cross-domain contracts in Archeia are **static schemas** (this frontmatter f
 
 **The minimal bi-temporal support** added in 0.2.0 (the `last_verified` frontmatter field on living documents and accumulating records) is a *staleness signal* but not active forgetting. A reader who sees `last_verified: 2025-08-15` on today's architecture doc can infer that the doc is probably stale. Archeia does not currently have a skill that reviews these timestamps and prunes, re-verifies, or flags stale artifacts.
 
-**This is the weakest of Archeia's four competencies.** Harrison's critique is exactly right on this point: git preserves history perfectly but nothing in git tells you whether a file's contents are still *true*. Bi-temporal databases solve this by tracking valid time as a first-class field; Archeia currently only proxies it via `last_verified`, and we have no tooling to enforce re-verification cadence.
+**This is the weakest of Archeia's four competencies.** Chomsky's critique is exactly right on this point: git preserves history perfectly but nothing in git tells you whether a file's contents are still *true*. Bi-temporal databases solve this by tracking valid time as a first-class field; Archeia currently only proxies it via `last_verified`, and we have no tooling to enforce re-verification cadence.
 
 A future `archeia:verify-stale` skill (not yet shipped) would walk living documents and accumulating records, compare `last_verified` against distribution-defined staleness thresholds, and produce a "stale knowledge report" that distributions could surface to the operator. This is documented as Phase-D work.
 
@@ -105,7 +113,7 @@ A future `archeia:verify-stale` skill (not yet shipped) would walk living docume
 
 ### 3.5 The proactive injection problem — DISSOLVED FOR CENTRAL CASES, UNSOLVED FOR PERIPHERAL CASES
 
-**Harrison's proactive injection problem**: how do you get the right memory into context when the agent doesn't know it should be searching?
+**Chomsky's proactive injection problem**: how do you get the right memory into context when the agent doesn't know it should be searching?
 
 His example: "A coding agent drifts off-track and violates a pattern your team agreed on three months ago. The memory exists. The agent didn't search for it because it didn't know it was relevant."
 
@@ -139,7 +147,21 @@ Archeia is NOT:
 
 The honest framing is that **Archeia is the knowledge layer; a full memory solution also needs a dynamic memory layer**. They compose. A distribution could plug a Zep/Graphiti-style memory engine into the harness layer while persisting durable outputs to an Archeia tree at the knowledge layer. Neither replaces the other.
 
-This is the right frame. Claiming "Archeia solves memory" would be overclaiming and Harrison would be right to call it out. Claiming "Archeia is the structural substrate that makes memory solutions tractable, and it composes cleanly with dynamic memory engines above it" is accurate and defensible.
+### The gbrain data point — what Garry Tan's own practice reveals
+
+Michael Chomsky's analysis essay surfaced a load-bearing observation that deserves its own section: Garry Tan's own **gbrain** project, the canonical reference implementation of the "markdown is memory" philosophy, **uses Postgres and pgvector underneath the markdown interface** for actual retrieval. The README is explicit about the three-layer architecture:
+
+1. **Brain Repo (git):** markdown as source of truth — the layer users see and edit
+2. **GBrain (retrieval):** Postgres with pgvector for hybrid search — the layer that actually answers queries
+3. **AI Agent layer:** read/write interface over the other two
+
+The point is not that gbrain is wrong. gbrain is *correct* — at scale, markdown files alone cannot serve search queries efficiently, and a real database is required. The point is that **even the strongest public advocate of "markdown is sufficient" built a database underneath when he had to ship a working system**. This is evidence for Chomsky's case that file-based memory is the right *starting* posture but not the end state, and it is evidence against any reading of Archeia that claims the filesystem alone replaces all database infrastructure.
+
+**What this means for Archeia's positioning**: Archeia provides the structural and human-readable layer (equivalent to gbrain's "Brain Repo" layer). A production distribution that scales beyond single-operator projects will eventually need something like gbrain's middle layer — a real database for efficient retrieval, search, and graph queries — layered on top of the Archeia tree. This is not a failure of Archeia; it is a correct division of labor. Archeia specifies the canonical persistent substrate that humans and agents can both read and edit; downstream tooling can index and serve that substrate however it needs to. gbrain itself is a proof-of-concept that this division works in practice.
+
+Archeia should explicitly welcome downstream retrieval layers rather than claim the filesystem alone is sufficient for every scale. Adding the gbrain architecture pattern as a recommended companion approach — Archeia tree as the source-of-truth, Postgres+pgvector (or equivalent) as the retrieval and query engine — is on the roadmap for Phase D, alongside the formal integration spec for dynamic memory systems (§6.5 below).
+
+This is the right frame. Claiming "Archeia solves memory" would be overclaiming and Chomsky would be right to call it out. Claiming "Archeia is the structural substrate that makes memory solutions tractable, and it composes cleanly with dynamic memory engines above it" is accurate and defensible. It also aligns directly with Harrison Chase's "Your harness, your memory" argument that an open contract at the knowledge layer — exactly what Archeia provides — is what lets operators avoid yielding memory ownership to closed harnesses.
 
 ---
 
@@ -215,12 +237,18 @@ For the second list, consider Zep/Graphiti or Letta for dynamic memory at the ha
 
 ## 8. Credit where it's due
 
-This document exists because two essays made it impossible to ignore the gaps:
+This document exists because four essays from April 2026 made it impossible to ignore the gaps:
 
-- **Steve Yegge**, "The Harness Is The Product" (2026). Identified the harness as a first-class layer, introduced the latent-vs-deterministic distinction (now Truth #7 in Archeia's principles), and clarified skills as parameterized method calls.
-- **Harrison**, "Memory Is Not a Storage Problem" (2026). Forced the honest audit. His "nobody has memory right" summary is the most credible framing in the current debate and Archeia matches it here.
-- **Sarah Wooders and the Letta team.** The framing of memory as context management rather than retrieval runs through Letta's work. Archeia's harness-boundary spec (KERNEL.md §9) owes directly to this framing. Exact quote unverified; concept is central to Letta's approach.
+- **Sarah Wooders**, "Why memory isn't a plugin (it's the harness)" ([X thread, April 4, 2026](https://x.com/sarahwooders/status/2040121230473457921)). CTO of Letta (formerly MemGPT). Provided the verified framing that grounds Archeia's harness-boundary spec in KERNEL.md §9. Exact verified quote: *"Asking to plug memory into an agent harness is like asking to plug driving into a car. Managing context, and therefore memory, is a core capability and responsibility of the agent harness."*
+
+- **Garry Tan**, "Thin Harness, Fat Skills" ([X, April 10, 2026](https://x.com/garrytan/status/2042925773300908103)). Identified the harness as a first-class layer, introduced the latent-vs-deterministic distinction (now Truth #7 in Archeia's principles), and clarified skills as parameterized method calls. His reference implementations are [gstack](https://github.com/garrytan/gstack) (23 Claude Code skills as a virtual engineering organization) and [gbrain](https://github.com/garrytan/gbrain) (personal knowledge management with a Postgres+pgvector retrieval layer underneath the markdown source-of-truth — see §4 for why this data point matters).
+
+- **Harrison Chase**, "Your harness, your memory" ([LangChain Blog, April 11, 2026](https://blog.langchain.com/your-harness-your-memory/)). CEO of LangChain. Argued that agent harnesses and agent memory are inseparable, that closed harnesses create memory lock-in, and that open harnesses — open contracts at the knowledge layer — are the necessary response. Archeia's open-standard framing at the knowledge layer aligns directly with this argument.
+
+- **Michael Chomsky**, analysis essay ([X, April 11, 2026](https://x.com/michael_chomsky/status/2043369126631207096)). Forced the honest audit by running Garry Tan's and Harrison Chase's positions against each other and against the gbrain evidence. Introduced the four-memory-competencies framework (sourcing it from MemoryAgentBench) as the canonical audit for any memory system. His summary — *"nobody has memory right"* — is the most credible framing in the current debate and Archeia matches it here.
+
 - **The MemoryAgentBench team** (Hu, Wang & McAuley, arXiv:2507.05257, 2025). Providing the four canonical memory competencies against which any memory claim should be audited. This document uses their framework directly.
+
 - **Theodore Sumers and the CoALA team** (arXiv:2309.02427, 2023). Establishing the bridge from Tulving's memory taxonomy to LLM agents. Archeia extends this bridge to the persistent-knowledge layer.
 
 The honest position is: Archeia is a structural contribution to agentic development that makes other memory solutions tractable. It is not a full memory solution and it does not pretend to be. The field is pre-paradigmatic, the problems are genuinely hard, and credibility comes from saying so.
@@ -231,6 +259,15 @@ The honest position is: Archeia is a structural contribution to agentic developm
 
 Cited directly in this document:
 
+### Primary-source essays (April 2026)
+- Chase, H. (2026). Your harness, your memory. *LangChain Blog*, April 11, 2026. https://blog.langchain.com/your-harness-your-memory/
+- Chomsky, M. (2026). [Analysis of Garry Tan and Harrison Chase on harness + memory]. X post, April 11, 2026. https://x.com/michael_chomsky/status/2043369126631207096
+- Tan, G. (2026). Thin Harness, Fat Skills. X post, April 10, 2026. https://x.com/garrytan/status/2042925773300908103
+- Tan, G. (2026). gbrain (personal knowledge management with Postgres+pgvector retrieval). https://github.com/garrytan/gbrain
+- Tan, G. (2026). gstack (Claude Code skills as a virtual engineering organization). https://github.com/garrytan/gstack
+- Wooders, S. (2026). Why memory isn't a plugin (it's the harness). X thread, April 4, 2026. https://x.com/sarahwooders/status/2040121230473457921
+
+### Academic research
 - Cao, W., et al. (2026). Coding Agents are Effective Long-Context Processors. arXiv:2603.20432.
 - Hu, Y., Wang, Y. & McAuley, J. (2025). Evaluating Memory in LLM Agents via Incremental Multi-Turn Interactions (MemoryAgentBench). arXiv:2507.05257.
 - Packer, C., Fang, S., Patil, S. G., Wooders, S., Lin, K. & Gonzalez, J. E. (2023). MemGPT: Towards LLMs as Operating Systems. arXiv:2310.08560.
