@@ -1,8 +1,10 @@
-# The Six Fundamental Truths
+# The Seven Fundamental Truths
 
-The Archeia Standard rests on six claims about how AI coding agents actually work — two about the problems agentic work hits today, and four about the substrate that dissolves them. Every design decision in the kernel — the directory layout, the ownership rules, the temporal model, the frontmatter schemas — follows from these six.
+The Archeia Standard rests on seven claims about how AI coding agents actually work — two about the problems agentic work hits today, five about how the substrate should be shaped to dissolve them. Every design decision in the kernel — the directory layout, the ownership rules, the temporal model, the frontmatter schemas — follows from these seven.
 
-If any of the six turn out to be wrong, Archeia is wrong. They are load-bearing. They are what we're putting our names on.
+If any of the seven turn out to be wrong, Archeia is wrong. They are load-bearing. They are what we're putting our names on.
+
+Each principle is cross-referenced to its canonical academic source in [`ONTOLOGY.md`](ONTOLOGY.md), which documents the full citations.
 
 ---
 
@@ -105,6 +107,8 @@ The kernel operations split cleanly by shape: `advance` and `complete` and `prun
 
 **Consequence:** most of `.archeia/` is living documents backed by git, which means the standard doesn't need a universal temporal state field, doesn't need supersession chains for most artifacts, and doesn't bloat over time. The minority of artifacts that genuinely need lifecycle tracking get it, with retention windows that match how humans actually work with operational state.
 
+The three-shapes model is not arbitrary. It maps 1:1 onto Endel Tulving's canonical memory taxonomy (1972) — living documents are **semantic memory**, accumulating records are **episodic memory**, transient artifacts in a terminal state are **prospective memory** that has become past. Sumers et al.'s "Cognitive Architectures for Language Agents" (CoALA, arXiv:2309.02427, 2023) established the bridge from Tulving's taxonomy to LLM agent systems at the in-context layer; Archeia extends the same bridge to the in-repo persistent layer. See [`ONTOLOGY.md`](ONTOLOGY.md) §3.2 for the full mapping and citations.
+
 See [`TEMPORAL_MODEL.md`](TEMPORAL_MODEL.md) for the full specification — the three shapes, the status-to-temporal mapping for transient artifacts, the retention-window conventions, and worked examples across all five domains.
 
 ---
@@ -121,11 +125,40 @@ This is what makes Archeia a genuinely open standard rather than a framework. An
 
 It also makes every integration transparent. Humans can read the handoff by opening the file. The state of the system is always inspectable with `ls` and `cat`. There is no "black box" in the agent pipeline because every intermediate step is a file sitting on disk with a timestamp.
 
+This is not a new pattern — it is **stigmergy**, the coordination mechanism Pierre-Paul Grassé described in termite colonies in 1959 and Theraulaz & Bonabeau formalized for multi-agent systems in 1999. Michael Elliott extended it to wiki-based and open-source collaboration in 2006. Agents leave traces in a shared environment; other agents read the traces and act; no direct communication required. Archeia is the application of stigmergy to multi-agent LLM coordination via a structured filesystem. See [`ONTOLOGY.md`](ONTOLOGY.md) §5.2.
+
 **Consequence:** you can build multi-agent systems that span tools, frameworks, and languages without writing any integration code. As long as every participant obeys the standard, composition is free.
 
 ---
 
-## The six truths together
+## 7. Latent and deterministic work belong in different places
+
+Some work in an agent system requires judgment, synthesis, or pattern recognition — that lives in the **latent space** of the model. Some work requires exact reproducibility, bit-for-bit correctness, or large-scale combinatorial search — that lives in **deterministic code**: compiled programs, SQL queries, scripts, validators, and schema checkers. Confusing the two is the most common failure mode in agent design.
+
+The classic illustration: a model can seat eight people at a dinner table, accounting for personalities and social dynamics. Ask it to seat eight hundred and it will hallucinate a seating chart that looks plausible but violates most of the constraints. Seating eight is judgment work (latent); seating eight hundred is combinatorial optimization (deterministic). Forcing the second into the first is where systems fail.
+
+This principle has two practical consequences for Archeia. First, **every kernel operation is either latent or deterministic**, and the kernel says which:
+
+| Operation | Latent or deterministic | Why |
+|---|---|---|
+| `advance` | Deterministic | Status transition, frontmatter update |
+| `complete` | Deterministic | Status transition, timestamp recording |
+| `prune` | Deterministic | Retention-window check, file deletion |
+| `supersede` | Deterministic | Write new record, update old record's status field |
+| `evolve` | Deterministic | Git log / on-disk graph traversal |
+| `consolidate` | Latent | Read multiple sources, produce structured synthesis with cited evidence |
+
+Only `consolidate` is latent. The other five are mechanical and should not burn LLM tokens. A distribution that implements them as model calls is wasting budget.
+
+Second, distributions must declare which of their custom artifacts and operations are latent and which are deterministic. A skill that "validates" schema conformance by asking the model is doing the wrong work — use a JSON Schema validator. A skill that "reviews" a draft is doing the right work — use the model. Getting this boundary right is the difference between an agent system that ships and one that hallucinates.
+
+**Consequence:** when designing any part of a distribution, ask "is this judgment or is this computation?" If it is computation, write code. If it is judgment, write a skill. The cheapest LLM budget is the budget you never spent because a validator handled the work.
+
+Steve Yegge's "The Harness Is The Product" (2026) is the clearest informal statement of this principle. There is no single academic source, but the underlying distinction maps to the declarative/procedural split in cognitive architectures (Anderson 1993, ACT-R) and to the exact/approximate distinction in numerical analysis.
+
+---
+
+## The seven truths together
 
 Each principle is useful alone. Together they compound:
 
@@ -134,8 +167,9 @@ Each principle is useful alone. Together they compound:
 - **Truth #3** names the substrate that dissolves both: the filesystem as database *and* canvas.
 - **Truth #4** names the coordination model: ownership plus subagent delegation.
 - **Truth #5** names the lifecycle model: three shapes (living, accumulating, transient), each with different rules.
-- **Truth #6** names the composition model: files as the message bus.
+- **Truth #6** names the composition model: files as the message bus (stigmergy).
+- **Truth #7** names the computational allocation rule: latent vs deterministic work belongs in different places.
 
-Remove any one and the others break. Without naming both bottlenecks, there's no reason to adopt the substrate. Without the substrate, you end up building a memory service *and* a project board and gluing them together. Without ownership + delegation, you need a distributed coordination protocol. Without the three shapes, you either bloat the filesystem forever or delete artifacts that future work needs to reference — wiki rot eats you either way. Without file-based composition, you're back to framework lock-in and adapter code between every pair of agents.
+Remove any one and the others break. Without naming both bottlenecks, there's no reason to adopt the substrate. Without the substrate, you end up building a memory service *and* a project board and gluing them together. Without ownership + delegation, you need a distributed coordination protocol. Without the three shapes, you either bloat the filesystem forever or delete artifacts that future work needs to reference — wiki rot eats you either way. Without file-based composition, you're back to framework lock-in and adapter code between every pair of agents. Without the latent/deterministic split, you burn LLM budget on work that belongs in compiled code, and the system hallucinates instead of shipping.
 
-The standard is what you get when you follow all six at the same time and let them collide. What falls out is Archeia.
+The standard is what you get when you follow all seven at the same time and let them collide. What falls out is Archeia.

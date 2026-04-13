@@ -16,11 +16,11 @@ Archeia closes both gaps by putting the project's mind inside the project's repo
 
 A single directory, `.archeia/`, at the root of your project. Five canonical domains inside it:
 
-- **`business/`** — why we're building, for whom, how we earn
-- **`product/`** — what we've committed to build
-- **`codebase/`** — what the code is, right now
-- **`growth/`** — how we acquire, retain, monetize
-- **`execution/`** — what we're doing right now
+- `**business/`** — why we're building, for whom, how we earn
+- `**product/**` — what we've committed to build
+- `**codebase/**` — what the code is, right now
+- `**growth/**` — how we acquire, retain, monetize
+- `**execution/**` — what we're doing right now
 
 Every artifact inside has a **temporal state** — past, present, or future — in its frontmatter. Every domain has exactly one writer family. Every file is markdown with YAML frontmatter, readable by humans in any editor and parseable by agents in any framework.
 
@@ -71,10 +71,10 @@ If you're building something else — a research pipeline, a game studio workflo
 
 ## Start here
 
-- **Read the kernel:** [`standard/SCHEMA.md`](../standard/SCHEMA.md) — the formal spec
-- **Read the principles:** [`standard/PRINCIPLES.md`](../standard/PRINCIPLES.md) — the five fundamental truths
-- **Read the temporal model:** [`standard/TEMPORAL_MODEL.md`](../standard/TEMPORAL_MODEL.md) — past, present, future and why it matters
-- **Try Archeia Solo:** [`standard/distributions/solo-builder.md`](../standard/distributions/solo-builder.md) — the reference distribution, ready to install
+- **Read the kernel:** `[standard/SCHEMA.md](../standard/SCHEMA.md)` — the formal spec
+- **Read the principles:** `[standard/PRINCIPLES.md](../standard/PRINCIPLES.md)` — the five fundamental truths
+- **Read the temporal model:** `[standard/TEMPORAL_MODEL.md](../standard/TEMPORAL_MODEL.md)` — past, present, future and why it matters
+- **Try Archeia Solo:** `[standard/distributions/solo-builder.md](../standard/distributions/solo-builder.md)` — the reference distribution, ready to install
 - **Install:** `bash install.sh` drops the skills into `~/.claude/skills/` and the agents into `~/.claude/agents/`
 
 Archeia is a way to give AI agents a shared memory and a way of working together. It's small enough to explain on one page and rigorous enough to implement as an open standard. The rest is skills, agents, and the discipline to write everything down where the agents can find it.

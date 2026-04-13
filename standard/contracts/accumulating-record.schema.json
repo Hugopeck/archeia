@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://archeia.dev/schemas/accumulating-record.schema.json",
   "title": "Accumulating Record",
-  "description": "Base schema for Archeia accumulating records — append-only artifacts (ADRs, retros, experiment outcomes) that stay on disk forever and are never pruned.",
+  "description": "Base schema for Archeia accumulating records — append-only artifacts (ADRs, retros, experiment outcomes) that stay on disk forever and are never pruned. Corresponds to episodic memory in the Tulving/CoALA taxonomy.",
   "type": "object",
   "properties": {
     "title": {
@@ -34,18 +34,25 @@
     "superseded_by": {
       "type": ["string", "null"],
       "description": "Relative path to the successor record, if this record has been superseded."
+    },
+    "last_verified": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Optional ISO 8601 timestamp indicating when the record's content was last confirmed to still be in force. For ADRs this is the last time the decision was reviewed and confirmed as still active. A gap between last_verified and now() signals staleness — a record claiming status:active but with a very old last_verified should be reviewed. This is Archeia's minimum viable bi-temporal support (valid time proxy)."
     }
   },
   "required": ["title", "created", "status"],
   "additionalProperties": true,
   "archeia": {
     "shape": "accumulating",
-    "operations": ["supersede", "evolve"],
-    "history": "on-disk",
+    "cognitive_role": "episodic memory (Tulving 1972; CoALA, arXiv:2309.02427, 2023)",
+    "operations": ["supersede", "evolve", "consolidate"],
+    "history": "on-disk forever; also in git",
     "pruning": "never",
     "permitted_mutations": [
       "status: active -> superseded",
-      "superseded_by: null -> <path>"
+      "superseded_by: null -> <path>",
+      "last_verified: <timestamp> (updatable on re-verification)"
     ]
   }
 }

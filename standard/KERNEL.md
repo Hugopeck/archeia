@@ -58,13 +58,13 @@ A **shape** is one of three lifecycle categories every artifact belongs to:
 - **Accumulating** — append-only record, status field tracks relevance, never pruned
 - **Transient** — flows through status values with bounded retention, pruned when expired
 
-The full specification of the three shapes is in [`TEMPORAL_MODEL.md`](TEMPORAL_MODEL.md).
+The full specification of the three shapes is in `[TEMPORAL_MODEL.md](TEMPORAL_MODEL.md)`.
 
 ### 2.5 Owner
 
 Every domain has exactly one **owner** — a writer family (a specific skill or an agent role) authorized to write to that domain. Owners are declared in the distribution's `standard/domains.yaml`.
 
-One owner per domain. Many readers. Per Truth #4 in [`PRINCIPLES.md`](PRINCIPLES.md), parallelism comes from subagent delegation, not concurrent writes.
+One owner per domain. Many readers. Per Truth #4 in `[PRINCIPLES.md](PRINCIPLES.md)`, parallelism comes from subagent delegation, not concurrent writes.
 
 ### 2.6 Schema
 
@@ -93,24 +93,18 @@ A **writer** is anything that produces artifacts — agents, skills, scripts, hu
 Every conforming implementation MUST uphold these seven invariants. Violation of any one means the implementation is non-conforming.
 
 1. **Knowledge lives in the root.** Artifacts are stored in `.archeia/` under the project root. Not in a wiki, not in a URL, not behind auth. In the root, versioned with the code, visible in every clone.
-
 2. **Every artifact has exactly one owning domain.** No shared ownership, no multi-domain artifacts, no cross-domain writes.
-
 3. **Every artifact has exactly one lifecycle shape.** Living, accumulating, or transient — pick one and follow its rules.
-
 4. **Reads are free; writes are owner-only.** Any agent, skill, or human can read any artifact under `.archeia/`. Only the domain owner can write. Cross-domain coordination happens through reads of contract-conforming artifacts, not through cross-domain writes.
-
 5. **Every factual claim cites a source.** Descriptive artifacts (scan reports, architecture docs derived from code, git history analyses) must cite the file paths or commits their claims come from. Prescriptive artifacts (vision, strategy, decisions) must cite their rationale and the prior artifacts they build on.
-
 6. **Cross-domain dependencies are declared contracts, not inferred.** If domain B reads from domain A, there must be a JSON Schema under `standard/contracts/` describing the exact frontmatter and structure B relies on.
-
 7. **History is preserved.** Living documents preserve history in git. Accumulating records preserve history on disk forever. Transient artifacts preserve history in git after pruning. No history is destroyed.
 
 ---
 
 ## 4. The three lifecycle shapes
 
-See [`TEMPORAL_MODEL.md`](TEMPORAL_MODEL.md) for the full specification. This section defines only what the kernel requires.
+See `[TEMPORAL_MODEL.md](TEMPORAL_MODEL.md)` for the full specification. This section defines only what the kernel requires.
 
 A conforming implementation MUST:
 
@@ -121,11 +115,13 @@ A conforming implementation MUST:
 
 ---
 
-## 5. The five kernel operations
+## 5. The six kernel operations
 
-Every conforming distribution MUST provide these five operations, either as skills the user can invoke by name or as functions the distribution's tooling calls internally. The kernel does not specify implementation — only the operation's contract.
+Every conforming distribution MUST provide these six operations, either as skills the user can invoke by name or as functions the distribution's tooling calls internally. The kernel does not specify implementation — only the operation's contract.
 
-### 5.1 `advance`
+Per [Truth #7 of PRINCIPLES.md](PRINCIPLES.md#7-latent-and-deterministic-work-belong-in-different-places), each operation is tagged as **latent** (judgment / synthesis, done by the model) or **deterministic** (mechanical, done by compiled code). Only `consolidate` is latent; the others are deterministic and should not burn LLM tokens.
+
+### 5.1 `advance` — deterministic
 
 **Applies to:** transient artifacts only.
 
@@ -133,7 +129,7 @@ Every conforming distribution MUST provide these five operations, either as skil
 
 **Example:** a task with `status: todo` (future) → `status: active` (present), `started: <now>`.
 
-### 5.2 `complete`
+### 5.2 `complete` — deterministic
 
 **Applies to:** transient artifacts only.
 
@@ -141,7 +137,7 @@ Every conforming distribution MUST provide these five operations, either as skil
 
 **Example:** a task with `status: active` → `status: done`, `completed: <now>`.
 
-### 5.3 `prune`
+### 5.3 `prune` — deterministic
 
 **Applies to:** transient artifacts only.
 
@@ -149,7 +145,7 @@ Every conforming distribution MUST provide these five operations, either as skil
 
 **Example:** a task with `status: done`, `completed: 2026-03-29T16:45:00Z` and a 14-day retention window is pruned on or after 2026-04-12.
 
-### 5.4 `supersede`
+### 5.4 `supersede` — deterministic
 
 **Applies to:** accumulating records only.
 
@@ -157,7 +153,7 @@ Every conforming distribution MUST provide these five operations, either as skil
 
 **Example:** ADR `20260115-row-level-security.md` is superseded by `20260801-schema-per-tenant.md`. Both files stay on disk; the old one has `status: superseded`.
 
-### 5.5 `evolve`
+### 5.5 `evolve` — deterministic
 
 **Applies to:** all shapes, with different semantics per shape.
 
@@ -169,19 +165,46 @@ Every conforming distribution MUST provide these five operations, either as skil
 
 The operation's return type is distribution-defined (a structured list, a timeline, a diff view) but the contract is consistent: "show me how this thing changed over time."
 
+### 5.6 `consolidate` — latent
+
+**Applies to:** living documents and accumulating records. Never produces transient artifacts — consolidation outputs are meant to persist.
+
+**Effect:** read a set of source artifacts (files, git history, external data, prior `.archeia/` artifacts) and produce or update a target artifact that integrates their content with cited evidence.
+
+**Academic grounding:** this operation implements **memory consolidation** in the cognitive-science sense (Müller & Pilzecker 1900; Squire & Alvarez, *Current Opinion in Neurobiology* 5:169–177, 1995) — the process by which labile, detail-rich traces become stable, structured knowledge. In current LLM-agent literature the operation is typically called **"knowledge consolidation"** and is used throughout MemoryAgentBench (Hu et al., arXiv:2507.05257, 2025) and the Agent-Memory Survey. Earlier drafts of this kernel used the term "diarize" from Yegge (2026); that term was a misapplied metaphor from speech-processing speaker diarization (Tranter & Reynolds, *IEEE TASLP* 14(5), 2006), which means something completely different. The term has been corrected to `consolidate` as of kernel version 0.2.0. See [`ONTOLOGY.md`](ONTOLOGY.md) §4.6 for the full history.
+
+**Contract:**
+
+1. **Inputs**: a set of source artifacts (paths, git refs, external data sources) and a target artifact path.
+2. **Target shape constraint**: the target MUST be a living document or an accumulating record. Transient artifacts are not valid consolidation targets.
+3. **Evidence rule**: every substantive claim in the target MUST cite at least one source from the inputs. Claims that cannot be evidenced must be flagged in-line with `<!-- INSUFFICIENT EVIDENCE: [description] -->` rather than fabricated.
+4. **Idempotence**: semantically idempotent. Two runs of the same consolidation over the same inputs must produce semantically equivalent outputs; the exact prose may differ because the operation is latent, but the set of claims and citations must be the same up to paraphrase.
+5. **Bi-temporal metadata**: when consolidating into a living document, the operation MUST update the target's `last_verified` frontmatter field to the current timestamp. This gives readers a staleness signal: a living document whose `last_verified` is months old is less trustworthy than one verified today.
+6. **Latent budget warning**: consolidation is the only kernel operation that burns LLM tokens. Distributions should track consolidation frequency and cost, and skill authors should keep consolidation scopes narrow — large consolidations produce worse output and cost more.
+
+**Examples:**
+
+- `archeia:write-tech-docs` reads source files, config, and git history, and consolidates them into `.archeia/codebase/architecture/architecture.md`. Every architectural claim cites at least one source file path.
+- `archeia:scan-git` reads git history and consolidates it into `.archeia/codebase/git-report.md`. Every claim about contributors or churn cites the git log.
+- `archeia:review-draft` reads a `business/drafts/*.md` proposal plus `.archeia/codebase/architecture/` and consolidates them into updates to `.archeia/product/product.md` plus a new entry in `.archeia/product/decisions/`.
+- `archeia:clarify-idea` reads the operator's rough idea, prior drafts, and optionally landscape research, and consolidates them into a new business draft.
+
+Most of what Archeia skills actually do is consolidation. Naming the operation explicitly makes it possible to specify its contract, measure its cost, and audit its evidence discipline.
+
 ---
 
 ## 6. Inherent skills
 
-Every conforming distribution MUST provide these five skills under its own namespace. A distribution named `archeia-solo` provides `archeia:init`, `archeia:validate`, etc. A future `archeia-research` distribution would provide the same operations under the same names.
+Every conforming distribution MUST provide these six skills under its own namespace. A distribution named `archeia-solo` provides `archeia:init`, `archeia:validate`, etc. A future `archeia-research` distribution would provide the same operations under the same names.
 
-| Skill | What it does |
-|---|---|
-| **`archeia:init`** | Scaffold `.archeia/` for a new project. Creates the domain directories per the distribution's `standard/domains.yaml`, writes a default `standard/SCHEMA.md` pointer, creates a `standard/VERSION` file, and copies in the contract schemas. Idempotent — running on an existing root is a no-op plus a validation pass. |
-| **`archeia:validate`** | Walk `.archeia/`, check every artifact against its domain's shape and schema, verify cross-domain contracts, check that all transient artifacts have valid status values per the distribution's status vocabulary, verify ownership is respected. Report conformance issues with file-path citations. |
-| **`archeia:advance`** | The `advance` kernel operation. |
-| **`archeia:complete`** | The `complete` kernel operation. |
-| **`archeia:prune`** | Walk all transient artifacts, identify expired ones (past-state status with terminal timestamp + retention window elapsed), and delete them. Each deletion is a git commit. Distributions may wrap this as a scheduled maintenance skill. |
+| Skill | Latent / Deterministic | What it does |
+| --- | --- | --- |
+| **`archeia:init`** | Deterministic | Scaffold `.archeia/` for a new project. Creates the domain directories per the distribution's `standard/domains.yaml`, writes a default `standard/SCHEMA.md` pointer, creates a `standard/VERSION` file, and copies in the contract schemas. Idempotent — running on an existing root is a no-op plus a validation pass. |
+| **`archeia:validate`** | Deterministic | Walk `.archeia/`, check every artifact against its domain's shape and schema, verify cross-domain contracts, check that all transient artifacts have valid status values per the distribution's status vocabulary, verify ownership is respected. Report conformance issues with file-path citations. |
+| **`archeia:advance`** | Deterministic | The `advance` kernel operation. |
+| **`archeia:complete`** | Deterministic | The `complete` kernel operation. |
+| **`archeia:prune`** | Deterministic | Walk all transient artifacts, identify expired ones (past-state status with terminal timestamp + retention window elapsed), and delete them. Each deletion is a git commit. Distributions may wrap this as a scheduled maintenance skill. |
+| **`archeia:consolidate`** | **Latent** | The `consolidate` kernel operation. Distributions typically implement this as multiple specialized skills (e.g., `archeia:write-tech-docs`, `archeia:scan-git`, `archeia:clarify-idea`, `archeia:review-draft`) rather than as a single generic skill. A generic `archeia:consolidate` is optional; specialized consolidation skills that honor the `consolidate` contract are required. |
 
 `supersede` and `evolve` are **optional inherent skills** — recommended for convenience but not mandatory. A distribution may inline their effects into other skills (e.g., `review-draft` internally supersedes a prior decision).
 
@@ -256,6 +279,7 @@ contracts:
 ### 8.2 Status vocabularies and temporal mappings for transient artifacts
 
 For every transient artifact type, declare:
+
 - Status vocabulary (e.g., `todo, active, done, cancelled`)
 - Status → temporal mapping (`todo → future`, `active → present`, `done → past`)
 - Retention window (e.g., 14 days after terminal status)
@@ -266,17 +290,104 @@ Declared alongside the domain entries in `standard/domains.yaml` or in a separat
 ### 8.3 JSON Schemas under `standard/contracts/`
 
 Enforceable schemas for every artifact type the distribution uses. At minimum:
+
 - The kernel's three base schemas (`living-doc.schema.json`, `accumulating-record.schema.json`, `transient-artifact.schema.json`)
 - The distribution's cross-domain contract schemas (e.g., `draft.schema.json`, `product.schema.json`, `c4.schema.json`)
 - Any per-artifact-type schema the distribution wants to enforce (e.g., `task.schema.json`, `adr.schema.json`)
 
-### 8.4 Implementations of the five inherent skills and the archivist agent
+### 8.4 Implementations of the six inherent skills and the archivist agent
 
-The distribution ships `archeia:init`, `archeia:validate`, `archeia:advance`, `archeia:complete`, `archeia:prune`, and an `archivist` agent. These can be implemented as skill files (for agent frameworks) or as scripts (for CI) — the kernel only cares that they exist and honor the operation contracts.
+The distribution ships `archeia:init`, `archeia:validate`, `archeia:advance`, `archeia:complete`, `archeia:prune`, `archeia:consolidate` (or its specialized consolidation skills), and an `archivist` agent. These can be implemented as skill files (for agent frameworks) or as scripts (for CI) — the kernel only cares that they exist and honor the operation contracts.
 
 ---
 
-## 9. Validation: what makes a repo conforming
+## 9. Where the harness fits
+
+Archeia is the contract for the **knowledge layer**: where artifacts live, who owns them, how they evolve. Below the knowledge layer is the **execution layer**, where skills run inside a **harness** — a runtime that loads skill files, invokes the model, manages context, enforces safety, and reads/writes the filesystem. Claude Code, Cursor, OpenCode, custom CLI loops, and bespoke agent frameworks are all harnesses.
+
+**Archeia is harness-agnostic.** Any harness that produces and consumes conforming `.archeia/` trees is interoperable with Archeia, regardless of its language, framework, or model provider.
+
+The term "harness" is industry coinage that has crossed into academic literature. Recent papers that use it formally include Meta-Harness (Lee et al., arXiv:2603.28052, 2026), Natural-Language Agent Harnesses (arXiv:2603.25723, 2026), AutoHarness (arXiv:2603.03329, 2026), and OpenDev's 81-page technical report (arXiv:2603.05344, 2026). The field has settled on "harness" as the term for this layer, and Archeia adopts it. See [`ONTOLOGY.md`](ONTOLOGY.md) §7 for the full citation survey.
+
+### The one hard requirement Archeia places on harnesses
+
+The harness owns **compaction** — the moment when the context window fills up and the model summarizes its working state to continue. Compaction is memory triage; whatever doesn't survive is lost. This is a harness concern, not Archeia's concern. But the harness must respect one invariant:
+
+> **Writes to `.archeia/` MUST be flushed to disk before compaction may discard them from in-context state.**
+
+If a harness compacts away a pending write to `.archeia/product/product.md`, that's a harness bug, not an Archeia problem. The filesystem is the durable store; the harness's working memory is ephemeral by design. Compaction policy and persistence guarantees are separate concerns, and the kernel draws this line explicitly so that harness authors know where their responsibility ends and Archeia's begins.
+
+### What must survive compaction
+
+- **References to `.archeia/` paths the next turn will re-read from disk.** The harness must retain enough context for the next turn to know which files to re-open.
+- **Any in-flight write that has not yet been committed to disk.** Either the write happens and the commit is visible to future turns, or the write never happened. No half-states.
+
+### What can be lost at compaction
+
+- Ephemeral reasoning traces, intermediate scratch
+- Tool-call logs that are already persisted elsewhere (e.g., in the harness's own session log)
+- Anything that has been consolidated into a durable artifact in the last turn
+
+This division of labor is consistent with Sarah Wooders' and the Letta team's framing of memory as **context management** rather than a retrieval problem. The harness manages what lives in the context window at any moment; Archeia provides the durable substrate the context window reads from and writes to. Neither layer replaces the other.
+
+### Why this matters
+
+Without this boundary, the two layers fight each other. If a harness tries to manage persistent memory by keeping everything in context (bloat), or if Archeia tries to specify what the context window looks like (scope creep), both fail. Drawing the boundary here — Archeia owns durable, harness owns ephemeral, compaction must not drop pending durable writes — lets both layers do their jobs without stepping on each other.
+
+---
+
+## 10. Skill format (parameterized procedures)
+
+Skills are procedural-memory artifacts that live **outside** `.archeia/` (typically in `skills/`, not a kernel concern where). A skill is a Markdown document with YAML frontmatter that teaches the model how to execute a specific workflow. The kernel specifies the minimum frontmatter shape.
+
+### Required frontmatter fields
+
+```yaml
+---
+name: <skill-name>
+description: <trigger sentence for automatic invocation via description-matching>
+---
+```
+
+Only `name` and `description` are strictly required. `name` must be unique within the distribution's namespace. `description` is the trigger text used by harnesses that support automatic skill selection (Claude Code, Cursor, etc.) — agents match user intent against skill descriptions to decide which skill to invoke.
+
+### Recommended frontmatter fields
+
+```yaml
+---
+name: review-draft
+description: ...
+version: 0.1.0
+parameters:
+  - name: draft_path
+    type: file
+    required: true
+    description: Path to the business draft under .archeia/business/drafts/
+  - name: codebase_context
+    type: directory
+    required: false
+    default: .archeia/codebase/architecture/
+reads:
+  - .archeia/business/drafts/
+  - .archeia/codebase/architecture/
+writes:
+  - .archeia/product/product.md
+  - .archeia/product/decisions/
+operation: consolidate
+---
+```
+
+The `parameters` field is a refinement adopted from Yegge's "The Harness Is The Product" essay (2026) and supported by recent literature on atomic skills (Ma et al., arXiv:2604.05013, 2026). The core insight is that **skills are method calls with typed parameters, not undifferentiated prompts**. The same `/investigate` skill with different parameters produces radically different behaviors. Making this explicit lets harnesses validate inputs at invocation time and lets skill authors reason about reuse.
+
+The `reads` and `writes` fields declare the skill's `.archeia/` footprint. The `operation` field names which kernel operation the skill implements. These fields are not required for backward compatibility, but distributions that ship new skills are strongly encouraged to populate them, and kernel version 1.0 may make them mandatory.
+
+### Skill invocation is harness business
+
+How a skill gets invoked — automatic description-matching, explicit slash command, programmatic API call, scheduled cron — is the harness's concern. The kernel only specifies the file format and semantics.
+
+---
+
+## 11. Validation: what makes a repo conforming
 
 A repo is **kernel-conforming** if `archeia:validate` passes with no errors against it. Validation checks:
 
@@ -295,7 +406,7 @@ A repo is **distribution-conforming** if it's kernel-conforming AND it satisfies
 
 ---
 
-## 10. What the kernel explicitly does not do
+## 12. What the kernel explicitly does not do
 
 The kernel is small by design. It does not:
 
@@ -310,7 +421,7 @@ The kernel stays small so it can be implemented in a weekend, so it can be cited
 
 ---
 
-## 11. Versioning
+## 13. Versioning
 
 The kernel uses semantic versioning. `standard/VERSION` at the repo root contains the kernel version the repo pins. A conforming tool reads this version and either processes the repo (if it supports that version) or refuses with a clear error.
 
@@ -318,13 +429,13 @@ The kernel uses semantic versioning. `standard/VERSION` at the repo root contain
 - **Minor version bump** — additive changes: new optional fields, new optional operations, new validation checks that don't break existing conforming repos.
 - **Patch version bump** — clarifications, documentation fixes, or non-normative additions.
 
-The current kernel version is **0.1.0**. It will reach **1.0.0** when the first external distribution (not Archeia Solo) is shipped and the kernel has survived that contact with a new audience.
+The current kernel version is **0.2.0**. The 0.1 → 0.2 bump reflects the addition of `consolidate` as a sixth operation (renaming the earlier `diarize` term per the ontology work), the addition of Truth #7 (latent vs deterministic) to PRINCIPLES.md, the addition of the harness boundary section (§9), and the parameterized-skill format refinement (§10). The kernel will reach **1.0.0** when the first external distribution (not Archeia Solo) is shipped and the kernel has survived that contact with a new audience.
 
 ---
 
-## 12. Summary
+## 14. Summary
 
-The Archeia Kernel is eight primitives, seven invariants, three lifecycle shapes, five operations, five inherent skills, one inherent agent role, and one extension mechanism. Every conforming distribution extends it by declaring domains, contracts, and retention windows; every tool interoperable with Archeia implements the kernel operations against the distribution's schemas.
+The Archeia Kernel is eight primitives, seven invariants, three lifecycle shapes, six operations, six inherent skills, one inherent agent role, a harness boundary spec, a skill format spec, and one extension mechanism. Every conforming distribution extends it by declaring domains, contracts, and retention windows; every tool interoperable with Archeia implements the kernel operations against the distribution's schemas.
 
 Everything else in the Archeia Standard — the specific domains, the specific skills, the specific ethos, the specific workflow — lives above the kernel in a distribution. The kernel's job is to be the smallest thing that makes all of that possible, so that many distributions can coexist without fighting each other, and so that tools from different vendors can compose on the same `.archeia/` tree without adapter code.
 
